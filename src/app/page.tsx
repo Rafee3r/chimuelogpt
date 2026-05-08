@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import jsPDF from "jspdf";
 
 type Message = {
   id: string;
@@ -422,30 +423,56 @@ export default function Home() {
                       </div>
                     )}
                     {msg.content && (() => {
-                      const isDownloadable = msg.content.includes('<downloadable>');
-                      const cleanContent = msg.content.replace('<downloadable>', '').trim();
+                      const hasPdf = msg.content.includes('<pdf_content>') && msg.content.includes('</pdf_content>');
+                      
+                      let displayContent = msg.content;
+                      let pdfContent = '';
+
+                      if (hasPdf) {
+                        const match = msg.content.match(/<pdf_content>([\s\S]*?)<\/pdf_content>/i);
+                        if (match && match[1]) {
+                          pdfContent = match[1].trim();
+                          displayContent = msg.content.replace(match[0], '').trim();
+                        }
+                      } else {
+                        displayContent = msg.content.replace('<downloadable>', '').trim();
+                      }
                       
                       return (
                         <div className="markdown-body">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {cleanContent}
+                            {displayContent}
                           </ReactMarkdown>
-                          {msg.role === 'assistant' && isDownloadable && (
+                          {msg.role === 'assistant' && hasPdf && (
                             <button 
                               className="download-btn"
                               onClick={() => {
-                                const blob = new Blob([cleanContent], { type: 'text/markdown' });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `chimuelo_respuesta_${Date.now()}.md`;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
+                                const doc = new jsPDF();
+                                
+                                const margin = 15;
+                                const pageWidth = doc.internal.pageSize.getWidth();
+                                const pageHeight = doc.internal.pageSize.getHeight();
+                                const textWidth = pageWidth - margin * 2;
+                                
+                                doc.setFont("helvetica", "normal");
+                                doc.setFontSize(12);
+                                
+                                const lines = doc.splitTextToSize(pdfContent, textWidth);
+                                let y = margin + 10;
+                                
+                                lines.forEach((line: string) => {
+                                  if (y > pageHeight - margin) {
+                                    doc.addPage();
+                                    y = margin + 10;
+                                  }
+                                  doc.text(line, margin, y);
+                                  y += 7;
+                                });
+                                
+                                doc.save(`chimuelo_documento_${Date.now()}.pdf`);
                               }}
                             >
-                              Descargar Documento
+                              Descargar PDF
                             </button>
                           )}
                         </div>

@@ -34,7 +34,11 @@ export async function POST(req: Request) {
 
     const systemPrompt = `Eres ChimueloGPT, un asistente útil y amigable creado para una familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.
 REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, NO expliques nada. Responde ÚNICAMENTE con esta etiqueta XML que contenga una descripción muy detallada en INGLÉS de la imagen solicitada: <generate_image>detailed english description of the image goes here</generate_image>
-REGLA PARA DOCUMENTOS: Si el usuario pide redactar un ensayo, un documento, una plantilla, o pide explícitamente un archivo para descargar (como PDF o Word), debes incluir la etiqueta exacta <downloadable> en cualquier parte de tu respuesta. Esto activará un botón de descarga.`;
+REGLA PARA DOCUMENTOS: Si el usuario pide redactar un ensayo, un documento, una plantilla, o pide explícitamente un archivo para descargar (como PDF), DEBES responder EXACTAMENTE con este formato, sin añadir ninguna otra palabra:
+Listo, aqui tienes tu PDF preparado para tus notas, cuentame si le falta algo mas para editarlo.
+<pdf_content>
+Aquí va el contenido completo del ensayo o documento solicitado
+</pdf_content>`;
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
@@ -74,9 +78,9 @@ REGLA PARA DOCUMENTOS: Si el usuario pide redactar un ensayo, un documento, una 
         if (!falKey) {
           replyText = `Lo siento, no he podido generar la imagen porque la clave de Fal.ai (\`FAL_KEY\`) no está configurada en Vercel.\n\n*Prompt intentado: ${imagePrompt}*`;
         } else {
-          // Call Fal.ai API for FLUX.2 Pro
+          // Call Fal.ai API for FLUX
           try {
-            const falResponse = await fetch("https://fal.run/fal-ai/flux-pro/v2", {
+            const falResponse = await fetch("https://fal.run/fal-ai/flux-pro/v1.1", {
               method: "POST",
               headers: {
                 "Authorization": `Key ${falKey}`,
