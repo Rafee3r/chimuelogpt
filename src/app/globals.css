@@ -619,6 +619,51 @@ a {
   left: 0;
 }
 
+.attachment-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--input-bg);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Modern Thinking Animation */
+.thinking-modern-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.modern-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(16, 163, 127, 0.2);
+  border-top-color: #10a37f;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.thinking-text-modern {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
 .model-pill {
   display: flex;
   align-items: center;

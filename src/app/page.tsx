@@ -32,6 +32,7 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState("");
   const [attachedImage, setAttachedImage] = useState<{base64: string, name: string} | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -155,6 +156,18 @@ export default function Home() {
     const messageText = msgToSend.trim();
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
+    
+    // Determinar el tipo de tarea para la animación de carga
+    const lower = messageText.toLowerCase();
+    if (lower.includes('imagen') || lower.includes('dibuja') || lower.includes('foto') || lower.includes('pint')) {
+      setThinkingTask("image");
+    } else if (lower.includes('pdf') || lower.includes('documento') || lower.includes('informe') || lower.includes('invita') || lower.includes('ensayo') || lower.includes('plantilla')) {
+      setThinkingTask("document");
+    } else if (lower.includes('codigo') || lower.includes('código') || lower.includes('programa') || lower.includes('script') || lower.includes('html')) {
+      setThinkingTask("code");
+    } else {
+      setThinkingTask("general");
+    }
 
     let targetChatId = currentChatId;
     
@@ -488,12 +501,27 @@ export default function Home() {
                       </div>
                     )}
                     {msg.content && (() => {
-                      const hasArtifact = msg.content.includes('<artifact_html>') && msg.content.includes('</artifact_html>');
+                      // Comprobar ambos formatos: el antiguo <artifact_html> y el nuevo <artifact>
+                      const hasNewArtifact = msg.content.includes('<artifact>') && msg.content.includes('</artifact>');
+                      const hasOldArtifact = msg.content.includes('<artifact_html>') && msg.content.includes('</artifact_html>') && !hasNewArtifact;
                       
                       let displayContent = msg.content;
                       let artifactContent = '';
+                      let artifactTitle = 'Diseño Generado';
+                      let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
 
-                      if (hasArtifact) {
+                      if (hasNewArtifact) {
+                        const matchHtml = msg.content.match(/<artifact_html>([\s\S]*?)<\/artifact_html>/i);
+                        const matchTitle = msg.content.match(/<artifact_title>([\s\S]*?)<\/artifact_title>/i);
+                        const matchDesc = msg.content.match(/<artifact_desc>([\s\S]*?)<\/artifact_desc>/i);
+                        
+                        if (matchHtml && matchHtml[1]) artifactContent = matchHtml[1].trim();
+                        if (matchTitle && matchTitle[1]) artifactTitle = matchTitle[1].trim();
+                        if (matchDesc && matchDesc[1]) artifactDesc = matchDesc[1].trim();
+                        
+                        const fullMatch = msg.content.match(/<artifact>([\s\S]*?)<\/artifact>/i);
+                        if (fullMatch) displayContent = msg.content.replace(fullMatch[0], '').trim();
+                      } else if (hasOldArtifact) {
                         const match = msg.content.match(/<artifact_html>([\s\S]*?)<\/artifact_html>/i);
                         if (match && match[1]) {
                           artifactContent = match[1].trim();
@@ -504,6 +532,8 @@ export default function Home() {
                         displayContent = msg.content.replace(/<pdf_content>[\s\S]*?<\/pdf_content>/i, '').replace('<downloadable>', '').trim();
                       }
                       
+                      const showArtifact = hasNewArtifact || hasOldArtifact;
+                      
                       return (
                         <div className="markdown-body">
                           <ReactMarkdown 
@@ -512,15 +542,15 @@ export default function Home() {
                           >
                             {displayContent}
                           </ReactMarkdown>
-                          {msg.role === 'assistant' && hasArtifact && (
+                          {msg.role === 'assistant' && showArtifact && (
                             <div 
                               className="artifact-card"
                               onClick={() => setArtifactModal(artifactContent)}
                             >
-                              <div className="artifact-icon">✨</div>
+                              <div className="artifact-icon">{thinkingTask === 'document' || artifactTitle.toLowerCase().includes('informe') ? '📄' : '✨'}</div>
                               <div className="artifact-info">
-                                <strong>Diseño Generado</strong>
-                                <span>Haz clic para previsualizar y descargar PDF</span>
+                                <strong>{artifactTitle}</strong>
+                                <span>{artifactDesc}</span>
                               </div>
                             </div>
                           )}
@@ -540,10 +570,14 @@ export default function Home() {
                   <Cat size={24} />
                 </div>
                 <div className="message-text">
-                  <div className="thinking-animation">
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                    <div className="dot"></div>
+                  <div className="thinking-modern-container">
+                    <div className="modern-spinner"></div>
+                    <span className="thinking-text-modern">
+                      {thinkingTask === "image" ? "🎨 Pintando la imagen, preparando colores..." : 
+                       thinkingTask === "document" ? "📄 Diseñando y redactando el documento..." :
+                       thinkingTask === "code" ? "💻 Escribiendo y estructurando código..." :
+                       "✨ Pensando profundamente..."}
+                    </span>
                   </div>
                 </div>
               </div>
