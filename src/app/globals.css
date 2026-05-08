@@ -274,6 +274,7 @@ input, textarea {
   display: flex;
   flex-direction: column;
   padding-top: 1rem;
+  padding-bottom: 220px;
   scroll-behavior: smooth;
 }
 
@@ -423,7 +424,7 @@ input, textarea {
 /* Model Selector (Gemini Style) */
 .model-selector-container {
   position: absolute;
-  top: -40px;
+  top: -55px;
   left: 0;
 }
 

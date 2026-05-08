@@ -458,7 +458,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} style={{ height: '250px' }} />
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="input-area">
