@@ -99,7 +99,7 @@ Aquí va el contenido completo del ensayo o documento solicitado
             } else {
               const falData = await falResponse.json();
               const imageUrl = falData.images[0].url;
-              replyText = `![Imagen Generada](${imageUrl})\n\n*Prompt: ${imagePrompt}*`;
+              replyText = `![Imagen Generada](${imageUrl})`;
             }
           } catch (e: any) {
             console.error("Fal.ai execution error:", e);

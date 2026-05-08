@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -36,6 +36,7 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-pro");
@@ -287,6 +288,41 @@ export default function Home() {
     }
   };
 
+  const handleSwitchChat = (chatId: string | null) => {
+    if (chatId) {
+      setCurrentChatId(chatId);
+      localStorage.setItem("chimuelo_current_chat", chatId);
+    } else {
+      createNewChat();
+    }
+    setSidebarOpen(false);
+  };
+
+  // Image Renderer for interactive markdown images
+  const ImageRenderer = ({ node, ...props }: any) => {
+    return (
+      <div className="image-container">
+        <img {...props} onClick={() => setLightboxImg(props.src || null)} />
+        <div className="image-overlay">
+          <button 
+            className="image-action-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              const a = document.createElement('a');
+              a.href = props.src;
+              a.download = `chimuelo_imagen_${Date.now()}.png`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }}
+          >
+            <Download size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="auth-container">
@@ -333,26 +369,31 @@ export default function Home() {
         />
       )}
 
+      {lightboxImg && (
+        <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
+          <img src={lightboxImg} alt="Lightbox" />
+        </div>
+      )}
+
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
         <div className="sidebar-header">
-          <button onClick={createNewChat} className="new-chat-btn">
-            <Plus size={16} />
-            Nuevo chat
+          <button className="new-chat-btn" onClick={() => handleSwitchChat(null)}>
+            <SquarePen size={18} />
+            Nueva conversación
           </button>
         </div>
-        <div className="sidebar-history">
+
+        <div className="sidebar-section-title">Conversaciones</div>
+        <div className="sidebar-chat-list">
           {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              className={`history-item ${chat.id === currentChatId ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentChatId(chat.id);
-                localStorage.setItem("chimuelo_current_chat", chat.id);
-                setSidebarOpen(false);
-              }}
+            <button
+              key={chat.id}
+              className={`sidebar-item ${currentChatId === chat.id ? 'active' : ''}`}
+              onClick={() => handleSwitchChat(chat.id)}
             >
-              <span className="history-item-title">{chat.title}</span>
-            </div>
+              <MessageSquare size={16} />
+              {chat.title}
+            </button>
           ))}
         </div>
         <div className="sidebar-footer">
@@ -440,7 +481,10 @@ export default function Home() {
                       
                       return (
                         <div className="markdown-body">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{ img: ImageRenderer }}
+                          >
                             {displayContent}
                           </ReactMarkdown>
                           {msg.role === 'assistant' && hasPdf && (
@@ -673,6 +717,31 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {lightboxImg && (
+        <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
+          <div className="lightbox-actions" onClick={e => e.stopPropagation()}>
+            <button 
+              className="image-action-btn"
+              onClick={() => {
+                const a = document.createElement('a');
+                a.href = lightboxImg;
+                a.download = `chimuelo_imagen_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }}
+            >
+              <Download size={20} />
+            </button>
+            <button className="image-action-btn" onClick={() => setLightboxImg(null)}>
+              <X size={20} />
+            </button>
+          </div>
+          <img src={lightboxImg} className="lightbox-img" alt="Ampliación" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>
