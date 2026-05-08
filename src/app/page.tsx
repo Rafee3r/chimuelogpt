@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -33,6 +33,7 @@ export default function Home() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
@@ -288,18 +289,26 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div className="auth-container">
-        <form onSubmit={handleLogin} className="auth-box">
-          <h1 className="auth-title">ChimueloGPT</h1>
-          <input
-            type="text"
-            className="auth-input"
-            placeholder="Contraseña"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            autoFocus
-          />
-          {authError && <p className="auth-error">Contraseña incorrecta.</p>}
-          <button type="submit" className="auth-btn">Entrar</button>
+        <form onSubmit={handleLogin} className="auth-box-modern">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <Cat size={48} color="var(--text-primary)" strokeWidth={1.5} />
+          </div>
+          <h1 className="auth-title-modern">ChimueloGPT</h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>Ingresa la clave familiar para entrar</p>
+          
+          <div className="auth-input-wrapper">
+            <input
+              type="text"
+              className="auth-input-modern"
+              placeholder="Contraseña..."
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              autoFocus
+            />
+            <button type="submit" className="auth-btn-modern">→</button>
+          </div>
+          
+          {authError && <p className="auth-error" style={{ marginTop: '1rem' }}>Contraseña incorrecta.</p>}
         </form>
       </div>
     );
@@ -346,6 +355,10 @@ export default function Home() {
           ))}
         </div>
         <div className="sidebar-footer">
+          <button onClick={() => setPwaModalOpen(true)} className="settings-btn" style={{ marginBottom: '8px' }}>
+            <Smartphone size={16} />
+            Agrégame a tu Celu
+          </button>
           <button onClick={() => setSettingsOpen(true)} className="settings-btn">
             <Settings size={16} />
             Configuración
@@ -587,6 +600,50 @@ export default function Home() {
               <button onClick={clearAllHistory} className="danger-btn">
                 Borrar todos los chats
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PWA Instructions Modal */}
+      {pwaModalOpen && (
+        <div className="modal-overlay" onClick={() => setPwaModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Smartphone size={24} /> Agrégame a tu Celu
+              </h2>
+              <button onClick={() => setPwaModalOpen(false)} className="modal-close">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginTop: '1rem' }}>
+              <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                Puedes instalar ChimueloGPT como una app en tu teléfono para entrar más rápido, como si fuera WhatsApp. ¡Es muy fácil!
+              </p>
+              
+              <div style={{ backgroundColor: 'var(--input-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🍎 Si usas iPhone (Safari)
+                </h3>
+                <ol style={{ paddingLeft: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                  <li>Toca el botón de <strong>Compartir</strong> (es un cuadrito con una flecha hacia arriba que está en la barra de abajo).</li>
+                  <li>Desliza hacia abajo en ese menú hasta encontrar <strong>"Agregar a inicio"</strong> o <strong>"Add to Home Screen"</strong> y tócalo.</li>
+                  <li>Toca <strong>"Agregar"</strong> arriba a la derecha. ¡Listo! Ya aparecerá el ícono en tu teléfono.</li>
+                </ol>
+              </div>
+
+              <div style={{ backgroundColor: 'var(--input-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🤖 Si usas Android (Chrome)
+                </h3>
+                <ol style={{ paddingLeft: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                  <li>Toca los <strong>tres puntitos</strong> que están arriba a la derecha en el navegador.</li>
+                  <li>Busca la opción <strong>"Agregar a la pantalla principal"</strong> o <strong>"Instalar aplicación"</strong> y tócala.</li>
+                  <li>Confirma tocando <strong>"Agregar"</strong> o <strong>"Instalar"</strong>. ¡Ya lo tienes como app!</li>
+                </ol>
+              </div>
             </div>
           </div>
         </div>
