@@ -39,7 +39,7 @@ export default function Home() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
-  const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-pro");
+  const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
 
