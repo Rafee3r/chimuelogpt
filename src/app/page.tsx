@@ -178,6 +178,18 @@ export default function Home() {
       ...(imageName ? { imagePlaceholder: imageName } : {})
     };
 
+    // Construir el array de mensajes de forma síncrona para la API
+    const existingMessages = targetChatId && targetChatId === currentChatId 
+      ? (chats.find(c => c.id === targetChatId)?.messages || [])
+      : [];
+      
+    const currentMessagesForApi = [...existingMessages, userMsg].map(m => {
+      if (m.id === userMsgId && imagePayload) {
+        return { role: m.role, content: m.content, image: imagePayload };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     setChats(prev => {
       const updated = [...prev];
       const chatIndex = updated.findIndex(c => c.id === targetChatId);
@@ -198,21 +210,6 @@ export default function Home() {
     setIsThinking(true);
 
     try {
-      let currentMessagesForApi: any[] = [];
-      
-      setChats(currentChats => {
-        const chat = currentChats.find(c => c.id === targetChatId);
-        if (chat) {
-          currentMessagesForApi = chat.messages.map(m => {
-            if (m.id === userMsgId && imagePayload) {
-              return { role: m.role, content: m.content, image: imagePayload };
-            }
-            return { role: m.role, content: m.content };
-          });
-        }
-        return currentChats;
-      });
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
