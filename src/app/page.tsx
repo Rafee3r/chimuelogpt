@@ -411,31 +411,36 @@ export default function Home() {
                         <span>{msg.imagePlaceholder}</span>
                       </div>
                     )}
-                    {msg.content && (
-                      <div className="markdown-body">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {msg.content}
-                        </ReactMarkdown>
-                        {msg.role === 'assistant' && (
-                          <button 
-                            className="download-btn"
-                            onClick={() => {
-                              const blob = new Blob([msg.content], { type: 'text/markdown' });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `chimuelo_respuesta_${Date.now()}.md`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            }}
-                          >
-                            Descargar
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    {msg.content && (() => {
+                      const isDownloadable = msg.content.includes('<downloadable>');
+                      const cleanContent = msg.content.replace('<downloadable>', '').trim();
+                      
+                      return (
+                        <div className="markdown-body">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {cleanContent}
+                          </ReactMarkdown>
+                          {msg.role === 'assistant' && isDownloadable && (
+                            <button 
+                              className="download-btn"
+                              onClick={() => {
+                                const blob = new Blob([cleanContent], { type: 'text/markdown' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `chimuelo_respuesta_${Date.now()}.md`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                              }}
+                            >
+                              Descargar Documento
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

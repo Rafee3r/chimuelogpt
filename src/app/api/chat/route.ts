@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     });
 
     const systemPrompt = `You are ChimueloGPT, a helpful assistant created for a family. Always be helpful, friendly, and respectful. 
-IMPORTANT RULE FOR IMAGES: If the user explicitly asks you to generate, draw, or create an image, photo, or picture, DO NOT provide conversational text or explain anything. You must ONLY reply exactly with this XML tag containing a highly detailed description of the requested image in ENGLISH: <generate_image>detailed english description of the image goes here</generate_image>`;
+IMPORTANT RULE FOR IMAGES: If the user explicitly asks you to generate, draw, or create an image, photo, or picture, DO NOT provide conversational text or explain anything. You must ONLY reply exactly with this XML tag containing a highly detailed description of the requested image in ENGLISH: <generate_image>detailed english description of the image goes here</generate_image>
+IMPORTANT RULE FOR DOCUMENTS: If the user asks for an essay, a document, a template, or requests a text to be saved as a file (like a PDF or Word document), you must include the exact tag <downloadable> anywhere in your response. This will trigger a download button in the UI.`;
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
@@ -83,24 +84,22 @@ IMPORTANT RULE FOR IMAGES: If the user explicitly asks you to generate, draw, or
               },
               body: JSON.stringify({
                 prompt: imagePrompt,
-                image_size: "landscape_4_3", // Standard size, can be customized
-                num_inference_steps: 25,
-                guidance_scale: 3.5
+                image_size: "landscape_4_3"
               })
             });
 
             if (!falResponse.ok) {
               const falError = await falResponse.text();
               console.error("Fal.ai API Error:", falError);
-              replyText = `Hubo un problema al generar la imagen con Fal.ai. Por favor intenta de nuevo.`;
+              replyText = `Hubo un problema al generar la imagen con Fal.ai: \n\`\`\`\n${falError}\n\`\`\`\nPor favor intenta de nuevo.`;
             } else {
               const falData = await falResponse.json();
               const imageUrl = falData.images[0].url;
               replyText = `![Imagen Generada](${imageUrl})\n\n*Prompt: ${imagePrompt}*`;
             }
-          } catch (e) {
+          } catch (e: any) {
             console.error("Fal.ai execution error:", e);
-            replyText = `Hubo un error de conexión al generar la imagen.`;
+            replyText = `Hubo un error de conexión al generar la imagen: ${e.message}`;
           }
         }
       }
