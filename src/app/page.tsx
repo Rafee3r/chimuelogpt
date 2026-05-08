@@ -357,6 +357,11 @@ export default function Home() {
           </div>
           
           {authError && <p className="auth-error" style={{ marginTop: '1rem' }}>Contraseña incorrecta.</p>}
+
+          <div style={{ marginTop: '2.5rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <p style={{ marginBottom: '0.25rem' }}>Una aplicación creada por Rafael Sotomayor.</p>
+            <p style={{ opacity: 0.7 }}>Tranquilo, él no puede ver tus chats. Se guardan en tu teléfono.</p>
+          </div>
         </form>
       </div>
     );
