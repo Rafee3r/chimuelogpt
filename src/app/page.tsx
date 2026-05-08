@@ -416,6 +416,24 @@ export default function Home() {
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {msg.content}
                         </ReactMarkdown>
+                        {msg.role === 'assistant' && (
+                          <button 
+                            className="download-btn"
+                            onClick={() => {
+                              const blob = new Blob([msg.content], { type: 'text/markdown' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `chimuelo_respuesta_${Date.now()}.md`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            Descargar
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -440,13 +458,14 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} style={{ height: '120px' }} />
+          <div ref={messagesEndRef} style={{ height: '250px' }} />
         </div>
 
         <div className="input-area">
           <div className="input-container">
             
             <div className="model-selector-container">
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '12px', marginBottom: '2px', display: 'block' }}>Modo</span>
               <div 
                 className="model-pill"
                 onClick={(e) => {

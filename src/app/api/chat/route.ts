@@ -65,7 +65,7 @@ IMPORTANT RULE FOR IMAGES: If the user explicitly asks you to generate, draw, or
 
     // Intercept image generation tags
     if (replyText.includes("<generate_image>") && replyText.includes("</generate_image>")) {
-      const promptMatch = replyText.match(/<generate_image>(.*?)<\/generate_image>/is);
+      const promptMatch = replyText.match(/<generate_image>([\s\S]*?)<\/generate_image>/i);
       
       if (promptMatch && promptMatch[1]) {
         const imagePrompt = promptMatch[1].trim();
