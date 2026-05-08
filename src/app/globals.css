@@ -260,7 +260,7 @@ a {
 
 .auth-btn-modern {
   background-color: var(--text-primary);
-  color: var(--bg-color);
+  color: var(--bg-primary);
   border: none;
   border-radius: 50%;
   width: 40px;

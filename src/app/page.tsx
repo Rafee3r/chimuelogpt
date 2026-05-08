@@ -355,6 +355,9 @@ export default function Home() {
             <Cat size={48} color="var(--text-primary)" strokeWidth={1.5} />
           </div>
           <h1 className="auth-title-modern">ChimueloGPT</h1>
+          <p style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.95rem', fontWeight: 500, textAlign: 'center' }}>
+            Un gato que te regala 20 mil pesos de valor mensual por un churu.
+          </p>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>Ingresa la clave familiar para entrar</p>
           
           <div className="auth-input-wrapper">
