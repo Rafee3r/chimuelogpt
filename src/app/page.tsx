@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Trash2, XCircle } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,7 +9,7 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  image?: string; // Base64 image
+  imagePlaceholder?: string; // e.g. "photo.png" instead of base64
 };
 
 type Chat = {
@@ -28,11 +28,12 @@ export default function Home() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   const [inputMessage, setInputMessage] = useState("");
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{base64: string, name: string} | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-pro");
@@ -60,7 +61,6 @@ export default function Home() {
     const currentChat = localStorage.getItem("chimuelo_current_chat");
     if (currentChat) setCurrentChatId(currentChat);
 
-    // Version check logic
     const checkVersion = async () => {
       try {
         const res = await fetch("/version.json");
@@ -91,7 +91,7 @@ export default function Home() {
     localStorage.setItem("chimuelo_theme", theme);
   }, [theme]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chats, currentChatId, isThinking]);
@@ -129,8 +129,7 @@ export default function Home() {
       messages: [],
       updatedAt: Date.now()
     };
-    const updatedChats = [newChat, ...chats];
-    saveChats(updatedChats);
+    saveChats([newChat, ...chats]);
     setCurrentChatId(newChat.id);
     localStorage.setItem("chimuelo_current_chat", newChat.id);
     setSidebarOpen(false);
@@ -142,63 +141,96 @@ export default function Home() {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setAttachedImage(reader.result as string);
+      setAttachedImage({
+        base64: reader.result as string,
+        name: file.name
+      });
     };
     reader.readAsDataURL(file);
-    // Reset input so the same file can be selected again if removed
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && !attachedImage) return;
 
-    let activeChatId = currentChatId;
-    let activeChat = currentChat;
-    let updatedChats = [...chats];
-
     const messageText = inputMessage.trim();
-    const messageImage = attachedImage;
+    const imagePayload = attachedImage ? attachedImage.base64 : null;
+    const imageName = attachedImage ? attachedImage.name : null;
 
-    if (!activeChatId || !activeChat) {
-      const newChat: Chat = {
-        id: Date.now().toString(),
-        title: messageText ? messageText.slice(0, 30) + (messageText.length > 30 ? "..." : "") : "Imagen adjunta",
-        messages: [],
-        updatedAt: Date.now()
-      };
-      activeChatId = newChat.id;
-      activeChat = newChat;
-      updatedChats = [newChat, ...chats];
-      setCurrentChatId(activeChatId);
-      localStorage.setItem("chimuelo_current_chat", activeChatId);
+    let targetChatId = currentChatId;
+    
+    // Create new chat if none is active
+    if (!targetChatId) {
+      const newChatId = Date.now().toString();
+      targetChatId = newChatId;
+      setCurrentChatId(newChatId);
+      localStorage.setItem("chimuelo_current_chat", newChatId);
+      
+      setChats(prev => {
+        const newChat: Chat = {
+          id: newChatId,
+          title: messageText ? messageText.slice(0, 30) : (imageName || "Nuevo Chat"),
+          messages: [],
+          updatedAt: Date.now()
+        };
+        return [newChat, ...prev];
+      });
     }
 
+    const userMsgId = Date.now().toString();
     const userMsg: Message = { 
-      id: Date.now().toString(), 
+      id: userMsgId, 
       role: "user", 
       content: messageText,
-      ...(messageImage ? { image: messageImage } : {})
+      ...(imageName ? { imagePlaceholder: imageName } : {})
     };
-    
-    activeChat.messages.push(userMsg);
-    activeChat.updatedAt = Date.now();
-    
-    // Update title if it's the first message and it has text
-    if (activeChat.messages.length === 1 && messageText) {
-      activeChat.title = messageText.slice(0, 30) + (messageText.length > 30 ? "..." : "");
-    }
 
-    saveChats(updatedChats);
+    // Add user message to state using functional update to guarantee fresh state
+    setChats(prev => {
+      const updated = [...prev];
+      const chatIndex = updated.findIndex(c => c.id === targetChatId);
+      if (chatIndex !== -1) {
+        updated[chatIndex] = {
+          ...updated[chatIndex],
+          messages: [...updated[chatIndex].messages, userMsg],
+          updatedAt: Date.now(),
+          title: updated[chatIndex].messages.length === 0 ? (messageText ? messageText.slice(0, 30) : "Imagen adjunta") : updated[chatIndex].title
+        };
+      }
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
+
     setInputMessage("");
     setAttachedImage(null);
     setIsThinking(true);
 
     try {
+      // Build API payload: include base64 image ONLY for the API call, not saved locally.
+      // We need to fetch the fresh messages array for this chat
+      // We can recreate it right here for the API call
+      let currentMessagesForApi: any[] = [];
+      
+      setChats(currentChats => {
+        const chat = currentChats.find(c => c.id === targetChatId);
+        if (chat) {
+          // Map to standard format and inject base64 ONLY for the very last message
+          currentMessagesForApi = chat.messages.map(m => {
+            if (m.id === userMsgId && imagePayload) {
+              return { role: m.role, content: m.content, image: imagePayload };
+            }
+            // For old messages, we ignore the image as it's not saved locally anyway
+            return { role: m.role, content: m.content };
+          });
+        }
+        return currentChats;
+      });
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: activeChat.messages,
+          messages: currentMessagesForApi,
           model: model
         })
       });
@@ -213,26 +245,40 @@ export default function Home() {
         content: data.reply || "No hubo respuesta."
       };
 
-      const finalChats = [...chats];
-      const chatIndex = finalChats.findIndex(c => c.id === activeChatId);
-      if (chatIndex !== -1) {
-        finalChats[chatIndex].messages.push(assistantMsg);
-        finalChats[chatIndex].updatedAt = Date.now();
-        saveChats(finalChats);
-      }
+      setChats(prev => {
+        const updated = [...prev];
+        const chatIndex = updated.findIndex(c => c.id === targetChatId);
+        if (chatIndex !== -1) {
+          updated[chatIndex] = {
+            ...updated[chatIndex],
+            messages: [...updated[chatIndex].messages, assistantMsg],
+            updatedAt: Date.now()
+          };
+        }
+        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+        return updated;
+      });
+      
     } catch (err) {
       console.error(err);
       const errorMsg: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Ocurrió un error al comunicarse con ChimueloGPT. Por favor, asegúrate de tener bien configurada tu API Key en Vercel."
+        content: "Ocurrió un error al comunicarse con ChimueloGPT. Asegúrate de tener configurada tu API Key."
       };
-      const finalChats = [...chats];
-      const chatIndex = finalChats.findIndex(c => c.id === activeChatId);
-      if (chatIndex !== -1) {
-        finalChats[chatIndex].messages.push(errorMsg);
-        saveChats(finalChats);
-      }
+      setChats(prev => {
+        const updated = [...prev];
+        const chatIndex = updated.findIndex(c => c.id === targetChatId);
+        if (chatIndex !== -1) {
+          updated[chatIndex] = {
+            ...updated[chatIndex],
+            messages: [...updated[chatIndex].messages, errorMsg],
+            updatedAt: Date.now()
+          };
+        }
+        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+        return updated;
+      });
     } finally {
       setIsThinking(false);
     }
@@ -275,8 +321,11 @@ export default function Home() {
     );
   }
 
+  // Get active chat from fresh state
+  const activeChat = chats.find(c => c.id === currentChatId);
+
   return (
-    <div className="app-layout">
+    <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
       {showVersionBanner && (
         <div className="version-banner">
           ¡Nueva versión disponible! (v{appVersion})
@@ -311,7 +360,6 @@ export default function Home() {
                 setSidebarOpen(false);
               }}
             >
-              <MessageSquare size={16} />
               <span className="history-item-title">{chat.title}</span>
             </div>
           ))}
@@ -330,28 +378,35 @@ export default function Home() {
           <button onClick={() => setSidebarOpen(true)} className="icon-btn">
             <Menu size={24} />
           </button>
-          <span>ChimueloGPT</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>ChimueloGPT</span>
+          </div>
           <button onClick={() => createNewChat()} className="icon-btn">
             <Plus size={24} />
           </button>
         </div>
 
         <div className="chat-area">
-          {currentChat?.messages.length === 0 || !currentChat ? (
+          {!activeChat || activeChat.messages.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '1rem' }}>ChimueloGPT</h2>
-              <p>¿En qué te puedo ayudar hoy?</p>
+              <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>¿En qué te puedo ayudar hoy?</h2>
             </div>
           ) : (
-            currentChat.messages.map(msg => (
+            activeChat.messages.map(msg => (
               <div key={msg.id} className={`message ${msg.role}`}>
                 <div className="message-content-wrapper">
-                  <div className={`avatar ${msg.role}`}>
-                    {msg.role === 'user' ? 'Tú' : 'C'}
-                  </div>
+                  {msg.role === 'assistant' && (
+                    <div className="avatar assistant">
+                      <Cat size={24} />
+                    </div>
+                  )}
                   <div className="message-text">
-                    {msg.image && (
-                      <img src={msg.image} alt="Adjunto" className="message-image" />
+                    {msg.imagePlaceholder && (
+                      <div className="attachment-placeholder">
+                        <FileImage size={16} />
+                        <span>{msg.imagePlaceholder}</span>
+                      </div>
                     )}
                     {msg.content && (
                       <div className="markdown-body">
@@ -369,7 +424,9 @@ export default function Home() {
           {isThinking && (
             <div className="message assistant">
               <div className="message-content-wrapper">
-                <div className="avatar assistant">C</div>
+                <div className="avatar assistant">
+                  <Cat size={24} />
+                </div>
                 <div className="message-text">
                   <div className="thinking-animation">
                     <div className="dot"></div>
@@ -380,20 +437,63 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} style={{ height: '100px' }} />
+          <div ref={messagesEndRef} style={{ height: '120px' }} />
         </div>
 
+        {/* Input Area */}
         <div className="input-area">
           <div className="input-container">
+            
+            {/* Model Selector Pill */}
+            <div className="model-selector-container">
+              <div 
+                className="model-pill"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModelDropdownOpen(!modelDropdownOpen);
+                }}
+              >
+                {model === 'deepseek-v4-pro' ? 'Pro' : 'Rápido'}
+                <ChevronDown size={14} />
+              </div>
+              
+              {modelDropdownOpen && (
+                <div className="model-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="model-option"
+                    onClick={() => {
+                      setModel('deepseek-v4-pro');
+                      localStorage.setItem("chimuelo_model", "deepseek-v4-pro");
+                      setModelDropdownOpen(false);
+                    }}
+                  >
+                    <span className="model-option-title">Pro {model === 'deepseek-v4-pro' && '✓'}</span>
+                    <span className="model-option-desc">Matemáticas y programación avanzadas</span>
+                  </div>
+                  <div 
+                    className="model-option"
+                    onClick={() => {
+                      setModel('deepseek-v4-flash');
+                      localStorage.setItem("chimuelo_model", "deepseek-v4-flash");
+                      setModelDropdownOpen(false);
+                    }}
+                  >
+                    <span className="model-option-title">Rápido {model === 'deepseek-v4-flash' && '✓'}</span>
+                    <span className="model-option-desc">Responde rápidamente a preguntas diarias</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {attachedImage && (
               <div className="image-preview-container">
                 <div className="image-preview-item">
-                  <img src={attachedImage} alt="Preview" className="image-preview-img" />
+                  <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
                   <button 
                     className="image-preview-remove" 
                     onClick={() => setAttachedImage(null)}
                   >
-                    <XCircle size={16} fill="white" color="var(--text-primary)" />
+                    <XCircle size={16} fill="white" color="#333" />
                   </button>
                 </div>
               </div>
@@ -431,7 +531,7 @@ export default function Home() {
               <Send size={16} />
             </button>
           </div>
-          <div className="disclaimer" style={{ position: 'absolute', bottom: '8px' }}>
+          <div className="disclaimer">
             ChimueloGPT puede cometer errores. Considera verificar la información importante.
           </div>
         </div>
@@ -439,8 +539,8 @@ export default function Home() {
 
       {/* Settings Modal */}
       {settingsOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Configuración</h2>
               <button onClick={() => setSettingsOpen(false)} className="modal-close">
@@ -458,21 +558,6 @@ export default function Home() {
                 <option value="system">Sistema</option>
                 <option value="light">Claro</option>
                 <option value="dark">Oscuro</option>
-              </select>
-            </div>
-
-            <div className="settings-group">
-              <label className="settings-label">Modelo</label>
-              <select 
-                className="settings-select"
-                value={model}
-                onChange={(e) => {
-                  setModel(e.target.value as any);
-                  localStorage.setItem("chimuelo_model", e.target.value);
-                }}
-              >
-                <option value="deepseek-v4-pro">Modo Pro (deepseek-v4-pro)</option>
-                <option value="deepseek-v4-flash">Modo Rápido (deepseek-v4-flash)</option>
               </select>
             </div>
 
