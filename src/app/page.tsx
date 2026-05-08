@@ -2,22 +2,24 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search } from "lucide-react";
+import { useChat } from "@ai-sdk/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-type Message = {
+type BaseMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   imagePlaceholder?: string;
+  reasoning?: string;
 };
 
 type Chat = {
   id: string;
   title: string;
-  messages: Message[];
+  messages: BaseMessage[];
   updatedAt: number;
 };
 
@@ -33,6 +35,7 @@ export default function Home() {
   const [attachedImage, setAttachedImage] = useState<{base64: string, name: string} | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
+  const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -49,6 +52,62 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // @ts-ignore
+  const { messages, setMessages, append } = useChat(({
+    api: '/api/chat',
+    body: { model },
+    onFinish: async (message: any) => {
+      let finalMessageContent = message.content;
+      
+      // Intercept image generation
+      if (message.content.includes('<generate_image>') && message.content.includes('</generate_image>')) {
+        const promptMatch = message.content.match(/<generate_image>([\s\S]*?)<\/generate_image>/i);
+        if (promptMatch && promptMatch[1]) {
+          const imagePrompt = promptMatch[1].trim();
+          try {
+            const imgRes = await fetch('/api/image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: imagePrompt })
+            });
+            if (imgRes.ok) {
+              const imgData = await imgRes.json();
+              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+            } else {
+              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
+            }
+          } catch (e) {
+            finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
+          }
+        }
+      }
+
+      const updatedMessage = { ...message, content: finalMessageContent };
+
+      // Update AI SDK state
+      setMessages(prev => prev.map(m => m.id === message.id ? updatedMessage as any : m));
+
+      // Sync messages to local storage on finish
+      setChats(prev => prev.map(chat => chat.id === currentChatId ? {
+        ...chat,
+        messages: [...messages, updatedMessage] as BaseMessage[],
+        updatedAt: Date.now()
+      } : chat));
+      
+      setIsThinking(false);
+    }
+  }) as any);
+
+  // Sync Vercel AI SDK messages state when changing chats
+  useEffect(() => {
+    const active = chats.find(c => c.id === currentChatId);
+    if (active) {
+      setMessages(active.messages as any);
+    } else {
+      setMessages([]);
+    }
+  }, [currentChatId, chats.length]);
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
@@ -97,7 +156,7 @@ export default function Home() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chats, currentChatId, isThinking]);
+  }, [messages, currentChatId, isThinking]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -131,6 +190,7 @@ export default function Home() {
     });
     setCurrentChatId(newChat.id);
     localStorage.setItem("chimuelo_current_chat", newChat.id);
+    setMessages([]);
     setSidebarOpen(false);
   };
 
@@ -157,7 +217,6 @@ export default function Home() {
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
     
-    // Determinar el tipo de tarea para la animación de carga
     const lower = messageText.toLowerCase();
     if (lower.includes('imagen') || lower.includes('dibuja') || lower.includes('foto') || lower.includes('pint')) {
       setThinkingTask("image");
@@ -170,7 +229,6 @@ export default function Home() {
     }
 
     let targetChatId = currentChatId;
-    
     if (!targetChatId) {
       const newChatId = Date.now().toString();
       targetChatId = newChatId;
@@ -189,24 +247,12 @@ export default function Home() {
     }
 
     const userMsgId = Date.now().toString();
-    const userMsg: Message = { 
+    const userMsg: BaseMessage = { 
       id: userMsgId, 
       role: "user", 
       content: messageText,
       ...(imageName ? { imagePlaceholder: imageName } : {})
     };
-
-    // Construir el array de mensajes de forma síncrona para la API
-    const existingMessages = targetChatId && targetChatId === currentChatId 
-      ? (chats.find(c => c.id === targetChatId)?.messages || [])
-      : [];
-      
-    const currentMessagesForApi = [...existingMessages, userMsg].map(m => {
-      if (m.id === userMsgId && imagePayload) {
-        return { role: m.role, content: m.content, image: imagePayload };
-      }
-      return { role: m.role, content: m.content };
-    });
 
     setChats(prev => {
       const updated = [...prev];
@@ -228,70 +274,17 @@ export default function Home() {
     setIsThinking(true);
 
     try {
-      const validHistory = currentMessagesForApi.filter(m => m.content && m.content.trim() !== '');
-
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: validHistory,
-          model: model
-        })
-      });
-
-      if (!res.ok) {
-        let errMessage = `Error HTTP ${res.status}`;
-        try {
-          const errData = await res.json();
-          if (errData.error) errMessage = errData.error;
-        } catch(e) {}
-        throw new Error(errMessage);
+      let finalContent = messageText;
+      if (imagePayload) {
+        finalContent = `[El usuario adjuntó una imagen llamada: ${imageName}. NOTA DEL SISTEMA PARA CHIMUELOGPT: Actualmente NO tienes visión ni ojos para ver imágenes en esta versión. Dile amablemente al usuario que aún no puedes ver fotos, pero que si te la describe con palabras, lo ayudarás encantado.]\n\n${messageText}`;
       }
-
-      const data = await res.json();
       
-      const assistantMsg: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: data.reply || "No hubo respuesta."
-      };
-
-      setChats(prev => {
-        const updated = [...prev];
-        const chatIndex = updated.findIndex(c => c.id === targetChatId);
-        if (chatIndex !== -1) {
-          updated[chatIndex] = {
-            ...updated[chatIndex],
-            messages: [...updated[chatIndex].messages, assistantMsg],
-            updatedAt: Date.now()
-          };
-        }
-        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
-        return updated;
+      await append({
+        role: 'user',
+        content: finalContent
       });
-      
-    } catch (error: any) {
-      console.error(error);
-      const errorMsg: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `Hubo un error de conexión: ${error.message}`
-      };
-      setChats(prev => {
-        const updated = [...prev];
-        const chatIndex = updated.findIndex(c => c.id === targetChatId);
-        if (chatIndex !== -1) {
-          updated[chatIndex] = {
-            ...updated[chatIndex],
-            messages: [...updated[chatIndex].messages, errorMsg],
-            updatedAt: Date.now()
-          };
-        }
-        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
-        return updated;
-      });
-    } finally {
-      setIsThinking(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -462,7 +455,7 @@ export default function Home() {
         </div>
 
         <div className="chat-area">
-          {!activeChat || activeChat.messages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="empty-state-container">
               <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
               <h2 className="empty-state-title">ChimueloGPT</h2>
@@ -488,7 +481,7 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            activeChat.messages.map(msg => (
+            (messages as any[]).map(msg => (
               <div key={msg.id} className={`message ${msg.role}`}>
                 <div className="message-content-wrapper">
                   {msg.role === 'assistant' && (
@@ -497,35 +490,57 @@ export default function Home() {
                     </div>
                   )}
                   <div className="message-text">
-                    {msg.imagePlaceholder && (
+                    {/* Placeholder de imagen */}
+                    {(msg as any).imagePlaceholder && (
                       <div className="attachment-placeholder">
                         <FileImage size={16} />
-                        <span>{msg.imagePlaceholder}</span>
+                        <span>{(msg as any).imagePlaceholder}</span>
                       </div>
                     )}
+                    
+                    {/* Caja de Reasoning de DeepSeek */}
+                    {msg.role === 'assistant' && (msg as any).reasoning && (
+                      <details className="reasoning-box">
+                        <summary className="reasoning-summary">
+                          <span className="reasoning-icon">🧠</span>
+                          <span>Pensamiento</span>
+                        </summary>
+                        <div className="reasoning-content">
+                          {(msg as any).reasoning}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Contenido principal */}
                     {msg.content && (() => {
                       // Comprobar ambos formatos: el antiguo <artifact_html> y el nuevo <artifact>
-                      const hasNewArtifact = msg.content.includes('<artifact>') && msg.content.includes('</artifact>');
-                      const hasOldArtifact = msg.content.includes('<artifact_html>') && msg.content.includes('</artifact_html>') && !hasNewArtifact;
+                      const hasNewArtifact = msg.content.includes('<artifact>');
+                      const hasOldArtifact = msg.content.includes('<artifact_html>') && !hasNewArtifact;
+                      const hasImageTag = msg.content.includes('<generate_image>');
                       
                       let displayContent = msg.content;
                       let artifactContent = '';
                       let artifactTitle = 'Diseño Generado';
                       let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
+                      
+                      // Interceptar y ocultar etiquetas completas o a medio escribir en Streaming
+                      if (hasImageTag) {
+                        displayContent = msg.content.replace(/<generate_image>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
+                      }
 
                       if (hasNewArtifact) {
-                        const matchHtml = msg.content.match(/<artifact_html>([\s\S]*?)<\/artifact_html>/i);
-                        const matchTitle = msg.content.match(/<artifact_title>([\s\S]*?)<\/artifact_title>/i);
-                        const matchDesc = msg.content.match(/<artifact_desc>([\s\S]*?)<\/artifact_desc>/i);
+                        const matchHtml = msg.content.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
+                        const matchTitle = msg.content.match(/<artifact_title>([\s\S]*?)(<\/artifact_title>)?/i);
+                        const matchDesc = msg.content.match(/<artifact_desc>([\s\S]*?)(<\/artifact_desc>)?/i);
                         
                         if (matchHtml && matchHtml[1]) artifactContent = matchHtml[1].trim();
-                        if (matchTitle && matchTitle[1]) artifactTitle = matchTitle[1].trim();
-                        if (matchDesc && matchDesc[1]) artifactDesc = matchDesc[1].trim();
+                        if (matchTitle && matchTitle[1]) artifactTitle = matchTitle[1].replace(/<\/artifact_title>/, '').trim();
+                        if (matchDesc && matchDesc[1]) artifactDesc = matchDesc[1].replace(/<\/artifact_desc>/, '').trim();
                         
-                        const fullMatch = msg.content.match(/<artifact>([\s\S]*?)<\/artifact>/i);
+                        const fullMatch = msg.content.match(/<artifact>([\s\S]*?)(<\/artifact>)?/i);
                         if (fullMatch) displayContent = msg.content.replace(fullMatch[0], '').trim();
                       } else if (hasOldArtifact) {
-                        const match = msg.content.match(/<artifact_html>([\s\S]*?)<\/artifact_html>/i);
+                        const match = msg.content.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
                         if (match && match[1]) {
                           artifactContent = match[1].trim();
                           displayContent = msg.content.replace(match[0], '').trim();
@@ -536,6 +551,7 @@ export default function Home() {
                       }
                       
                       const showArtifact = hasNewArtifact || hasOldArtifact;
+                      const isArtifactComplete = msg.content.includes('</artifact>') || msg.content.includes('</artifact_html>');
                       
                       return (
                         <div className="markdown-body">
@@ -547,13 +563,14 @@ export default function Home() {
                           </ReactMarkdown>
                           {msg.role === 'assistant' && showArtifact && (
                             <div 
-                              className="artifact-card"
-                              onClick={() => setArtifactModal(artifactContent)}
+                              className={`artifact-card ${isArtifactComplete ? '' : 'loading'}`}
+                              onClick={() => isArtifactComplete && setArtifactModal(artifactContent)}
+                              style={{ opacity: isArtifactComplete ? 1 : 0.6, cursor: isArtifactComplete ? 'pointer' : 'wait' }}
                             >
                               <div className="artifact-icon">{thinkingTask === 'document' || artifactTitle.toLowerCase().includes('informe') ? '📄' : '✨'}</div>
                               <div className="artifact-info">
-                                <strong>{artifactTitle}</strong>
-                                <span>{artifactDesc}</span>
+                                <strong>{isArtifactComplete ? artifactTitle : 'Renderizando Diseño...'}</strong>
+                                <span>{isArtifactComplete ? artifactDesc : 'Pintando interfaz gráfica'}</span>
                               </div>
                             </div>
                           )}
@@ -566,7 +583,7 @@ export default function Home() {
             ))
           )}
 
-          {isThinking && (
+          {isThinking && (messages.length === 0 || messages[messages.length-1].role === 'user') && (
             <div className="message assistant">
               <div className="message-content-wrapper">
                 <div className="avatar assistant">
@@ -576,10 +593,10 @@ export default function Home() {
                   <div className="thinking-modern-container">
                     <div className="modern-spinner"></div>
                     <span className="thinking-text-modern">
-                      {thinkingTask === "image" ? "🎨 Pintando la imagen, preparando colores..." : 
+                      {thinkingTask === "image" ? "🎨 Pintando la imagen, preparando pinceles..." : 
                        thinkingTask === "document" ? "📄 Diseñando y redactando el documento..." :
                        thinkingTask === "code" ? "💻 Escribiendo y estructurando código..." :
-                       "✨ Pensando profundamente..."}
+                       model === 'deepseek-v4-pro' ? "🧠 Pensando profundamente..." : "⚡ Preparando respuesta rápida..."}
                     </span>
                   </div>
                 </div>

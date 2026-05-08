@@ -664,6 +664,46 @@ a {
   50% { opacity: 1; }
 }
 
+/* Reasoning Box (DeepSeek R1) */
+.reasoning-box {
+  margin: 12px 0;
+  padding: 0;
+  border-left: 3px solid rgba(16, 163, 127, 0.4);
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 500;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.reasoning-summary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.reasoning-icon {
+  font-size: 1.1rem;
+}
+
+.reasoning-content {
+  padding: 12px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  white-space: pre-wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-style: italic;
+}
+
 .model-pill {
   display: flex;
   align-items: center;
