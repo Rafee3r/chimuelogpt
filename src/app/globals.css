@@ -155,8 +155,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background-color: var(--bg-color);
+  height: 100dvh;
+  background-color: var(--bg-primary);
 }
 
 .auth-box-modern {
@@ -229,30 +229,50 @@ a {
 /* Layout */
 .app-layout {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 .sidebar {
-  width: 260px;
+  width: 280px;
   background-color: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
-  z-index: 10;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 50;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  transition: opacity 0.25s ease;
 }
 
 .sidebar-mobile-hidden {
   transform: translateX(-100%);
-  position: absolute;
-  height: 100%;
 }
 
 @media (min-width: 768px) {
+  .sidebar {
+    position: relative;
+    transform: translateX(0);
+  }
   .sidebar-mobile-hidden {
     transform: translateX(0);
-    position: relative;
+  }
+  .sidebar-backdrop {
+    display: none;
   }
 }
 
@@ -342,6 +362,8 @@ a {
   flex-direction: column;
   position: relative;
   background-color: var(--bg-primary);
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .mobile-header {
@@ -452,10 +474,13 @@ a {
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--bg-primary) 30%);
   position: absolute;
   bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  z-index: 10;
 }
 
 @media (prefers-color-scheme: dark) {

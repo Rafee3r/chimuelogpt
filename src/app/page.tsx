@@ -213,16 +213,25 @@ export default function Home() {
     setIsThinking(true);
 
     try {
+      const validHistory = currentMessagesForApi.filter(m => m.content && m.content.trim() !== '');
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: currentMessagesForApi,
+          messages: validHistory,
           model: model
         })
       });
 
-      if (!res.ok) throw new Error("API Error");
+      if (!res.ok) {
+        let errMessage = `Error HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMessage = errData.error;
+        } catch(e) {}
+        throw new Error(errMessage);
+      }
 
       const data = await res.json();
       
@@ -246,12 +255,12 @@ export default function Home() {
         return updated;
       });
       
-    } catch (err) {
-      console.error(err);
+    } catch (error: any) {
+      console.error(error);
       const errorMsg: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Ocurrió un error al comunicarse con ChimueloGPT. Asegúrate de tener configurada tu API Key."
+        content: `Hubo un error de conexión: ${error.message}`
       };
       setChats(prev => {
         const updated = [...prev];
@@ -373,6 +382,14 @@ export default function Home() {
         <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
           <img src={lightboxImg} alt="Lightbox" />
         </div>
+      )}
+
+      {/* Sidebar Backdrop for Mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-backdrop d-md-none" 
+          onClick={() => setSidebarOpen(false)} 
+        />
       )}
 
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
