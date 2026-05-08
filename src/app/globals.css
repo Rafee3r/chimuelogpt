@@ -150,6 +150,64 @@ a {
   gap: 16px;
 }
 
+/* Artifacts */
+.artifact-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  border-radius: 12px;
+  margin-top: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 400px;
+}
+.artifact-card:hover {
+  background-color: var(--sidebar-hover);
+  border-color: #60a5fa;
+}
+.artifact-icon {
+  font-size: 24px;
+}
+.artifact-info {
+  display: flex;
+  flex-direction: column;
+}
+.artifact-info strong {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+.artifact-info span {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.artifact-modal-content {
+  background-color: var(--bg-primary);
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1000px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+.artifact-preview-container {
+  flex: 1;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+.artifact-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* Auth Screen */
 .auth-container {
   display: flex;

@@ -5,6 +5,7 @@ import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 type Message = {
   id: string;
@@ -37,6 +38,7 @@ export default function Home() {
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [artifactModal, setArtifactModal] = useState<string | null>(null);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
@@ -481,19 +483,20 @@ export default function Home() {
                       </div>
                     )}
                     {msg.content && (() => {
-                      const hasPdf = msg.content.includes('<pdf_content>') && msg.content.includes('</pdf_content>');
+                      const hasArtifact = msg.content.includes('<artifact_html>') && msg.content.includes('</artifact_html>');
                       
                       let displayContent = msg.content;
-                      let pdfContent = '';
+                      let artifactContent = '';
 
-                      if (hasPdf) {
-                        const match = msg.content.match(/<pdf_content>([\s\S]*?)<\/pdf_content>/i);
+                      if (hasArtifact) {
+                        const match = msg.content.match(/<artifact_html>([\s\S]*?)<\/artifact_html>/i);
                         if (match && match[1]) {
-                          pdfContent = match[1].trim();
+                          artifactContent = match[1].trim();
                           displayContent = msg.content.replace(match[0], '').trim();
                         }
                       } else {
-                        displayContent = msg.content.replace('<downloadable>', '').trim();
+                        // fallback for old pdf
+                        displayContent = msg.content.replace(/<pdf_content>[\s\S]*?<\/pdf_content>/i, '').replace('<downloadable>', '').trim();
                       }
                       
                       return (
@@ -504,37 +507,17 @@ export default function Home() {
                           >
                             {displayContent}
                           </ReactMarkdown>
-                          {msg.role === 'assistant' && hasPdf && (
-                            <button 
-                              className="download-btn"
-                              onClick={() => {
-                                const doc = new jsPDF();
-                                
-                                const margin = 15;
-                                const pageWidth = doc.internal.pageSize.getWidth();
-                                const pageHeight = doc.internal.pageSize.getHeight();
-                                const textWidth = pageWidth - margin * 2;
-                                
-                                doc.setFont("helvetica", "normal");
-                                doc.setFontSize(12);
-                                
-                                const lines = doc.splitTextToSize(pdfContent, textWidth);
-                                let y = margin + 10;
-                                
-                                lines.forEach((line: string) => {
-                                  if (y > pageHeight - margin) {
-                                    doc.addPage();
-                                    y = margin + 10;
-                                  }
-                                  doc.text(line, margin, y);
-                                  y += 7;
-                                });
-                                
-                                doc.save(`chimuelo_documento_${Date.now()}.pdf`);
-                              }}
+                          {msg.role === 'assistant' && hasArtifact && (
+                            <div 
+                              className="artifact-card"
+                              onClick={() => setArtifactModal(artifactContent)}
                             >
-                              Descargar PDF
-                            </button>
+                              <div className="artifact-icon">✨</div>
+                              <div className="artifact-info">
+                                <strong>Diseño Generado</strong>
+                                <span>Haz clic para previsualizar y descargar PDF</span>
+                              </div>
+                            </div>
                           )}
                         </div>
                       );
@@ -759,6 +742,66 @@ export default function Home() {
             </button>
           </div>
           <img src={lightboxImg} className="lightbox-img" alt="Ampliación" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+
+      {/* Artifact Modal */}
+      {artifactModal && (
+        <div className="modal-overlay" onClick={() => setArtifactModal(null)}>
+          <div className="artifact-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '1rem' }}>
+              <h2 className="modal-title">Previsualización del Diseño</h2>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  className="danger-btn"
+                  style={{ backgroundColor: '#10a37f', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  onClick={async () => {
+                    const iframe = document.getElementById('artifact-iframe') as HTMLIFrameElement;
+                    if (iframe && iframe.contentDocument) {
+                      const canvas = await html2canvas(iframe.contentDocument.body, { useCORS: true, allowTaint: true });
+                      const imgData = canvas.toDataURL('image/png');
+                      const pdf = new jsPDF({
+                        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                        unit: 'px',
+                        format: [canvas.width, canvas.height]
+                      });
+                      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                      pdf.save(`chimuelo_documento_${Date.now()}.pdf`);
+                    }
+                  }}
+                >
+                  <Download size={18} /> Descargar PDF
+                </button>
+                <button onClick={() => setArtifactModal(null)} className="icon-btn">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="artifact-preview-container">
+              <iframe 
+                id="artifact-iframe"
+                srcDoc={`
+                  <!DOCTYPE html>
+                  <html>
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <script src="https://cdn.tailwindcss.com"></script>
+                      <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; }
+                      </style>
+                    </head>
+                    <body>
+                      ${artifactModal}
+                    </body>
+                  </html>
+                `}
+                title="Artifact Preview"
+                className="artifact-iframe"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
