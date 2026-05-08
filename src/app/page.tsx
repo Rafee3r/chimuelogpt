@@ -9,7 +9,7 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  imagePlaceholder?: string; // e.g. "photo.png" instead of base64
+  imagePlaceholder?: string;
 };
 
 type Chat = {
@@ -44,7 +44,6 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize from localStorage
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
     if (savedAuth === "true") setIsAuthenticated(true);
@@ -81,7 +80,6 @@ export default function Home() {
     checkVersion();
   }, []);
 
-  // Theme application
   useEffect(() => {
     if (theme === "system") {
       document.documentElement.removeAttribute("data-theme");
@@ -91,12 +89,10 @@ export default function Home() {
     localStorage.setItem("chimuelo_theme", theme);
   }, [theme]);
 
-  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chats, currentChatId, isThinking]);
 
-  // Adjust textarea height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -115,13 +111,6 @@ export default function Home() {
     }
   };
 
-  const currentChat = chats.find(c => c.id === currentChatId);
-
-  const saveChats = (newChats: Chat[]) => {
-    setChats(newChats);
-    localStorage.setItem("chimuelo_chats", JSON.stringify(newChats));
-  };
-
   const createNewChat = () => {
     const newChat: Chat = {
       id: Date.now().toString(),
@@ -129,7 +118,11 @@ export default function Home() {
       messages: [],
       updatedAt: Date.now()
     };
-    saveChats([newChat, ...chats]);
+    setChats(prev => {
+      const updated = [newChat, ...prev];
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
     setCurrentChatId(newChat.id);
     localStorage.setItem("chimuelo_current_chat", newChat.id);
     setSidebarOpen(false);
@@ -150,16 +143,16 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() && !attachedImage) return;
+  const handleSendMessage = async (customMessage?: string) => {
+    const msgToSend = customMessage || inputMessage;
+    if (!msgToSend.trim() && !attachedImage) return;
 
-    const messageText = inputMessage.trim();
+    const messageText = msgToSend.trim();
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
 
     let targetChatId = currentChatId;
     
-    // Create new chat if none is active
     if (!targetChatId) {
       const newChatId = Date.now().toString();
       targetChatId = newChatId;
@@ -185,7 +178,6 @@ export default function Home() {
       ...(imageName ? { imagePlaceholder: imageName } : {})
     };
 
-    // Add user message to state using functional update to guarantee fresh state
     setChats(prev => {
       const updated = [...prev];
       const chatIndex = updated.findIndex(c => c.id === targetChatId);
@@ -206,20 +198,15 @@ export default function Home() {
     setIsThinking(true);
 
     try {
-      // Build API payload: include base64 image ONLY for the API call, not saved locally.
-      // We need to fetch the fresh messages array for this chat
-      // We can recreate it right here for the API call
       let currentMessagesForApi: any[] = [];
       
       setChats(currentChats => {
         const chat = currentChats.find(c => c.id === targetChatId);
         if (chat) {
-          // Map to standard format and inject base64 ONLY for the very last message
           currentMessagesForApi = chat.messages.map(m => {
             if (m.id === userMsgId && imagePayload) {
               return { role: m.role, content: m.content, image: imagePayload };
             }
-            // For old messages, we ignore the image as it's not saved locally anyway
             return { role: m.role, content: m.content };
           });
         }
@@ -321,7 +308,6 @@ export default function Home() {
     );
   }
 
-  // Get active chat from fresh state
   const activeChat = chats.find(c => c.id === currentChatId);
 
   return (
@@ -332,7 +318,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sidebar Overlay for Mobile */}
       {sidebarOpen && (
         <div 
           className="modal-overlay md:hidden" 
@@ -341,7 +326,6 @@ export default function Home() {
         />
       )}
 
-      {/* Sidebar */}
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
         <div className="sidebar-header">
           <button onClick={createNewChat} className="new-chat-btn">
@@ -372,7 +356,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="main-content">
         <div className="mobile-header">
           <button onClick={() => setSidebarOpen(true)} className="icon-btn">
@@ -388,9 +371,29 @@ export default function Home() {
 
         <div className="chat-area">
           {!activeChat || activeChat.messages.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+            <div className="empty-state-container">
               <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>¿En qué te puedo ayudar hoy?</h2>
+              <h2 className="empty-state-title">ChimueloGPT</h2>
+              <p className="empty-state-subtitle">Un gato que te regala 20 mil pesos de valor mensual por un churu.</p>
+              
+              <div className="examples-grid">
+                <button className="example-btn" onClick={() => handleSendMessage("Genera una imagen de un paisaje cyberpunk en formato ultra realista")}>
+                  <span className="example-title">Genera una imagen</span>
+                  <span className="example-desc">Un paisaje cyberpunk en formato ultra realista usando Fal.ai FLUX.2</span>
+                </button>
+                <button className="example-btn" onClick={() => handleSendMessage("Escribe un correo formal para solicitar una reunión con un cliente")}>
+                  <span className="example-title">Escribe un correo formal</span>
+                  <span className="example-desc">Para solicitar una reunión importante con un cliente</span>
+                </button>
+                <button className="example-btn" onClick={() => handleSendMessage("Explícame de forma sencilla cómo funciona la gravedad cuántica")}>
+                  <span className="example-title">Explícame de forma sencilla</span>
+                  <span className="example-desc">Cómo funciona la gravedad cuántica usando analogías</span>
+                </button>
+                <button className="example-btn" onClick={() => handleSendMessage("Ayúdame a organizar un menú semanal saludable y económico")}>
+                  <span className="example-title">Ayúdame a organizar</span>
+                  <span className="example-desc">Un menú semanal saludable y económico con ingredientes básicos</span>
+                </button>
+              </div>
             </div>
           ) : (
             activeChat.messages.map(msg => (
@@ -440,11 +443,9 @@ export default function Home() {
           <div ref={messagesEndRef} style={{ height: '120px' }} />
         </div>
 
-        {/* Input Area */}
         <div className="input-area">
           <div className="input-container">
             
-            {/* Model Selector Pill */}
             <div className="model-selector-container">
               <div 
                 className="model-pill"
@@ -525,7 +526,7 @@ export default function Home() {
             />
             <button 
               className="send-btn" 
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               disabled={(!inputMessage.trim() && !attachedImage) || isThinking}
             >
               <Send size={16} />
@@ -537,7 +538,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Settings Modal */}
       {settingsOpen && (
         <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
