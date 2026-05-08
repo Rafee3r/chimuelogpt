@@ -378,8 +378,8 @@ export default function Home() {
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={() => handleSwitchChat(null)}>
-            <SquarePen size={18} />
-            Nueva conversación
+            <SquarePen size={18} style={{ flexShrink: 0 }} />
+            <span>Nueva conversación</span>
           </button>
         </div>
 
@@ -391,19 +391,19 @@ export default function Home() {
               className={`sidebar-item ${currentChatId === chat.id ? 'active' : ''}`}
               onClick={() => handleSwitchChat(chat.id)}
             >
-              <MessageSquare size={16} />
-              {chat.title}
+              <MessageSquare size={16} style={{ flexShrink: 0 }} />
+              <span>{chat.title}</span>
             </button>
           ))}
         </div>
         <div className="sidebar-footer">
-          <button onClick={() => setPwaModalOpen(true)} className="settings-btn" style={{ marginBottom: '8px' }}>
-            <Smartphone size={16} />
-            Agrégame a tu Celu
+          <button onClick={() => setPwaModalOpen(true)} className="sidebar-item">
+            <Smartphone size={16} style={{ flexShrink: 0 }} />
+            <span>Agrégame a tu Celu</span>
           </button>
-          <button onClick={() => setSettingsOpen(true)} className="settings-btn">
-            <Settings size={16} />
-            Configuración
+          <button onClick={() => setSettingsOpen(true)} className="sidebar-item">
+            <Settings size={16} style={{ flexShrink: 0 }} />
+            <span>Configuración</span>
           </button>
         </div>
       </div>
