@@ -232,10 +232,7 @@ export default function Home() {
     setDisplayMessages(prev => [...prev, userMsg]);
 
     try {
-      let finalContent = messageText;
-      if (imagePayload) {
-        finalContent = `[El usuario adjuntó una imagen llamada: ${imageName}. NOTA DEL SISTEMA PARA CHIMUELOGPT: Actualmente NO tienes visión ni ojos para ver imágenes en esta versión. Dile amablemente al usuario que aún no puedes ver fotos, pero que si te la describe con palabras, lo ayudarás encantado.]\n\n${messageText}`;
-      }
+      let finalContent = messageText || 'Describe esta imagen.';
 
       // Build messages history for the API
       const chatForApi = chats.find(c => c.id === targetChatId);
@@ -244,11 +241,22 @@ export default function Home() {
         .map(m => ({ role: m.role, content: m.content }));
       historyMsgs.push({ role: 'user' as const, content: finalContent });
 
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: historyMsgs, model })
-      });
+      let res: Response;
+      if (imagePayload) {
+        // Use Claude Haiku vision endpoint
+        res = await fetch('/api/vision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload })
+        });
+      } else {
+        // Use DeepSeek text endpoint
+        res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: historyMsgs, model })
+        });
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Error desconocido del servidor' }));
