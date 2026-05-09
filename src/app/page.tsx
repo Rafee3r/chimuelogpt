@@ -239,8 +239,10 @@ export default function Home() {
 
       // Build messages history for the API
       const chatForApi = chats.find(c => c.id === targetChatId);
-      const historyMsgs = (chatForApi?.messages || []).map(m => ({ role: m.role, content: m.content }));
-      historyMsgs.push({ role: 'user', content: finalContent });
+      const historyMsgs = (chatForApi?.messages || [])
+        .filter(m => m.role && m.content)
+        .map(m => ({ role: m.role, content: m.content }));
+      historyMsgs.push({ role: 'user' as const, content: finalContent });
 
       const res = await fetch('/api/chat', {
         method: 'POST',

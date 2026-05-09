@@ -33,7 +33,9 @@ INSTRUCCIONES PARA EL HTML:
     // Build messages array with system prompt
     const apiMessages = [
       { role: 'system', content: systemPrompt },
-      ...messages.map((m: any) => ({ role: m.role, content: m.content || '' }))
+      ...messages
+        .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+        .map((m: any) => ({ role: m.role, content: m.content || '' }))
     ];
 
     // Call DeepSeek API directly with streaming
