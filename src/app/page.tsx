@@ -267,8 +267,10 @@ export default function Home() {
         const chunk = decoder.decode(value, { stream: true });
         fullText += chunk;
 
-        // Update the assistant message in real-time
-        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: fullText };
+        // Update the assistant message in real-time (hide reasoning during stream)
+        const streamReasoning = fullText.match(/<think>([\s\S]*?)(<\/think>|$)/)?.[1];
+        const streamContent = fullText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
+        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : fullText), reasoning: streamReasoning || undefined };
         setDisplayMessages(prev => {
           const existing = prev.findIndex(m => m.id === assistantId);
           if (existing !== -1) {
