@@ -267,10 +267,14 @@ export default function Home() {
         const chunk = decoder.decode(value, { stream: true });
         fullText += chunk;
 
-        // Update the assistant message in real-time (hide reasoning during stream)
+        // Update the assistant message in real-time (hide reasoning + image tags during stream)
         const streamReasoning = fullText.match(/<think>([\s\S]*?)(<\/think>|$)/)?.[1];
-        const streamContent = fullText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
-        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : fullText), reasoning: streamReasoning || undefined };
+        let streamContent = fullText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
+        // Hide generate_image tags during streaming
+        if (streamContent.includes('<generate_image>')) {
+          streamContent = streamContent.replace(/<generate_image>[\s\S]*?(<\/generate_image>|$)/i, '🎨 Generando tu imagen...').trim();
+        }
+        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined };
         setDisplayMessages(prev => {
           const existing = prev.findIndex(m => m.id === assistantId);
           if (existing !== -1) {
@@ -569,17 +573,22 @@ export default function Home() {
                       </div>
                     )}
                     
-                    {role === 'assistant' && reasoning && (
-                      <details className="reasoning-box">
-                        <summary className="reasoning-summary">
-                          <span className="reasoning-icon">🧠</span>
-                          <span>Pensamiento</span>
-                        </summary>
-                        <div className="reasoning-content">
-                          {reasoning}
-                        </div>
-                      </details>
-                    )}
+                    {role === 'assistant' && reasoning && (() => {
+                      const isStreaming = !displayContent;
+                      const previewText = reasoning.length > 60 ? reasoning.slice(0, 60) + '...' : reasoning;
+                      return (
+                        <details className="reasoning-box">
+                          <summary className="reasoning-summary">
+                            <span className={`reasoning-icon ${isStreaming ? 'reasoning-pulse' : ''}`}>🧠</span>
+                            <span>{isStreaming ? 'Pensando...' : 'Pensamiento'}</span>
+                            <span className="reasoning-preview">{previewText}</span>
+                          </summary>
+                          <div className="reasoning-content">
+                            {reasoning}
+                          </div>
+                        </details>
+                      );
+                    })()}
 
                     {displayContent && (() => {
                       const hasNewArtifact = displayContent.includes('<artifact>');

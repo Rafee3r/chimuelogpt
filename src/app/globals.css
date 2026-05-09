@@ -668,8 +668,8 @@ a {
 .reasoning-box {
   margin: 12px 0;
   padding: 0;
-  border-left: 3px solid rgba(16, 163, 127, 0.4);
-  background-color: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(99, 140, 255, 0.5);
+  background-color: rgba(99, 140, 255, 0.05);
   border-radius: 0 8px 8px 0;
   overflow: hidden;
   font-size: 0.9rem;
@@ -685,14 +685,37 @@ a {
   font-weight: 500;
   user-select: none;
   transition: background-color 0.2s;
+  flex-wrap: wrap;
 }
 
 .reasoning-summary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(99, 140, 255, 0.08);
 }
 
 .reasoning-icon {
   font-size: 1.1rem;
+}
+
+.reasoning-pulse {
+  animation: reasoningPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes reasoningPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+.reasoning-preview {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reasoning-content {
@@ -700,7 +723,7 @@ a {
   color: var(--text-secondary);
   opacity: 0.8;
   white-space: pre-wrap;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(99, 140, 255, 0.15);
   font-style: italic;
 }
 
