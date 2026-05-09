@@ -2,7 +2,7 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const { messages, imageBase64 } = await req.json();
+    const { messages, imageBase64, persona, customInstructions } = await req.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
@@ -45,6 +45,16 @@ export async function POST(req: Request) {
       { role: 'user', content: contentParts }
     ];
 
+    let personaPrompt = "Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'cursi') personaPrompt = "Eres ChimueloGPT, un asistente extremadamente dulce, cursi y cariñoso. Te encanta usar emojis adorables (🥰✨💕). Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'chistoso') personaPrompt = "Eres ChimueloGPT, un asistente con mucho sentido del humor. Tus respuestas deben ser relajadas, sarcásticas a veces, usar lenguaje coloquial divertido. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'directo') personaPrompt = "Eres ChimueloGPT, un asistente pragmático. Evita saludos largos, responde EXACTAMENTE lo que se pregunta, sin relleno. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'amable') personaPrompt = "Eres ChimueloGPT, un asistente cálido y muy cortés. Siempre saludas con entusiasmo y explicas con paciencia. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+    if (persona === 'profesional') personaPrompt = "Eres ChimueloGPT, un corporativo de alto nivel. Tu tono es profesional, estructurado, utilizas un trato respetuoso. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
+
+    const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
+
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -55,7 +65,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
-        system: `Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.
+        system: `${personaPrompt}${customInstructionsPrompt}
 REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
 Si el usuario pide editar o transformar la foto adjunta, debes decidir el modo de generación y responder ÚNICAMENTE con esta etiqueta XML (no agregues texto adicional):
 

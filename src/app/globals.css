@@ -41,6 +41,54 @@
   --sidebar-hover: #2f2f2f;
 }
 
+[data-theme="pink"] {
+  --bg-primary: #fdf2f8;
+  --bg-secondary: #fce7f3;
+  --text-primary: #831843;
+  --text-secondary: #be185d;
+  --border-color: #fbcfe8;
+  --input-bg: #fbcfe8;
+  --sidebar-bg: #fce7f3;
+  --sidebar-text: #831843;
+  --sidebar-hover: #fbcfe8;
+}
+
+[data-theme="orange"] {
+  --bg-primary: #fff7ed;
+  --bg-secondary: #ffedd5;
+  --text-primary: #7c2d12;
+  --text-secondary: #c2410c;
+  --border-color: #fed7aa;
+  --input-bg: #fed7aa;
+  --sidebar-bg: #ffedd5;
+  --sidebar-text: #7c2d12;
+  --sidebar-hover: #fed7aa;
+}
+
+[data-theme="oled"] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --border-color: #27272a;
+  --input-bg: #18181b;
+  --sidebar-bg: #000000;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: #18181b;
+}
+
+[data-theme="snow"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --input-bg: #f1f5f9;
+  --sidebar-bg: #f8fafc;
+  --sidebar-text: #0f172a;
+  --sidebar-hover: #e2e8f0;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -847,6 +895,11 @@ a {
   to { transform: translateY(0); }
 }
 
+/* Global font size utility classes */
+.markdown-body.font-small { font-size: 0.85rem; }
+.markdown-body.font-medium { font-size: 1rem; }
+.markdown-body.font-large { font-size: 1.25rem; }
+
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -859,6 +912,35 @@ a {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  animation: slideUpFade 0.3s ease-out;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.theme-circle {
+  outline: none;
+}
+.theme-circle:hover {
+  transform: scale(1.1);
 }
 
 .modal-content {

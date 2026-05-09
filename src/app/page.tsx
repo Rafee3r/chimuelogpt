@@ -65,8 +65,17 @@ export default function Home() {
     const savedChats = localStorage.getItem("chimuelo_chats");
     if (savedChats) setChats(JSON.parse(savedChats));
 
-    const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark";
+    const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
     if (savedTheme) setTheme(savedTheme);
+
+    const savedFontSize = localStorage.getItem("chimuelo_fontSize") as "small" | "medium" | "large";
+    if (savedFontSize) setFontSize(savedFontSize);
+
+    const savedPersona = localStorage.getItem("chimuelo_persona") as "default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional";
+    if (savedPersona) setPersona(savedPersona);
+
+    const savedInstructions = localStorage.getItem("chimuelo_customInstructions");
+    if (savedInstructions) setCustomInstructions(savedInstructions);
 
     const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
     if (savedModel) setModel(savedModel);
@@ -111,6 +120,18 @@ export default function Home() {
     }
     localStorage.setItem("chimuelo_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("chimuelo_fontSize", fontSize);
+  }, [fontSize]);
+
+  useEffect(() => {
+    localStorage.setItem("chimuelo_persona", persona);
+  }, [persona]);
+
+  useEffect(() => {
+    localStorage.setItem("chimuelo_customInstructions", customInstructions);
+  }, [customInstructions]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -250,14 +271,14 @@ export default function Home() {
         res = await fetch('/api/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload })
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions })
         });
       } else {
         // Use DeepSeek text endpoint
         res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, model })
+          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions })
         });
       }
 
@@ -649,7 +670,7 @@ export default function Home() {
                       
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div className="markdown-body">
+                          <div className={`markdown-body font-${fontSize}`}>
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]}
                               components={{ img: ImageRenderer }}
@@ -843,32 +864,108 @@ export default function Home() {
 
       {settingsOpen && (
         <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Configuración</h2>
+          <div className="modal-content settings-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '1rem' }}>
+              <h2 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>Ajustes de Chimuelo</h2>
               <button onClick={() => setSettingsOpen(false)} className="modal-close">
                 <X size={24} />
               </button>
             </div>
             
-            <div className="settings-group">
-              <label className="settings-label">Tema</label>
-              <select 
-                className="settings-select"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value as any)}
-              >
-                <option value="system">Sistema</option>
-                <option value="light">Claro</option>
-                <option value="dark">Oscuro</option>
-              </select>
-            </div>
+            <div className="settings-scroll-area" style={{ maxHeight: 'calc(90vh - 100px)', overflowY: 'auto', paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Apariencia Card */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Apariencia</h3>
+                
+                <div className="settings-group">
+                  <label className="settings-label">Tema Visual</label>
+                  <div className="theme-selector" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {[
+                      { id: 'system', name: 'Sistema', color: 'linear-gradient(135deg, #f0f0f0 50%, #1a1a1a 50%)' },
+                      { id: 'light', name: 'Claro', color: '#f8fafc' },
+                      { id: 'dark', name: 'Oscuro', color: '#0f172a' },
+                      { id: 'pink', name: 'Rosa', color: '#fdf2f8' },
+                      { id: 'orange', name: 'Naranja', color: '#fff7ed' },
+                      { id: 'oled', name: 'OLED', color: '#000000' },
+                      { id: 'snow', name: 'Nieve', color: '#ffffff' },
+                    ].map(t => (
+                      <button 
+                        key={t.id}
+                        className={`theme-circle ${theme === t.id ? 'active' : ''}`}
+                        title={t.name}
+                        onClick={() => setTheme(t.id as any)}
+                        style={{ 
+                          width: '36px', height: '36px', borderRadius: '50%', background: t.color,
+                          border: theme === t.id ? '3px solid #3b82f6' : '1px solid var(--border-color)',
+                          cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-            <div className="settings-group" style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-              <label className="settings-label" style={{ color: '#ef4444' }}>Zona de peligro</label>
-              <button onClick={clearAllHistory} className="danger-btn">
-                Borrar todos los chats
-              </button>
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Tamaño de Texto del Chat</label>
+                  <select 
+                    className="settings-select"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(e.target.value as any)}
+                  >
+                    <option value="small">Pequeño</option>
+                    <option value="medium">Mediano (Normal)</option>
+                    <option value="large">Grande</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Personalidad Card */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Cerebro de Chimuelo</h3>
+                
+                <div className="settings-group">
+                  <label className="settings-label">Personalidad de la IA</label>
+                  <select 
+                    className="settings-select"
+                    value={persona}
+                    onChange={(e) => setPersona(e.target.value as any)}
+                  >
+                    <option value="default">Normal (Amigable y útil)</option>
+                    <option value="amable">Amable (Muy cálido y paciente)</option>
+                    <option value="chistoso">Chistoso (Humor y sarcasmo)</option>
+                    <option value="cursi">Cursi (Amoroso, muchos emojis 🥰)</option>
+                    <option value="directo">Directo al grano (Respuestas cortas)</option>
+                    <option value="serio">Serio (Formal, analítico)</option>
+                    <option value="profesional">Profesional (Corporativo, de usted)</option>
+                  </select>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
+                </div>
+
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Instrucciones Especiales (Opcional)</label>
+                  <textarea
+                    className="settings-textarea"
+                    placeholder="Ej: Llámame siempre 'Jefe', nunca uses listas..."
+                    value={customInstructions}
+                    onChange={(e) => setCustomInstructions(e.target.value)}
+                    style={{ 
+                      width: '100%', minHeight: '80px', padding: '12px', borderRadius: '8px',
+                      background: 'var(--input-bg)', border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)', resize: 'vertical', marginTop: '8px'
+                    }}
+                  />
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Reglas extra que la IA siempre deberá obedecer.</p>
+                </div>
+              </div>
+
+              {/* Peligro Card */}
+              <div className="settings-card" style={{ border: '1px solid #ef444433', background: 'var(--danger-bg, transparent)' }}>
+                <h3 className="settings-card-title" style={{ color: '#ef4444' }}>Zona de Peligro</h3>
+                <button onClick={clearAllHistory} className="danger-btn" style={{ width: '100%' }}>
+                  Borrar todos los chats e historial
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
