@@ -549,8 +549,8 @@ export default function Home() {
           ) : (
             displayMessages.map((msg: any, i) => {
               const role = msg.role;
-              const contentStr = msg.content || (msg.parts ? msg.parts.filter((p:any) => p.type === 'text').map((p:any) => p.text).join('') : '');
-              const reasoning = msg.reasoning || (msg.parts ? msg.parts.find((p:any) => p.type === 'reasoning')?.text : undefined) || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1];
+              const contentStr = msg.content || '';
+              const reasoning = model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
               const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
               return (
