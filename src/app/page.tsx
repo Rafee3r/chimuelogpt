@@ -632,7 +632,7 @@ export default function Home() {
                     {displayContent && (() => {
                       const hasNewArtifact = displayContent.includes('<artifact>');
                       const hasOldArtifact = displayContent.includes('<artifact_html>') && !hasNewArtifact;
-                      const hasImageTag = displayContent.includes('<generate_image>');
+                      const hasImageTag = displayContent.includes('<generate_image');
                       
                       let currentBody = displayContent;
                       let artifactContent = '';
@@ -675,7 +675,7 @@ export default function Home() {
                               remarkPlugins={[remarkGfm]}
                               components={{ img: ImageRenderer }}
                             >
-                              {displayContent}
+                              {currentBody}
                             </ReactMarkdown>
                             {msg.role === 'assistant' && showArtifact && (
                               <div 
