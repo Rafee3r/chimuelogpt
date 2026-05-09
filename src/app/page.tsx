@@ -57,6 +57,20 @@ export default function Home() {
   const { messages, setMessages, append } = useChat(({
     api: '/api/chat',
     body: { model },
+    onError: (err: Error) => {
+      console.error("useChat error:", err);
+      setIsThinking(false);
+      setChats(prev => prev.map(chat => {
+        if (chat.id === currentChatId) {
+          return {
+            ...chat,
+            messages: [...chat.messages, { id: Date.now().toString(), role: 'assistant', content: `*(Error del servidor: ${err.message})*` } as BaseMessage],
+            updatedAt: Date.now()
+          };
+        }
+        return chat;
+      }));
+    },
     onFinish: async (message: any) => {
       let finalMessageContent = message.content;
       
@@ -111,15 +125,7 @@ export default function Home() {
     }
   }) as any);
 
-  // Sync Vercel AI SDK messages state when changing chats
-  useEffect(() => {
-    const active = chats.find(c => c.id === currentChatId);
-    if (active) {
-      setMessages(active.messages as any);
-    } else {
-      setMessages([]);
-    }
-  }, [currentChatId, chats.length]);
+  // Removed buggy useEffect sync
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
@@ -135,7 +141,16 @@ export default function Home() {
     if (savedModel) setModel(savedModel);
 
     const currentChat = localStorage.getItem("chimuelo_current_chat");
-    if (currentChat) setCurrentChatId(currentChat);
+    if (currentChat) {
+      setCurrentChatId(currentChat);
+      if (savedChats) {
+        const parsed = JSON.parse(savedChats);
+        const active = parsed.find((c: Chat) => c.id === currentChat);
+        if (active) {
+          setMessages(active.messages as any);
+        }
+      }
+    }
 
     const checkVersion = async () => {
       try {
@@ -295,8 +310,19 @@ export default function Home() {
         role: 'user',
         content: finalContent
       });
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Append error:", e);
+      setIsThinking(false);
+      setChats(prev => prev.map(chat => {
+        if (chat.id === currentChatId) {
+          return {
+            ...chat,
+            messages: [...chat.messages, { id: Date.now().toString(), role: 'assistant', content: `*(Error al enviar: ${e.message})*` } as BaseMessage],
+            updatedAt: Date.now()
+          };
+        }
+        return chat;
+      }));
     }
   };
 
@@ -321,6 +347,12 @@ export default function Home() {
     if (chatId) {
       setCurrentChatId(chatId);
       localStorage.setItem("chimuelo_current_chat", chatId);
+      const active = chats.find(c => c.id === chatId);
+      if (active) {
+        setMessages(active.messages as any);
+      } else {
+        setMessages([]);
+      }
     } else {
       createNewChat();
     }
