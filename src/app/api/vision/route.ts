@@ -53,9 +53,11 @@ export async function POST(req: Request) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
-        system: 'Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Describe las imágenes con detalle y responde las preguntas del usuario sobre ellas.',
+        system: `Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.
+REGLA PARA MODIFICACIÓN DE IMAGEN: Si el usuario quiere que MODIFIQUES, EDITES o crees una VERSIÓN MODIFICADA de la imagen que adjuntó (ej: "hazme con pelo verde", "ponme lentes", "cambia el fondo"), responde ÚNICAMENTE con esta etiqueta XML con una descripción MUY DETALLADA en INGLÉS de cómo debe verse la imagen final (incluye TODOS los detalles de la imagen original + las modificaciones pedidas): <generate_image>detailed english description of the final modified image</generate_image>
+Si el usuario solo quiere que DESCRIBAS o EXPLIQUES la imagen, respóndele normalmente en español sin usar etiquetas.`,
         messages: anthropicMessages,
         stream: true
       })

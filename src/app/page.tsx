@@ -303,10 +303,15 @@ export default function Home() {
           // Update UI to show generating state
           setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...') } : m));
           try {
+            // If user attached an image, use img2img; otherwise text-to-image
+            const imgBody: any = { prompt: imagePrompt };
+            if (imagePayload) {
+              imgBody.imageBase64 = imagePayload;
+            }
             const imgRes = await fetch('/api/image', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: imagePrompt })
+              body: JSON.stringify(imgBody)
             });
             if (imgRes.ok) {
               const imgData = await imgRes.json();
