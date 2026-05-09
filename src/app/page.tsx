@@ -666,6 +666,9 @@ export default function Home() {
                       
                       const showArtifact = hasNewArtifact || hasOldArtifact;
                       const isArtifactComplete = displayContent.includes('</artifact>') || displayContent.includes('</artifact_html>');
+                      const isLastMsg = i === displayMessages.length - 1;
+                      const isReady = !isThinking || !isLastMsg;
+                      const showActions = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete);
                       
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -691,7 +694,7 @@ export default function Home() {
                             )}
                           </div>
                           
-                          {msg.role === 'assistant' && (
+                          {showActions && (
                             <div className="message-actions" style={{ display: 'flex', gap: '12px', marginTop: '4px', opacity: 0.7 }}>
                               <button className="action-btn hover-bg" title="Me gusta" onClick={(e) => { e.currentTarget.style.color = '#10b981'; }}><ThumbsUp size={16} /></button>
                               <button className="action-btn hover-bg" title="No me gusta" onClick={(e) => { e.currentTarget.style.color = '#ef4444'; }}><ThumbsDown size={16} /></button>
