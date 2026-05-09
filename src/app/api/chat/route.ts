@@ -1,7 +1,4 @@
-import { streamText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
-
-export const maxDuration = 60; // 60 seconds timeout for Vercel Hobby
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
@@ -9,14 +6,12 @@ export async function POST(req: Request) {
     const apiKey = process.env.DEEPSEEK_API_KEY;
 
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key is missing. Please configure DEEPSEEK_API_KEY in Vercel." }), { status: 500 });
+      return new Response(JSON.stringify({ error: "API key is missing. Please configure DEEPSEEK_API_KEY in Vercel." }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    const deepseek = createDeepSeek({
-      apiKey: apiKey,
-    });
-
-    // Map the model string to deepseek SDK models
     const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
 
     const systemPrompt = `Eres ChimueloGPT, un asistente útil y amigable creado para una familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.
@@ -34,29 +29,95 @@ INSTRUCCIONES PARA EL HTML:
 - DEBES usar estilos inline (style="...") o la etiqueta <style> interna para hacer un diseño HERMOSO, moderno y colorido (ej. fondos degradados, tarjetas, sombras, bordes redondeados, tipografías elegantes).
 - Usa colores suaves, alineación correcta y márgenes amplios. Haz que parezca hecho por un diseñador profesional.`;
 
-    // Extract formatted messages for AI SDK
-    const formattedMessages = messages.map((m: any) => {
-      let content = m.content;
-      if (m.parts) {
-        content = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+    // Build messages array with system prompt
+    const apiMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m: any) => ({ role: m.role, content: m.content || '' }))
+    ];
+
+    // Call DeepSeek API directly with streaming
+    const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: actualModel,
+        messages: apiMessages,
+        stream: true
+      })
+    });
+
+    if (!deepseekRes.ok) {
+      const errText = await deepseekRes.text();
+      console.error("DeepSeek API error:", errText);
+      return new Response(JSON.stringify({ error: `DeepSeek API error: ${deepseekRes.status}` }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Transform SSE stream into plain text stream
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        const reader = deepseekRes.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const data = trimmed.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+                
+                if (reasoning) {
+                  controller.enqueue(encoder.encode(reasoning));
+                }
+                if (content) {
+                  controller.enqueue(encoder.encode(content));
+                }
+              } catch {
+                // skip malformed JSON chunks
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Stream processing error:", e);
+        } finally {
+          controller.close();
+        }
       }
-      return {
-        role: m.role,
-        content: content || ''
-      };
     });
 
-    // Deepseek AI SDK Call with streaming
-    const result = streamText({
-      model: deepseek(actualModel),
-      system: systemPrompt,
-      messages: formattedMessages,
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
     });
-
-    return result.toTextStreamResponse();
 
   } catch (error: any) {
     console.error("API Route Error:", error);
-    return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), { status: 500 });
+    return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
