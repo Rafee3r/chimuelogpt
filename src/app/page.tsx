@@ -640,29 +640,28 @@ export default function Home() {
                       let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
                       
                       if (hasImageTag) {
-                        currentBody = displayContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
+                        currentBody = currentBody.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen... por favor espera.').trim();
                       }
 
                       if (hasNewArtifact) {
-                        const matchHtml = displayContent.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
-                        const matchTitle = displayContent.match(/<artifact_title>([\s\S]*?)(<\/artifact_title>)?/i);
-                        const matchDesc = displayContent.match(/<artifact_desc>([\s\S]*?)(<\/artifact_desc>)?/i);
+                        const matchHtml = displayContent.match(/<artifact_html>([\s\S]*?)(?:<\/artifact_html>|$)/i);
+                        const matchTitle = displayContent.match(/<artifact_title>([\s\S]*?)(?:<\/artifact_title>|$)/i);
+                        const matchDesc = displayContent.match(/<artifact_desc>([\s\S]*?)(?:<\/artifact_desc>|$)/i);
                         
                         if (matchHtml && matchHtml[1]) artifactContent = matchHtml[1].trim();
                         if (matchTitle && matchTitle[1]) artifactTitle = matchTitle[1].replace(/<\/artifact_title>/, '').trim();
                         if (matchDesc && matchDesc[1]) artifactDesc = matchDesc[1].replace(/<\/artifact_desc>/, '').trim();
                         
-                        const fullMatch = displayContent.match(/<artifact>([\s\S]*?)(<\/artifact>)?/i);
-                        if (fullMatch) currentBody = displayContent.replace(fullMatch[0], '').trim();
+                        currentBody = currentBody.replace(/<artifact>[\s\S]*?(?:<\/artifact>|$)/i, '').trim();
                       } else if (hasOldArtifact) {
-                        const match = displayContent.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
+                        const match = displayContent.match(/<artifact_html>([\s\S]*?)(?:<\/artifact_html>|$)/i);
                         if (match && match[1]) {
                           artifactContent = match[1].trim();
-                          currentBody = displayContent.replace(match[0], '').trim();
+                          currentBody = currentBody.replace(/<artifact_html>[\s\S]*?(?:<\/artifact_html>|$)/i, '').trim();
                         }
                       } else {
                         // fallback for old pdf
-                        currentBody = displayContent.replace(/<pdf_content>([\s\S]*?)<\/pdf_content>/i, '').trim();
+                        currentBody = currentBody.replace(/<pdf_content>[\s\S]*?(?:<\/pdf_content>|$)/i, '').trim();
                       }
                       
                       const showArtifact = hasNewArtifact || hasOldArtifact;
