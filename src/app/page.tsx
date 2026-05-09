@@ -43,7 +43,10 @@ export default function Home() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [artifactModal, setArtifactModal] = useState<string | null>(null);
   
-  const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
+  const [theme, setTheme] = useState<"system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow">("system");
+  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium");
+  const [persona, setPersona] = useState<"default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional">("default");
+  const [customInstructions, setCustomInstructions] = useState("");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
@@ -294,17 +297,21 @@ export default function Home() {
         });
       }
 
-      // Post-process: intercept image generation tags
-      let processedContent = fullText;
-      if (processedContent.includes('<generate_image')) {
-        const promptMatch = processedContent.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
-        const modeMatch = processedContent.match(/<generate_image[^>]*mode=["']([^"']+)["'][^>]*>/i);
+      // Extract reasoning FIRST to avoid replacing tags inside the think block
+      const reasoningMatch = fullText.match(/<think>([\s\S]*?)<\/think>/);
+      const reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
+      let cleanContent = fullText.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+
+      // Post-process: intercept image generation tags on the clean content
+      if (cleanContent.includes('<generate_image')) {
+        const promptMatch = cleanContent.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
+        const modeMatch = cleanContent.match(/<generate_image[^>]*mode=["']([^"']+)["'][^>]*>/i);
         const isText2Img = modeMatch ? modeMatch[1] === 'text2img' : false;
         
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           // Update UI to show generating state
-          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...') } : m));
+          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '🎨 Generando tu imagen...') } : m));
           try {
             // If user attached an image AND it's not a dramatic text2img structural change, use img2img
             const imgBody: any = { prompt: imagePrompt };
@@ -318,20 +325,15 @@ export default function Home() {
             });
             if (imgRes.ok) {
               const imgData = await imgRes.json();
-              processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+              cleanContent = cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, `\n\n![Imagen Generada](${imgData.url})\n\n`);
             } else {
-              processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error al generar la imagen)*\n\n');
+              cleanContent = cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '\n\n*(Error al generar la imagen)*\n\n');
             }
           } catch {
-            processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error de red al generar imagen)*\n\n');
+            cleanContent = cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '\n\n*(Error de red al generar imagen)*\n\n');
           }
         }
       }
-
-      // Extract reasoning
-      const reasoningMatch = processedContent.match(/<think>([\s\S]*?)<\/think>/);
-      const reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
-      const cleanContent = processedContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
       const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning };
 
@@ -617,7 +619,7 @@ export default function Home() {
                       let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
                       
                       if (hasImageTag) {
-                        currentBody = displayContent.replace(/<generate_image>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
+                        currentBody = displayContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
                       }
 
                       if (hasNewArtifact) {
@@ -671,12 +673,43 @@ export default function Home() {
                           
                           {msg.role === 'assistant' && (
                             <div className="message-actions" style={{ display: 'flex', gap: '12px', marginTop: '4px', opacity: 0.7 }}>
-                              <button className="action-btn hover-bg" title="Me gusta"><ThumbsUp size={16} /></button>
-                              <button className="action-btn hover-bg" title="No me gusta"><ThumbsDown size={16} /></button>
-                              <button className="action-btn hover-bg" title="Regenerar"><RotateCw size={16} /></button>
-                              <button className="action-btn hover-bg" title="Compartir"><Share2 size={16} /></button>
-                              <button className="action-btn hover-bg" title="Copiar" onClick={() => navigator.clipboard.writeText(displayContent)}><Copy size={16} /></button>
-                              <button className="action-btn hover-bg" title="Más opciones"><MoreVertical size={16} /></button>
+                              <button className="action-btn hover-bg" title="Me gusta" onClick={(e) => { e.currentTarget.style.color = '#10b981'; }}><ThumbsUp size={16} /></button>
+                              <button className="action-btn hover-bg" title="No me gusta" onClick={(e) => { e.currentTarget.style.color = '#ef4444'; }}><ThumbsDown size={16} /></button>
+                              
+                              {/* Only show regenerate for the last assistant message */}
+                              {displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && (
+                                <button className="action-btn hover-bg" title="Regenerar respuesta" onClick={() => {
+                                  // Find the last user message
+                                  const lastUserMsg = displayMessages.slice().reverse().find(m => m.role === 'user');
+                                  if (lastUserMsg && currentChatId) {
+                                    // Remove the last assistant message
+                                    setChats(prev => {
+                                      const updated = [...prev];
+                                      const chatIndex = updated.findIndex(c => c.id === currentChatId);
+                                      if (chatIndex !== -1) {
+                                        updated[chatIndex].messages = updated[chatIndex].messages.slice(0, -1);
+                                      }
+                                      return updated;
+                                    });
+                                    setDisplayMessages(prev => prev.slice(0, -1));
+                                    // Trigger send again
+                                    handleSendMessage(lastUserMsg.content);
+                                  }
+                                }}><RotateCw size={16} /></button>
+                              )}
+                              
+                              <button className="action-btn hover-bg" title="Compartir" onClick={() => {
+                                if (navigator.share) {
+                                  navigator.share({ title: 'ChimueloGPT', text: displayContent }).catch(() => {});
+                                } else {
+                                  navigator.clipboard.writeText(displayContent);
+                                  alert('Copiado al portapapeles');
+                                }
+                              }}><Share2 size={16} /></button>
+                              <button className="action-btn hover-bg" title="Copiar" onClick={() => {
+                                navigator.clipboard.writeText(displayContent);
+                                alert('Copiado al portapapeles');
+                              }}><Copy size={16} /></button>
                             </div>
                           )}
                         </div>
