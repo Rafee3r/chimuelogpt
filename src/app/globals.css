@@ -505,6 +505,25 @@ a {
 .avatar.assistant {
   background-color: transparent;
   color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--border-color);
+  opacity: 1;
 }
 
 .message-text {
@@ -845,8 +864,10 @@ a {
 .modal-content {
   background-color: var(--bg-primary);
   border-radius: 12px;
-  width: 90%;
+  width: 95%;
   max-width: 450px;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 1.5rem;
 }
 

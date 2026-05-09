@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -318,12 +318,12 @@ export default function Home() {
             });
             if (imgRes.ok) {
               const imgData = await imgRes.json();
-              processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+              processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
             } else {
-              processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error al generar la imagen)*\n\n');
+              processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error al generar la imagen)*\n\n');
             }
           } catch {
-            processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error de red al generar imagen)*\n\n');
+            processedContent = processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error de red al generar imagen)*\n\n');
           }
         }
       }
@@ -646,24 +646,37 @@ export default function Home() {
                       const isArtifactComplete = displayContent.includes('</artifact>') || displayContent.includes('</artifact_html>');
                       
                       return (
-                        <div className="markdown-body">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            components={{ img: ImageRenderer }}
-                          >
-                            {displayContent}
-                          </ReactMarkdown>
-                          {msg.role === 'assistant' && showArtifact && (
-                            <div 
-                              className={`artifact-card ${isArtifactComplete ? '' : 'loading'}`}
-                              onClick={() => isArtifactComplete && setArtifactModal(artifactContent)}
-                              style={{ opacity: isArtifactComplete ? 1 : 0.6, cursor: isArtifactComplete ? 'pointer' : 'wait' }}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div className="markdown-body">
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={{ img: ImageRenderer }}
                             >
-                              <div className="artifact-icon">{thinkingTask === 'document' || artifactTitle.toLowerCase().includes('informe') ? '📄' : '✨'}</div>
-                              <div className="artifact-info">
-                                <strong>{isArtifactComplete ? artifactTitle : 'Renderizando Diseño...'}</strong>
-                                <span>{isArtifactComplete ? artifactDesc : 'Pintando interfaz gráfica'}</span>
+                              {displayContent}
+                            </ReactMarkdown>
+                            {msg.role === 'assistant' && showArtifact && (
+                              <div 
+                                className={`artifact-card ${isArtifactComplete ? '' : 'loading'}`}
+                                onClick={() => isArtifactComplete && setArtifactModal(artifactContent)}
+                                style={{ opacity: isArtifactComplete ? 1 : 0.6, cursor: isArtifactComplete ? 'pointer' : 'wait' }}
+                              >
+                                <div className="artifact-icon">{thinkingTask === 'document' || artifactTitle.toLowerCase().includes('informe') ? '📄' : '✨'}</div>
+                                <div className="artifact-info">
+                                  <strong>{isArtifactComplete ? artifactTitle : 'Renderizando Diseño...'}</strong>
+                                  <span>{isArtifactComplete ? artifactDesc : 'Pintando interfaz gráfica'}</span>
+                                </div>
                               </div>
+                            )}
+                          </div>
+                          
+                          {msg.role === 'assistant' && (
+                            <div className="message-actions" style={{ display: 'flex', gap: '12px', marginTop: '4px', opacity: 0.7 }}>
+                              <button className="action-btn hover-bg" title="Me gusta"><ThumbsUp size={16} /></button>
+                              <button className="action-btn hover-bg" title="No me gusta"><ThumbsDown size={16} /></button>
+                              <button className="action-btn hover-bg" title="Regenerar"><RotateCw size={16} /></button>
+                              <button className="action-btn hover-bg" title="Compartir"><Share2 size={16} /></button>
+                              <button className="action-btn hover-bg" title="Copiar" onClick={() => navigator.clipboard.writeText(displayContent)}><Copy size={16} /></button>
+                              <button className="action-btn hover-bg" title="Más opciones"><MoreVertical size={16} /></button>
                             </div>
                           )}
                         </div>
