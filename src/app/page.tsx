@@ -279,8 +279,8 @@ export default function Home() {
         const streamReasoning = fullText.match(/<think>([\s\S]*?)(<\/think>|$)/)?.[1];
         let streamContent = fullText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
         // Hide generate_image tags during streaming
-        if (streamContent.includes('<generate_image>')) {
-          streamContent = streamContent.replace(/<generate_image>[\s\S]*?(<\/generate_image>|$)/i, '🎨 Generando tu imagen...').trim();
+        if (streamContent.includes('<generate_image')) {
+          streamContent = streamContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...').trim();
         }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined };
         setDisplayMessages(prev => {
@@ -296,16 +296,19 @@ export default function Home() {
 
       // Post-process: intercept image generation tags
       let processedContent = fullText;
-      if (processedContent.includes('<generate_image>')) {
-        const promptMatch = processedContent.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
+      if (processedContent.includes('<generate_image')) {
+        const promptMatch = processedContent.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
+        const modeMatch = processedContent.match(/<generate_image[^>]*mode=["']([^"']+)["'][^>]*>/i);
+        const isText2Img = modeMatch ? modeMatch[1] === 'text2img' : false;
+        
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           // Update UI to show generating state
-          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...') } : m));
+          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: processedContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...') } : m));
           try {
-            // If user attached an image, use img2img; otherwise text-to-image
+            // If user attached an image AND it's not a dramatic text2img structural change, use img2img
             const imgBody: any = { prompt: imagePrompt };
-            if (imagePayload) {
+            if (imagePayload && !isText2Img) {
               imgBody.imageBase64 = imagePayload;
             }
             const imgRes = await fetch('/api/image', {
