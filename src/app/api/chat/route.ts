@@ -68,6 +68,7 @@ INSTRUCCIONES PARA EL HTML:
         const reader = deepseekRes.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let inReasoning = false;
 
         try {
           while (true) {
@@ -90,9 +91,17 @@ INSTRUCCIONES PARA EL HTML:
                 const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
                 
                 if (reasoning) {
+                  if (!inReasoning) {
+                    controller.enqueue(encoder.encode('<think>'));
+                    inReasoning = true;
+                  }
                   controller.enqueue(encoder.encode(reasoning));
                 }
                 if (content) {
+                  if (inReasoning) {
+                    controller.enqueue(encoder.encode('</think>'));
+                    inReasoning = false;
+                  }
                   controller.enqueue(encoder.encode(content));
                 }
               } catch {
@@ -103,6 +112,9 @@ INSTRUCCIONES PARA EL HTML:
         } catch (e) {
           console.error("Stream processing error:", e);
         } finally {
+          if (inReasoning) {
+            controller.enqueue(encoder.encode('</think>'));
+          }
           controller.close();
         }
       }
