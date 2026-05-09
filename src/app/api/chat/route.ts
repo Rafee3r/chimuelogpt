@@ -35,10 +35,16 @@ INSTRUCCIONES PARA EL HTML:
 - Usa colores suaves, alineación correcta y márgenes amplios. Haz que parezca hecho por un diseñador profesional.`;
 
     // Extract formatted messages for AI SDK
-    const formattedMessages = messages.map((m: any) => ({
-      role: m.role,
-      content: m.content
-    }));
+    const formattedMessages = messages.map((m: any) => {
+      let content = m.content;
+      if (m.parts) {
+        content = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+      }
+      return {
+        role: m.role,
+        content: content || ''
+      };
+    });
 
     // Deepseek AI SDK Call with streaming
     const result = streamText({

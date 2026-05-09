@@ -54,7 +54,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // @ts-ignore
-  const { messages, setMessages, append } = useChat(({
+  const { messages, setMessages, sendMessage } = useChat(({
     api: '/api/chat',
     body: { model },
     onError: (err: Error) => {
@@ -72,11 +72,12 @@ export default function Home() {
       }));
     },
     onFinish: async (message: any) => {
-      let finalMessageContent = message.content;
+      let finalMessageContent = message.content || (message.parts ? message.parts.filter((p:any) => p.type === 'text').map((p:any) => p.text).join('') : '');
+      const hasReasoningBlock = finalMessageContent.includes('<think>');
       
       // Intercept image generation
-      if (message.content.includes('<generate_image>')) {
-        const promptMatch = message.content.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
+      if (finalMessageContent.includes('<generate_image>')) {
+        const promptMatch = finalMessageContent.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           try {
@@ -87,15 +88,15 @@ export default function Home() {
             });
             if (imgRes.ok) {
               const imgData = await imgRes.json();
-              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+              finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
             } else {
-              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
+              finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
             }
           } catch (e) {
-            finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
+            finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
           }
         } else {
-          finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error: el prompt de la imagen está vacío)*\n\n`);
+          finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error: el prompt de la imagen está vacío)*\n\n`);
         }
       }
 
@@ -107,10 +108,13 @@ export default function Home() {
       // Sync messages to local storage on finish
       setChats(prev => prev.map(chat => {
         if (chat.id === currentChatId) {
+          const finalReasoning = message.reasoning || (message.parts ? message.parts.find((p:any) => p.type === 'reasoning')?.text : undefined) || finalMessageContent.match(/<think>([\s\S]*?)<\/think>/)?.[1];
+          const cleanContent = finalMessageContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+          const baseMsg = { ...updatedMessage, content: cleanContent, reasoning: finalReasoning } as BaseMessage;
           const msgExists = chat.messages.some(m => m.id === message.id);
           const newMessages = msgExists 
-            ? chat.messages.map(m => m.id === message.id ? updatedMessage as BaseMessage : m)
-            : [...chat.messages, updatedMessage as BaseMessage];
+            ? chat.messages.map(m => m.id === message.id ? baseMsg : m)
+            : [...chat.messages, baseMsg];
             
           return {
             ...chat,
@@ -124,8 +128,6 @@ export default function Home() {
       setIsThinking(false);
     }
   }) as any);
-
-  // Removed buggy useEffect sync
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
@@ -306,9 +308,9 @@ export default function Home() {
         finalContent = `[El usuario adjuntó una imagen llamada: ${imageName}. NOTA DEL SISTEMA PARA CHIMUELOGPT: Actualmente NO tienes visión ni ojos para ver imágenes en esta versión. Dile amablemente al usuario que aún no puedes ver fotos, pero que si te la describe con palabras, lo ayudarás encantado.]\n\n${messageText}`;
       }
       
-      await append({
+      await sendMessage({
         role: 'user',
-        content: finalContent
+        parts: [{ type: 'text', text: finalContent }]
       });
     } catch (e: any) {
       console.error("Append error:", e);
@@ -359,7 +361,6 @@ export default function Home() {
     setSidebarOpen(false);
   };
 
-  // Image Renderer for interactive markdown images
   const ImageRenderer = ({ node, ...props }: any) => {
     return (
       <div className="image-container">
@@ -421,6 +422,7 @@ export default function Home() {
   }
 
   const activeChat = chats.find(c => c.id === currentChatId);
+  const displayMessages = messages as any[];
 
   return (
     <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
@@ -444,7 +446,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sidebar Backdrop for Mobile */}
       {sidebarOpen && (
         <div 
           className="sidebar-backdrop d-md-none" 
@@ -499,7 +500,7 @@ export default function Home() {
         </div>
 
         <div className="chat-area">
-          {messages.length === 0 ? (
+          {displayMessages.length === 0 ? (
             <div className="empty-state-container">
               <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
               <h2 className="empty-state-title">ChimueloGPT</h2>
@@ -525,77 +526,78 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            (messages as any[]).map(msg => (
-              <div key={msg.id} className={`message ${msg.role}`}>
+            displayMessages.map((msg: any, i) => {
+              const role = msg.role;
+              const contentStr = msg.content || (msg.parts ? msg.parts.filter((p:any) => p.type === 'text').map((p:any) => p.text).join('') : '');
+              const reasoning = msg.reasoning || (msg.parts ? msg.parts.find((p:any) => p.type === 'reasoning')?.text : undefined) || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1];
+              const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+
+              return (
+              <div key={msg.id} className={`message ${role}`}>
                 <div className="message-content-wrapper">
-                  {msg.role === 'assistant' && (
+                  {role === 'assistant' && (
                     <div className="avatar assistant">
                       <Cat size={24} />
                     </div>
                   )}
                   <div className="message-text">
-                    {/* Placeholder de imagen */}
-                    {(msg as any).imagePlaceholder && (
+                    {msg.imagePlaceholder && (
                       <div className="attachment-placeholder">
                         <FileImage size={16} />
-                        <span>{(msg as any).imagePlaceholder}</span>
+                        <span>{msg.imagePlaceholder}</span>
                       </div>
                     )}
                     
-                    {/* Caja de Reasoning de DeepSeek */}
-                    {msg.role === 'assistant' && (msg as any).reasoning && (
+                    {role === 'assistant' && reasoning && (
                       <details className="reasoning-box">
                         <summary className="reasoning-summary">
                           <span className="reasoning-icon">🧠</span>
                           <span>Pensamiento</span>
                         </summary>
                         <div className="reasoning-content">
-                          {(msg as any).reasoning}
+                          {reasoning}
                         </div>
                       </details>
                     )}
 
-                    {/* Contenido principal */}
-                    {msg.content && (() => {
-                      // Comprobar ambos formatos: el antiguo <artifact_html> y el nuevo <artifact>
-                      const hasNewArtifact = msg.content.includes('<artifact>');
-                      const hasOldArtifact = msg.content.includes('<artifact_html>') && !hasNewArtifact;
-                      const hasImageTag = msg.content.includes('<generate_image>');
+                    {displayContent && (() => {
+                      const hasNewArtifact = displayContent.includes('<artifact>');
+                      const hasOldArtifact = displayContent.includes('<artifact_html>') && !hasNewArtifact;
+                      const hasImageTag = displayContent.includes('<generate_image>');
                       
-                      let displayContent = msg.content;
+                      let currentBody = displayContent;
                       let artifactContent = '';
                       let artifactTitle = 'Diseño Generado';
                       let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
                       
-                      // Interceptar y ocultar etiquetas completas o a medio escribir en Streaming
                       if (hasImageTag) {
-                        displayContent = msg.content.replace(/<generate_image>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
+                        currentBody = displayContent.replace(/<generate_image>[\s\S]*?(<\/generate_image>)?/i, '🎨 Generando tu imagen... por favor espera.').trim();
                       }
 
                       if (hasNewArtifact) {
-                        const matchHtml = msg.content.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
-                        const matchTitle = msg.content.match(/<artifact_title>([\s\S]*?)(<\/artifact_title>)?/i);
-                        const matchDesc = msg.content.match(/<artifact_desc>([\s\S]*?)(<\/artifact_desc>)?/i);
+                        const matchHtml = displayContent.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
+                        const matchTitle = displayContent.match(/<artifact_title>([\s\S]*?)(<\/artifact_title>)?/i);
+                        const matchDesc = displayContent.match(/<artifact_desc>([\s\S]*?)(<\/artifact_desc>)?/i);
                         
                         if (matchHtml && matchHtml[1]) artifactContent = matchHtml[1].trim();
                         if (matchTitle && matchTitle[1]) artifactTitle = matchTitle[1].replace(/<\/artifact_title>/, '').trim();
                         if (matchDesc && matchDesc[1]) artifactDesc = matchDesc[1].replace(/<\/artifact_desc>/, '').trim();
                         
-                        const fullMatch = msg.content.match(/<artifact>([\s\S]*?)(<\/artifact>)?/i);
-                        if (fullMatch) displayContent = msg.content.replace(fullMatch[0], '').trim();
+                        const fullMatch = displayContent.match(/<artifact>([\s\S]*?)(<\/artifact>)?/i);
+                        if (fullMatch) currentBody = displayContent.replace(fullMatch[0], '').trim();
                       } else if (hasOldArtifact) {
-                        const match = msg.content.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
+                        const match = displayContent.match(/<artifact_html>([\s\S]*?)(<\/artifact_html>)?/i);
                         if (match && match[1]) {
                           artifactContent = match[1].trim();
-                          displayContent = msg.content.replace(match[0], '').trim();
+                          currentBody = displayContent.replace(match[0], '').trim();
                         }
                       } else {
                         // fallback for old pdf
-                        displayContent = msg.content.replace(/<pdf_content>[\s\S]*?<\/pdf_content>/i, '').replace('<downloadable>', '').trim();
+                        currentBody = displayContent.replace(/<pdf_content>([\s\S]*?)<\/pdf_content>/i, '').trim();
                       }
                       
                       const showArtifact = hasNewArtifact || hasOldArtifact;
-                      const isArtifactComplete = msg.content.includes('</artifact>') || msg.content.includes('</artifact_html>');
+                      const isArtifactComplete = displayContent.includes('</artifact>') || displayContent.includes('</artifact_html>');
                       
                       return (
                         <div className="markdown-body">
@@ -624,10 +626,11 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
 
-          {isThinking && (messages.length === 0 || messages[messages.length-1].role === 'user') && (
+          {isThinking && (displayMessages.length === 0 || displayMessages[displayMessages.length - 1]?.role !== 'assistant') && (
             <div className="message assistant">
               <div className="message-content-wrapper">
                 <div className="avatar assistant">
