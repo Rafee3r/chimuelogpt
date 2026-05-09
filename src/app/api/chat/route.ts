@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
 
     const systemPrompt = `${personaPrompt}${customInstructionsPrompt}
-REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, NO expliques nada. Responde ÚNICAMENTE con esta etiqueta XML que contenga una descripción muy detallada en INGLÉS de la imagen solicitada: <generate_image>detailed english description of the image goes here</generate_image>
+REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, escribe un mensaje conversacional MUY BREVE de acuerdo a tu personalidad (ej. "¡Aquí tienes tu imagen!", "Quedó genial, mira:"), seguido INMEDIATAMENTE por esta etiqueta XML que contenga una descripción muy detallada en INGLÉS de la imagen solicitada (no incluyas nada más después de la etiqueta): <generate_image>detailed english description of the image goes here</generate_image>
 REGLA PARA DOCUMENTOS Y ARTEFACTOS: Si el usuario pide redactar un ensayo, crear una invitación, un documento, una plantilla o descargar un PDF, DEBES programar una interfaz visual hermosa. Para ello, responde ÚNICAMENTE con este formato, sin añadir ninguna otra palabra de conversación:
 <artifact>
   <artifact_title>Título Corto del Documento</artifact_title>

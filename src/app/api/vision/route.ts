@@ -67,7 +67,7 @@ export async function POST(req: Request) {
         max_tokens: 4096,
         system: `${personaPrompt}${customInstructionsPrompt}
 REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
-Si el usuario pide editar o transformar la foto adjunta, debes decidir el modo de generación y responder ÚNICAMENTE con esta etiqueta XML (no agregues texto adicional):
+Si el usuario pide editar o transformar la foto adjunta, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu imagen editada!", "Mira cómo quedó:"), y luego debes decidir el modo de generación y responder INMEDIATAMENTE con esta etiqueta XML (no agregues texto después de la etiqueta):
 
 1. MODO IMG2IMG (Ediciones menores): Si pide cambiar color de pelo, ropa, agregar lentes, o cambiar el fondo, pero MANTENIENDO la anatomía y estructura humana original:
 <generate_image mode="img2img">Descripción EN INGLÉS MUY DETALLADA de la imagen final, incluyendo todos los rasgos originales de la persona + las modificaciones</generate_image>

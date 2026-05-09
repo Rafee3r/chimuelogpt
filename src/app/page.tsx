@@ -697,6 +697,20 @@ export default function Home() {
                               <button className="action-btn hover-bg" title="Me gusta" onClick={(e) => { e.currentTarget.style.color = '#10b981'; }}><ThumbsUp size={16} /></button>
                               <button className="action-btn hover-bg" title="No me gusta" onClick={(e) => { e.currentTarget.style.color = '#ef4444'; }}><ThumbsDown size={16} /></button>
                               
+                              {/* Download button for images or artifacts */}
+                              {(displayContent.includes('![Imagen') || showArtifact) && (
+                                <button className="action-btn hover-bg" title="Descargar" onClick={() => {
+                                  const imgMatch = displayContent.match(/!\[.*?\]\((.*?)\)/);
+                                  if (imgMatch && imgMatch[1]) {
+                                    // It's an image
+                                    window.open(imgMatch[1], '_blank');
+                                  } else if (showArtifact && isArtifactComplete) {
+                                    // It's an artifact, open the modal to preview/download
+                                    setArtifactModal(artifactContent);
+                                  }
+                                }}><Download size={16} /></button>
+                              )}
+
                               {/* Only show regenerate for the last assistant message */}
                               {displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && (
                                 <button className="action-btn hover-bg" title="Regenerar respuesta" onClick={() => {
