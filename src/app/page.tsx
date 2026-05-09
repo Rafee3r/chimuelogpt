@@ -61,8 +61,8 @@ export default function Home() {
       let finalMessageContent = message.content;
       
       // Intercept image generation
-      if (message.content.includes('<generate_image>') && message.content.includes('</generate_image>')) {
-        const promptMatch = message.content.match(/<generate_image>([\s\S]*?)<\/generate_image>/i);
+      if (message.content.includes('<generate_image>')) {
+        const promptMatch = message.content.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           try {
@@ -73,13 +73,15 @@ export default function Home() {
             });
             if (imgRes.ok) {
               const imgData = await imgRes.json();
-              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
             } else {
-              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
+              finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
             }
           } catch (e) {
-            finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?<\/generate_image>/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
+            finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
           }
+        } else {
+          finalMessageContent = message.content.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error: el prompt de la imagen está vacío)*\n\n`);
         }
       }
 
@@ -89,11 +91,21 @@ export default function Home() {
       setMessages(prev => prev.map(m => m.id === message.id ? updatedMessage as any : m));
 
       // Sync messages to local storage on finish
-      setChats(prev => prev.map(chat => chat.id === currentChatId ? {
-        ...chat,
-        messages: [...messages, updatedMessage] as BaseMessage[],
-        updatedAt: Date.now()
-      } : chat));
+      setChats(prev => prev.map(chat => {
+        if (chat.id === currentChatId) {
+          const msgExists = chat.messages.some(m => m.id === message.id);
+          const newMessages = msgExists 
+            ? chat.messages.map(m => m.id === message.id ? updatedMessage as BaseMessage : m)
+            : [...chat.messages, updatedMessage as BaseMessage];
+            
+          return {
+            ...chat,
+            messages: newMessages,
+            updatedAt: Date.now()
+          };
+        }
+        return chat;
+      }));
       
       setIsThinking(false);
     }

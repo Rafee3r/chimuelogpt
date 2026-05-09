@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60; // 60 seconds timeout for Vercel Hobby
+
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();

@@ -1,6 +1,8 @@
 import { streamText } from 'ai';
 import { createDeepSeek } from '@ai-sdk/deepseek';
 
+export const maxDuration = 60; // 60 seconds timeout for Vercel Hobby
+
 export async function POST(req: Request) {
   try {
     const { messages, model } = await req.json();
