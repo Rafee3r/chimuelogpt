@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search } from "lucide-react";
-import { useChat } from "@ai-sdk/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -49,85 +48,12 @@ export default function Home() {
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
 
+  // Manual messages state (replaces useChat)
+  const [displayMessages, setDisplayMessages] = useState<BaseMessage[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // @ts-ignore
-  const { messages, setMessages, sendMessage } = useChat(({
-    api: '/api/chat',
-    body: { model },
-    onError: (err: Error) => {
-      console.error("useChat error:", err);
-      setIsThinking(false);
-      setChats(prev => prev.map(chat => {
-        if (chat.id === currentChatId) {
-          return {
-            ...chat,
-            messages: [...chat.messages, { id: Date.now().toString(), role: 'assistant', content: `*(Error del servidor: ${err.message})*` } as BaseMessage],
-            updatedAt: Date.now()
-          };
-        }
-        return chat;
-      }));
-    },
-    onFinish: async (message: any) => {
-      let finalMessageContent = message.content || (message.parts ? message.parts.filter((p:any) => p.type === 'text').map((p:any) => p.text).join('') : '');
-      const hasReasoningBlock = finalMessageContent.includes('<think>');
-      
-      // Intercept image generation
-      if (finalMessageContent.includes('<generate_image>')) {
-        const promptMatch = finalMessageContent.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
-        if (promptMatch && promptMatch[1]) {
-          const imagePrompt = promptMatch[1].trim();
-          try {
-            const imgRes = await fetch('/api/image', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: imagePrompt })
-            });
-            if (imgRes.ok) {
-              const imgData = await imgRes.json();
-              finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
-            } else {
-              finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Hubo un error al generar la imagen. El servicio podría estar saturado.)*\n\n`);
-            }
-          } catch (e) {
-            finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error de red al intentar pintar la imagen)*\n\n`);
-          }
-        } else {
-          finalMessageContent = finalMessageContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n*(Error: el prompt de la imagen está vacío)*\n\n`);
-        }
-      }
-
-      const updatedMessage = { ...message, content: finalMessageContent };
-
-      // Update AI SDK state
-      setMessages(prev => prev.map(m => m.id === message.id ? updatedMessage as any : m));
-
-      // Sync messages to local storage on finish
-      setChats(prev => prev.map(chat => {
-        if (chat.id === currentChatId) {
-          const finalReasoning = message.reasoning || (message.parts ? message.parts.find((p:any) => p.type === 'reasoning')?.text : undefined) || finalMessageContent.match(/<think>([\s\S]*?)<\/think>/)?.[1];
-          const cleanContent = finalMessageContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
-          const baseMsg = { ...updatedMessage, content: cleanContent, reasoning: finalReasoning } as BaseMessage;
-          const msgExists = chat.messages.some(m => m.id === message.id);
-          const newMessages = msgExists 
-            ? chat.messages.map(m => m.id === message.id ? baseMsg : m)
-            : [...chat.messages, baseMsg];
-            
-          return {
-            ...chat,
-            messages: newMessages,
-            updatedAt: Date.now()
-          };
-        }
-        return chat;
-      }));
-      
-      setIsThinking(false);
-    }
-  }) as any);
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
@@ -149,7 +75,7 @@ export default function Home() {
         const parsed = JSON.parse(savedChats);
         const active = parsed.find((c: Chat) => c.id === currentChat);
         if (active) {
-          setMessages(active.messages as any);
+          setDisplayMessages(active.messages);
         }
       }
     }
@@ -185,7 +111,7 @@ export default function Home() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, currentChatId, isThinking]);
+  }, [displayMessages, currentChatId, isThinking]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -219,7 +145,7 @@ export default function Home() {
     });
     setCurrentChatId(newChat.id);
     localStorage.setItem("chimuelo_current_chat", newChat.id);
-    setMessages([]);
+    setDisplayMessages([]);
     setSidebarOpen(false);
   };
 
@@ -302,29 +228,120 @@ export default function Home() {
     setAttachedImage(null);
     setIsThinking(true);
 
+    // Add user message to display immediately
+    setDisplayMessages(prev => [...prev, userMsg]);
+
     try {
       let finalContent = messageText;
       if (imagePayload) {
         finalContent = `[El usuario adjuntó una imagen llamada: ${imageName}. NOTA DEL SISTEMA PARA CHIMUELOGPT: Actualmente NO tienes visión ni ojos para ver imágenes en esta versión. Dile amablemente al usuario que aún no puedes ver fotos, pero que si te la describe con palabras, lo ayudarás encantado.]\n\n${messageText}`;
       }
-      
-      await sendMessage({
-        role: 'user',
-        parts: [{ type: 'text', text: finalContent }]
+
+      // Build messages history for the API
+      const chatForApi = chats.find(c => c.id === targetChatId);
+      const historyMsgs = (chatForApi?.messages || []).map(m => ({ role: m.role, content: m.content }));
+      historyMsgs.push({ role: 'user', content: finalContent });
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: historyMsgs, model })
       });
-    } catch (e: any) {
-      console.error("Append error:", e);
-      setIsThinking(false);
-      setChats(prev => prev.map(chat => {
-        if (chat.id === currentChatId) {
-          return {
-            ...chat,
-            messages: [...chat.messages, { id: Date.now().toString(), role: 'assistant', content: `*(Error al enviar: ${e.message})*` } as BaseMessage],
-            updatedAt: Date.now()
-          };
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Error desconocido del servidor' }));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+
+      // Stream the response
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      const assistantId = (Date.now() + 1).toString();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+
+        // Update the assistant message in real-time
+        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: fullText };
+        setDisplayMessages(prev => {
+          const existing = prev.findIndex(m => m.id === assistantId);
+          if (existing !== -1) {
+            const updated = [...prev];
+            updated[existing] = streamingMsg;
+            return updated;
+          }
+          return [...prev, streamingMsg];
+        });
+      }
+
+      // Post-process: intercept image generation tags
+      let processedContent = fullText;
+      if (processedContent.includes('<generate_image>')) {
+        const promptMatch = processedContent.match(/<generate_image>([\s\S]*?)(?:<\/generate_image>|$)/i);
+        if (promptMatch && promptMatch[1]) {
+          const imagePrompt = promptMatch[1].trim();
+          // Update UI to show generating state
+          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...') } : m));
+          try {
+            const imgRes = await fetch('/api/image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: imagePrompt })
+            });
+            if (imgRes.ok) {
+              const imgData = await imgRes.json();
+              processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+            } else {
+              processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error al generar la imagen)*\n\n');
+            }
+          } catch {
+            processedContent = processedContent.replace(/<generate_image>[\s\S]*?(?:<\/generate_image>|$)/i, '\n\n*(Error de red al generar imagen)*\n\n');
+          }
         }
-        return chat;
-      }));
+      }
+
+      // Extract reasoning
+      const reasoningMatch = processedContent.match(/<think>([\s\S]*?)<\/think>/);
+      const reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
+      const cleanContent = processedContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+
+      const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning };
+
+      // Update display
+      setDisplayMessages(prev => prev.map(m => m.id === assistantId ? finalAssistantMsg : m));
+
+      // Save to chats/localStorage
+      setChats(prev => {
+        const updated = prev.map(chat => {
+          if (chat.id === targetChatId) {
+            return { ...chat, messages: [...chat.messages, finalAssistantMsg], updatedAt: Date.now() };
+          }
+          return chat;
+        });
+        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+        return updated;
+      });
+
+    } catch (e: any) {
+      console.error("Stream error:", e);
+      const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
+      setDisplayMessages(prev => [...prev, errMsg]);
+      setChats(prev => {
+        const updated = prev.map(chat => {
+          if (chat.id === targetChatId) {
+            return { ...chat, messages: [...chat.messages, errMsg], updatedAt: Date.now() };
+          }
+          return chat;
+        });
+        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+        return updated;
+      });
+    } finally {
+      setIsThinking(false);
     }
   };
 
@@ -351,9 +368,9 @@ export default function Home() {
       localStorage.setItem("chimuelo_current_chat", chatId);
       const active = chats.find(c => c.id === chatId);
       if (active) {
-        setMessages(active.messages as any);
+        setDisplayMessages(active.messages);
       } else {
-        setMessages([]);
+        setDisplayMessages([]);
       }
     } else {
       createNewChat();
@@ -422,7 +439,7 @@ export default function Home() {
   }
 
   const activeChat = chats.find(c => c.id === currentChatId);
-  const displayMessages = messages as any[];
+
 
   return (
     <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
