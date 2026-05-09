@@ -47,7 +47,7 @@ INSTRUCCIONES PARA EL HTML:
       messages: formattedMessages,
     });
 
-    return (result as any).toDataStreamResponse();
+    return result.toTextStreamResponse();
 
   } catch (error: any) {
     console.error("API Route Error:", error);
