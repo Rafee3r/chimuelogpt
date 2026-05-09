@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           image_url: imageBase64,
           prompt: prompt,
-          strength: 0.65,
+          strength: 0.85,
           num_inference_steps: 28,
           guidance_scale: 3.5
         })
