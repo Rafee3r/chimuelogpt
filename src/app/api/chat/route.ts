@@ -51,8 +51,8 @@ INSTRUCCIONES PARA EL HTML:
 
     if (!deepseekRes.ok) {
       const errText = await deepseekRes.text();
-      console.error("DeepSeek API error:", errText);
-      return new Response(JSON.stringify({ error: `DeepSeek API error: ${deepseekRes.status}` }), { 
+      console.error("DeepSeek API error:", deepseekRes.status, errText);
+      return new Response(JSON.stringify({ error: `DeepSeek ${deepseekRes.status}: ${errText}` }), { 
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
