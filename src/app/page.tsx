@@ -870,12 +870,12 @@ export default function Home() {
             <div className="university-dashboard">
               <div className="university-header">
                 <h1>Cerebro Académico</h1>
-                <p>Workspaces con memoria persistente e IA de nivel superior.</p>
+                <p>Tu propio lugar de estudio. Añade tus materias y la IA recordará tus apuntes.</p>
               </div>
               
               <div className="workspace-selector" style={{ width: '100%', maxWidth: '850px', marginBottom: '2rem', background: 'var(--input-bg)', padding: '1.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', animation: 'fadeUpStagger 0.4s ease both' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}><Book size={20} /> Entorno de Estudio Activo</h3>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}><Book size={20} /> Tus Ramos / Materias</h3>
                   {!isCreatingSubject && (
                     <button className="download-btn" onClick={() => setIsCreatingSubject(true)} style={{ background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', color: '#1a1a1a' }}>
                       <Plus size={16} style={{ marginRight: '6px' }} /> Nueva Materia
@@ -893,7 +893,7 @@ export default function Home() {
                       className="auth-input-modern"
                     />
                     <textarea 
-                      placeholder="Syllabus / Memoria Base: Pega aquí los apuntes clave, formato esperado o rúbrica de esta clase. La IA heredará todo este conocimiento invisiblemente para cada tarea de esta materia."
+                      placeholder="Apuntes Clave o Reglas: Pega aquí el resumen del curso, las reglas del profe o el PDF de la clase. La IA leerá esto antes de responder cualquier cosa en esta materia (Ej: 'El profe odia Wikipedia', 'Usa siempre APA')."
                       value={newSubjectMemory}
                       onChange={(e) => setNewSubjectMemory(e.target.value)}
                       className="auth-input-modern"
@@ -901,13 +901,13 @@ export default function Home() {
                     />
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                       <button className="action-btn" onClick={() => setIsCreatingSubject(false)}>Cancelar</button>
-                      <button className="download-btn" onClick={handleCreateSubject} style={{ background: '#4FACFE' }}>Crear Espacio</button>
+                      <button className="download-btn" onClick={handleCreateSubject} style={{ background: '#4FACFE' }}>Guardar Materia</button>
                     </div>
                   </div>
                 ) : (
                   <div>
                     {subjects.length === 0 ? (
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>No tienes espacios creados. Crea uno para inyectar memoria a largo plazo a tus chats.</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>Aún no tienes materias. Agrega una para que Chimuelo recuerde tus apuntes en cada chat nuevo.</p>
                     ) : (
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select 
@@ -923,7 +923,7 @@ export default function Home() {
                           className="auth-input-modern"
                           style={{ padding: '0.75rem', cursor: 'pointer', appearance: 'auto', flex: 1 }}
                         >
-                          <option value="">-- Sin Materia Activa (Modo General Universitario) --</option>
+                          <option value="">-- Sin Ramo Activo (Asistente General) --</option>
                           {subjects.map(s => (
                             <option key={s.id} value={s.id}>📖 {s.name}</option>
                           ))}
@@ -948,30 +948,30 @@ export default function Home() {
                 <div className="university-card essay" onClick={() => openConfigModal("essay")}>
                   <div className="uni-card-header">
                     <div className="uni-card-icon-wrapper">✍️</div>
-                    <div className="uni-card-title">Revisor de Ensayos</div>
+                    <div className="uni-card-title">Corregir Trabajos y Ensayos</div>
                   </div>
-                  <div className="uni-card-desc">Mejora la gramática, estructura argumentativa y tono académico de tus textos bajo estándares APA/MLA.</div>
+                  <div className="uni-card-desc">Sube tu texto y la IA arreglará la ortografía, mejorará tus argumentos y le pondrá un tono más formal y académico.</div>
                 </div>
                 <div className="university-card science" onClick={() => openConfigModal("science")}>
                   <div className="uni-card-header">
                     <div className="uni-card-icon-wrapper">🧮</div>
-                    <div className="uni-card-title">Tutor de Ciencias</div>
+                    <div className="uni-card-title">Ayudante de Ciencias (Mates, Física)</div>
                   </div>
-                  <div className="uni-card-desc">Resuelve problemas matemáticos, físicos o químicos con un desglose paso a paso de toda la lógica matemática.</div>
+                  <div className="uni-card-desc">Pásale un ejercicio difícil y no solo te dará la respuesta, sino que te explicará el paso a paso como un ayudante buena onda.</div>
                 </div>
                 <div className="university-card synthesis" onClick={() => openConfigModal("synthesis")}>
                   <div className="uni-card-header">
                     <div className="uni-card-icon-wrapper">📚</div>
-                    <div className="uni-card-title">Sintetizador de Lecturas</div>
+                    <div className="uni-card-title">Resumir Textos Largos (Papers)</div>
                   </div>
-                  <div className="uni-card-desc">Procesa papers o apuntes largos para extraer instantáneamente la tesis central y argumentos principales.</div>
+                  <div className="uni-card-desc">Pega esa lectura gigante de 50 páginas y te hará un resumen al grano con los puntos clave para estudiar rápido.</div>
                 </div>
                 <div className="university-card socratic" onClick={() => openConfigModal("socratic")}>
                   <div className="uni-card-header">
                     <div className="uni-card-icon-wrapper">🧠</div>
-                    <div className="uni-card-title">Simulador de Exámenes</div>
+                    <div className="uni-card-title">Simulador de Examen (Ponte a Prueba)</div>
                   </div>
-                  <div className="uni-card-desc">Entra en el "Método Socrático". La IA te hará preguntas difíciles para prepararte mentalmente antes de tu examen.</div>
+                  <div className="uni-card-desc">Dile qué entra en la prueba y la IA te hará preguntas difíciles para ver si de verdad dominas la materia.</div>
                 </div>
               </div>
             </div>
