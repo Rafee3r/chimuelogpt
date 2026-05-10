@@ -73,6 +73,9 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  // Track if user manually scrolled up during streaming
+  const userScrolledUp = useRef<boolean>(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -160,8 +163,21 @@ export default function Home() {
   }, [persona]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [displayMessages, currentChatId, isThinking]);
+    const el = chatScrollRef.current;
+    if (!el) return;
+    // Only auto-scroll if user is near the bottom (within 120px)
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom || !isThinking) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      userScrolledUp.current = false;
+    }
+  }, [displayMessages, isThinking]);
+
+  // Reset scroll lock when switching chats
+  useEffect(() => {
+    userScrolledUp.current = false;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [currentChatId]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -873,7 +889,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+        <div ref={chatScrollRef} className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
