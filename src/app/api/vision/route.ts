@@ -69,17 +69,30 @@ export async function POST(req: Request) {
 
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-latest',
-        max_tokens: 4096,
-        system: `${personaPrompt}${customInstructionsPrompt}
+    const modelsToTry = [
+      'claude-3-5-haiku-20241022',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-haiku-20240307',
+      'claude-3-sonnet-20240229'
+    ];
+
+    let anthropicRes;
+    let successfulModel = '';
+    let lastError = '';
+
+    for (const modelId of modelsToTry) {
+      console.log("Intentando con el modelo:", modelId);
+      anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          max_tokens: 4096,
+          system: `${personaPrompt}${customInstructionsPrompt}
 REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
 Si el usuario pide editar o transformar la foto adjunta, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu imagen editada!", "Mira cómo quedó:"), y luego debes decidir el modo de generación y responder INMEDIATAMENTE con esta etiqueta XML (no agregues texto después de la etiqueta):
 
@@ -91,19 +104,33 @@ Si el usuario pide editar o transformar la foto adjunta, escribe un mensaje conv
 <generate_image mode="text2img">Descripción EN INGLÉS MUY DETALLADA del nuevo personaje (ej: A my little pony character with brown hair and a brown jacket...) en el estilo solicitado</generate_image>
 
 Si el usuario SOLO pide describir o explicar la imagen, responde normalmente en español sin usar la etiqueta.`,
-        messages: anthropicMessages,
-        stream: true
-      })
-    });
+          messages: anthropicMessages,
+          stream: true
+        })
+      });
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error("Anthropic API error:", anthropicRes.status, errText);
-      return new Response(JSON.stringify({ error: `Claude ${anthropicRes.status}: ${errText}` }), {
+      if (anthropicRes.ok) {
+        successfulModel = modelId;
+        break; // Éxito, salir del bucle
+      } else {
+        const errText = await anthropicRes.text();
+        lastError = `Claude ${anthropicRes.status}: ${errText}`;
+        console.error("Fallo con", modelId, "->", lastError);
+        // Si no es un error 404 de modelo, no seguimos intentando porque el error es otra cosa (ej. 400 Bad Request)
+        if (anthropicRes.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    if (!anthropicRes || !anthropicRes.ok) {
+      return new Response(JSON.stringify({ error: lastError || "Error desconocido del servidor" }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    console.log("Conexión exitosa con el modelo:", successfulModel);
 
     // Transform Anthropic SSE stream into plain text stream
     const encoder = new TextEncoder();
