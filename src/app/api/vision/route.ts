@@ -54,6 +54,9 @@ export async function POST(req: Request) {
 
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
 
+    console.log("Vision API Request Model:", 'claude-3-5-sonnet-latest');
+    console.log("API Key Start:", apiKey.substring(0, 10));
+    
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
