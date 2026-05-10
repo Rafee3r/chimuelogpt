@@ -1209,60 +1209,125 @@ a {
   opacity: 0.9;
 }
 
-/* University Mode Styles */
+/* =========================================================================
+   University Mode V2 - "Apple Intelligence" Aesthetic 
+   ========================================================================= */
+
+/* Mobile Segmented Control */
+.mobile-segmented-control {
+  display: flex;
+  background: var(--input-bg);
+  border-radius: 20px;
+  padding: 4px;
+  gap: 4px;
+  width: 240px;
+  position: relative;
+  border: 1px solid var(--border-color);
+}
+
+.segment-btn {
+  flex: 1;
+  text-align: center;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.segment-btn.active {
+  color: #fff;
+  background: var(--sidebar-hover);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Dashboard Animations */
+@keyframes fadeUpStagger {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .university-dashboard {
   display: flex;
   flex-direction: column;
-  padding: 2rem;
+  padding: 1.5rem;
   height: 100%;
   overflow-y: auto;
   align-items: center;
+  background: var(--bg-primary);
+}
+
+@media (min-width: 768px) {
+  .university-dashboard {
+    padding: 3rem;
+  }
 }
 
 .university-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  animation: fadeUpStagger 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .university-header h1 {
-  font-size: 2rem;
-  background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #FF6B6B 0%, #5436DA 50%, #4FACFE 100%);
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 0.5rem;
-}
-
-.university-header p {
-  color: var(--text-secondary);
-  max-width: 500px;
+  animation: gradientShift 5s ease infinite;
 }
 
 .university-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1.25rem;
   width: 100%;
-  max-width: 800px;
+  max-width: 850px;
 }
 
 @media (min-width: 768px) {
   .university-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 .university-card {
-  background: var(--input-bg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 1.75rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  animation: fadeUpStagger 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+
+/* Staggered animation delays */
+.university-card:nth-child(1) { animation-delay: 0.1s; }
+.university-card:nth-child(2) { animation-delay: 0.2s; }
+.university-card:nth-child(3) { animation-delay: 0.3s; }
+.university-card:nth-child(4) { animation-delay: 0.4s; }
 
 .university-card::before {
   content: '';
@@ -1271,53 +1336,131 @@ a {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(84, 54, 218, 0.1) 0%, transparent 100%);
+  background: radial-gradient(circle at top left, var(--card-glow, rgba(84, 54, 218, 0.15)), transparent 70%);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
 }
 
 .university-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(84, 54, 218, 0.5);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .university-card:hover::before {
   opacity: 1;
 }
 
-.uni-card-icon {
-  font-size: 2rem;
+/* Card Specific Glow Colors */
+.university-card.essay { --card-glow: rgba(255, 107, 107, 0.2); }
+.university-card.science { --card-glow: rgba(79, 172, 254, 0.2); }
+.university-card.synthesis { --card-glow: rgba(0, 242, 254, 0.2); }
+.university-card.socratic { --card-glow: rgba(161, 140, 209, 0.2); }
+
+.uni-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1rem;
   position: relative;
   z-index: 1;
 }
 
+.uni-card-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.university-card.essay .uni-card-icon-wrapper { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); }
+.university-card.science .uni-card-icon-wrapper { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); }
+.university-card.synthesis .uni-card-icon-wrapper { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
+.university-card.socratic .uni-card-icon-wrapper { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+
 .uni-card-title {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
   color: var(--text-primary);
-  position: relative;
-  z-index: 1;
+  letter-spacing: -0.02em;
 }
 
 .uni-card-desc {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
   position: relative;
   z-index: 1;
 }
 
-.uni-sidebar-btn {
-  background: linear-gradient(90deg, rgba(84, 54, 218, 0.1) 0%, transparent 100%);
-  border: 1px solid rgba(84, 54, 218, 0.3);
-  color: #a8c0ff;
-  margin-top: 8px;
+/* Configuration Modal */
+.uni-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeUpStagger 0.3s ease-out;
 }
 
-.uni-sidebar-btn:hover {
-  background: rgba(84, 54, 218, 0.2);
-  border-color: rgba(84, 54, 218, 0.5);
+.uni-modal-content {
+  background: var(--bg-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.uni-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.uni-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uni-option-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  padding: 1rem;
+  border-radius: 16px;
+  text-align: left;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.uni-option-btn:hover {
+  background: var(--sidebar-hover);
+  transform: scale(1.02);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.uni-option-btn:active {
+  transform: scale(0.98);
 }

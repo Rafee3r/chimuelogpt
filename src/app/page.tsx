@@ -39,6 +39,8 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"chat" | "university">("chat");
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedUniTask, setSelectedUniTask] = useState<"essay" | "science" | "synthesis" | "socratic" | null>(null);
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -225,33 +227,38 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const startUniversityTask = (type: "essay" | "science" | "synthesis" | "socratic") => {
+  const openConfigModal = (type: "essay" | "science" | "synthesis" | "socratic") => {
+    setSelectedUniTask(type);
+    setConfigModalOpen(true);
+  };
+
+  const launchUniversityTask = (subType: string) => {
     let systemPrompt = "";
     let firstMessage = "";
+    let title = "";
 
-    switch (type) {
-      case "essay":
-        systemPrompt = "Eres un Editor Académico experto nivel PhD y Profesor de Lenguaje. Tu objetivo es revisar textos, corregir ortografía, gramática, estructura argumentativa y asegurar que el tono cumpla con los estándares académicos (ej. formato APA). Siempre explica QUÉ cambiaste y POR QUÉ lo cambiaste para que el estudiante aprenda. NO escribas el ensayo desde cero, sino mejora lo que te dan.";
-        firstMessage = "¡Hola! He activado el Revisor de Ensayos. Por favor, pega aquí el texto o párrafo que quieres que revise, y me encargaré de pulirlo al máximo nivel académico.";
-        break;
-      case "science":
-        systemPrompt = "Eres un Tutor de Ciencias (Matemáticas, Física, Química, Computación) de la Universidad de Harvard. Tu enfoque es didáctico y de primer nivel. Cuando te presenten un problema, NO des solo la respuesta final. DEBES desglosar el razonamiento en pasos lógicos, usar fórmulas claras, explicar las leyes subyacentes y asegurarte de que el estudiante comprenda el mecanismo de resolución.";
-        firstMessage = "¡Hola! Soy tu Tutor de Ciencias. Sube una foto del problema o escríbelo aquí, y lo resolveremos paso a paso para que entiendas toda la lógica detrás.";
-        break;
-      case "synthesis":
-        systemPrompt = "Eres un Investigador Académico experto en Análisis Crítico del Discurso. Tu objetivo es ayudar al usuario a sintetizar textos complejos, papers o libros. Extrae la tesis central, los 3-5 argumentos principales que la sostienen, y las conclusiones. Si te suben imágenes de apuntes o libros, transcríbelas internamente y entrega el resumen estructurado en Markdown con bullet points claros.";
-        firstMessage = "¡Hola! Estoy listo para sintetizar tus lecturas. Sube las fotos de tus apuntes, páginas de libros o pega el texto, y extraeré las ideas clave.";
-        break;
-      case "socratic":
-        systemPrompt = "Eres un Profesor Socrático experto. Tu objetivo es preparar al estudiante para un examen oral o escrito. NO des respuestas directas. Pide al estudiante que defina el tema de estudio, y luego hazle preguntas progresivamente más difíciles. Corrige amablemente si se equivoca, y llévalo a deducir las respuestas por sí mismo. Usa un tono motivador pero académicamente riguroso.";
-        firstMessage = "¡Hola! Vamos a prepararte para tu examen. ¿Qué tema vas a estudiar hoy? Dame un poco de contexto y empezaré a hacerte preguntas para poner a prueba tu conocimiento.";
-        break;
+    if (selectedUniTask === "essay") {
+      title = "Editor: " + subType;
+      systemPrompt = `Eres un Editor Académico experto nivel PhD. Tu objetivo es revisar textos bajo el formato ${subType}. Corrige ortografía, gramática, y estructura argumentativa. Explica QUÉ cambiaste y POR QUÉ lo cambiaste para que el estudiante aprenda. NO escribas el ensayo desde cero.`;
+      firstMessage = `¡Hola! He activado el Revisor de Ensayos para formato **${subType}**. Por favor, pega aquí el texto o párrafo que quieres que revise.`;
+    } else if (selectedUniTask === "science") {
+      title = "Tutor: " + subType;
+      systemPrompt = `Eres un Tutor de Ciencias especializado en ${subType} de la Universidad de Harvard. Tu enfoque es didáctico. NO des solo la respuesta final. DEBES desglosar el razonamiento en pasos lógicos, usar fórmulas claras, explicar las leyes subyacentes y asegurarte de que el estudiante comprenda el mecanismo de resolución.`;
+      firstMessage = `¡Hola! Soy tu Tutor de **${subType}**. Sube una foto del problema o escríbelo aquí, y lo resolveremos paso a paso.`;
+    } else if (selectedUniTask === "synthesis") {
+      title = "Analista: " + subType;
+      systemPrompt = `Eres un Investigador Académico experto en Análisis Crítico. Tu objetivo es ayudar al usuario a sintetizar textos complejos. Extrae la tesis central, los argumentos principales y las conclusiones. Si el usuario pide ${subType}, asegúrate de que el formato de salida se enfoque en eso (ej. Markdown estructurado).`;
+      firstMessage = `¡Hola! Listo para realizar una **${subType}**. Sube fotos de tus apuntes o pega el texto.`;
+    } else if (selectedUniTask === "socratic") {
+      title = "Socrático: " + subType;
+      systemPrompt = `Eres un Profesor Socrático experto. Tu objetivo es preparar al estudiante para un examen ${subType}. NO des respuestas directas. Pide al estudiante que defina el tema de estudio, y luego hazle preguntas progresivamente más difíciles. Corrige amablemente si se equivoca, y llévalo a deducir las respuestas por sí mismo.`;
+      firstMessage = `¡Hola! Vamos a prepararte para tu examen **${subType}**. ¿Qué tema específico vas a estudiar hoy?`;
     }
 
     const newChatId = Date.now().toString();
     const newChat: Chat = {
       id: newChatId,
-      title: `Asistente: ${type === 'essay' ? 'Ensayos' : type === 'science' ? 'Ciencias' : type === 'synthesis' ? 'Síntesis' : 'Tutor Socrático'}`,
+      title: title,
       messages: [
         {
           id: Date.now().toString() + "_sys",
@@ -273,6 +280,7 @@ export default function Home() {
     setCustomInstructions(systemPrompt);
     setViewMode("chat");
     setSidebarOpen(false);
+    setConfigModalOpen(false);
   };
 
   const handleSendMessage = async (customMessage?: string) => {
@@ -642,14 +650,98 @@ export default function Home() {
         </div>
       </div>
 
+      {configModalOpen && selectedUniTask && (
+        <div className="uni-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfigModalOpen(false); }}>
+          <div className="uni-modal-content">
+            <div className="uni-modal-header">
+              <div className="uni-modal-title">
+                {selectedUniTask === "essay" ? "✍️ Configurar Edición" : 
+                 selectedUniTask === "science" ? "🧮 Seleccionar Materia" : 
+                 selectedUniTask === "synthesis" ? "📚 Modo de Síntesis" : "🧠 Tipo de Examen"}
+              </div>
+              <button className="icon-btn" onClick={() => setConfigModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {selectedUniTask === "essay" && (
+              <>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato APA (Estricto)")}>
+                  <span>Formato APA (Estricto)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato MLA")}>
+                  <span>Formato MLA</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Revisión de Ortografía General")}>
+                  <span>Solo Gramática Libre</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+              </>
+            )}
+            
+            {selectedUniTask === "science" && (
+              <>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Matemáticas y Cálculo")}>
+                  <span>Matemáticas y Cálculo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Física General")}>
+                  <span>Física General</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Química Orgánica")}>
+                  <span>Química Orgánica</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+              </>
+            )}
+
+            {selectedUniTask === "synthesis" && (
+              <>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Síntesis Rápida (Bullet points)")}>
+                  <span>Síntesis Rápida (Puntos Clave)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Análisis Crítico Profundo")}>
+                  <span>Análisis Crítico Profundo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+              </>
+            )}
+
+            {selectedUniTask === "socratic" && (
+              <>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Examen Oral (Muy Estricto)")}>
+                  <span>Simulador Examen Oral (Estricto)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+                <button className="uni-option-btn" onClick={() => launchUniversityTask("Cuestionario Escrito (Amable)")}>
+                  <span>Práctica Escrita (Amable)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="main-content">
         <div className="mobile-header">
           <button onClick={() => setSidebarOpen(true)} className="icon-btn">
             <Menu size={24} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          
+          <div className="mobile-segmented-control d-md-none" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'none' : 'flex' }}>
+            <button 
+              className={`segment-btn ${viewMode === 'chat' ? 'active' : ''}`}
+              onClick={() => setViewMode('chat')}
+            >
+              <MessageSquare size={14} /> Chat
+            </button>
+            <button 
+              className={`segment-btn ${viewMode === 'university' ? 'active' : ''}`}
+              onClick={() => setViewMode('university')}
+            >
+              <GraduationCap size={14} /> Académico
+            </button>
+          </div>
+          
+          <div className="d-none d-md-flex" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'flex' : 'none', alignItems: 'center', gap: '8px' }}>
             <span>ChimueloGPT</span>
           </div>
+
           <button onClick={() => createNewChat()} className="icon-btn">
             <Plus size={24} />
           </button>
@@ -659,29 +751,37 @@ export default function Home() {
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
-                <h1>Asistente Universitario 🎓</h1>
-                <p>Herramientas especializadas con prompts de alto rendimiento diseñadas para maximizar tus resultados académicos.</p>
+                <h1>Asistente Universitario</h1>
+                <p>Herramientas avanzadas potenciadas por modelos de razonamiento de alto CI.</p>
               </div>
               <div className="university-grid">
-                <div className="university-card" onClick={() => startUniversityTask("essay")}>
-                  <div className="uni-card-icon">✍️</div>
-                  <div className="uni-card-title">Revisor de Ensayos (APA)</div>
-                  <div className="uni-card-desc">Mejora la gramática, estructura argumentativa y tono académico de tus textos.</div>
+                <div className="university-card essay" onClick={() => openConfigModal("essay")}>
+                  <div className="uni-card-header">
+                    <div className="uni-card-icon-wrapper">✍️</div>
+                    <div className="uni-card-title">Revisor de Ensayos</div>
+                  </div>
+                  <div className="uni-card-desc">Mejora la gramática, estructura argumentativa y tono académico de tus textos bajo estándares APA/MLA.</div>
                 </div>
-                <div className="university-card" onClick={() => startUniversityTask("science")}>
-                  <div className="uni-card-icon">🧮</div>
-                  <div className="uni-card-title">Tutor de Ciencias Exactas</div>
-                  <div className="uni-card-desc">Resuelve problemas de matemáticas, física o química paso a paso, explicando el razonamiento.</div>
+                <div className="university-card science" onClick={() => openConfigModal("science")}>
+                  <div className="uni-card-header">
+                    <div className="uni-card-icon-wrapper">🧮</div>
+                    <div className="uni-card-title">Tutor de Ciencias</div>
+                  </div>
+                  <div className="uni-card-desc">Resuelve problemas matemáticos, físicos o químicos con un desglose paso a paso de toda la lógica matemática.</div>
                 </div>
-                <div className="university-card" onClick={() => startUniversityTask("synthesis")}>
-                  <div className="uni-card-icon">📚</div>
-                  <div className="uni-card-title">Sintetizador de Lecturas</div>
-                  <div className="uni-card-desc">Sube fotos de papers o textos largos y extraeré tesis principales, argumentos y conclusiones críticas.</div>
+                <div className="university-card synthesis" onClick={() => openConfigModal("synthesis")}>
+                  <div className="uni-card-header">
+                    <div className="uni-card-icon-wrapper">📚</div>
+                    <div className="uni-card-title">Sintetizador de Lecturas</div>
+                  </div>
+                  <div className="uni-card-desc">Procesa papers o apuntes largos para extraer instantáneamente la tesis central y argumentos principales.</div>
                 </div>
-                <div className="university-card" onClick={() => startUniversityTask("socratic")}>
-                  <div className="uni-card-icon">🧠</div>
-                  <div className="uni-card-title">Preparación de Exámenes (Socrático)</div>
-                  <div className="uni-card-desc">Te haré preguntas difíciles sobre un tema para poner a prueba tu conocimiento antes del examen.</div>
+                <div className="university-card socratic" onClick={() => openConfigModal("socratic")}>
+                  <div className="uni-card-header">
+                    <div className="uni-card-icon-wrapper">🧠</div>
+                    <div className="uni-card-title">Simulador de Exámenes</div>
+                  </div>
+                  <div className="uni-card-desc">Entra en el "Método Socrático". La IA te hará preguntas difíciles para prepararte mentalmente antes de tu examen.</div>
                 </div>
               </div>
             </div>
