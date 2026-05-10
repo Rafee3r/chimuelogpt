@@ -73,6 +73,13 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos días";
+    if (hour < 19) return "Buenas tardes";
+    return "Buenas noches";
+  };
+
   useEffect(() => {
     const savedAuth = localStorage.getItem("chimuelo_auth");
     if (savedAuth === "true") setIsAuthenticated(true);
@@ -969,27 +976,30 @@ export default function Home() {
               </div>
             </div>
           ) : displayMessages.length === 0 ? (
-            <div className="empty-state-container">
-              <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
-              <h2 className="empty-state-title">ChimueloGPT</h2>
-              <p className="empty-state-subtitle">Un gato que te regala 20 mil pesos de valor mensual por un churu.</p>
-              
-              <div className="examples-grid">
-                <button className="example-btn" onClick={() => handleSendMessage("Genera una imagen de un paisaje cyberpunk en formato ultra realista")}>
-                  <span className="example-title">Genera una imagen</span>
-                  <span className="example-desc">Un paisaje cyberpunk en formato ultra realista usando Fal.ai FLUX.2</span>
+            <div className="v2-empty-state">
+              <div className="v2-orb-container">
+                <div className="glowing-orb"></div>
+                <div className="glowing-orb-core"></div>
+              </div>
+              <h2 className="greeting-text-gradient">
+                {getGreeting()}, ¿en qué te ayudo hoy?
+              </h2>
+              <div className="smart-pills-container">
+                <button className="smart-pill" onClick={() => handleSendMessage("Genera una imagen de un paisaje cyberpunk en formato ultra realista")}>
+                  <span className="pill-icon">🎨</span>
+                  <span className="pill-text">Crear Imagen</span>
                 </button>
-                <button className="example-btn" onClick={() => handleSendMessage("Escribe un correo formal para solicitar una reunión con un cliente")}>
-                  <span className="example-title">Escribe un correo formal</span>
-                  <span className="example-desc">Para solicitar una reunión importante con un cliente</span>
+                <button className="smart-pill" onClick={() => handleSendMessage("Escribe un correo formal para solicitar una reunión con un cliente")}>
+                  <span className="pill-icon">✉️</span>
+                  <span className="pill-text">Redactar Correo</span>
                 </button>
-                <button className="example-btn" onClick={() => handleSendMessage("Explícame de forma sencilla cómo funciona la gravedad cuántica")}>
-                  <span className="example-title">Explícame de forma sencilla</span>
-                  <span className="example-desc">Cómo funciona la gravedad cuántica usando analogías</span>
+                <button className="smart-pill" onClick={() => handleSendMessage("Explícame de forma sencilla cómo funciona la gravedad cuántica")}>
+                  <span className="pill-icon">🧠</span>
+                  <span className="pill-text">Explicar Concepto</span>
                 </button>
-                <button className="example-btn" onClick={() => handleSendMessage("Ayúdame a organizar un menú semanal saludable y económico")}>
-                  <span className="example-title">Ayúdame a organizar</span>
-                  <span className="example-desc">Un menú semanal saludable y económico con ingredientes básicos</span>
+                <button className="smart-pill" onClick={() => handleSendMessage("Revisa este código y dime cómo optimizarlo")}>
+                  <span className="pill-icon">💻</span>
+                  <span className="pill-text">Revisar Código</span>
                 </button>
               </div>
             </div>
