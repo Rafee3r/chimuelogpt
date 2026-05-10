@@ -20,6 +20,14 @@ type Chat = {
   title: string;
   messages: BaseMessage[];
   updatedAt: number;
+  systemPrompt?: string;
+  subjectId?: string;
+};
+
+type Subject = {
+  id: string;
+  name: string;
+  baseMemory: string;
 };
 
 export default function Home() {
@@ -41,6 +49,11 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"chat" | "university">("chat");
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedUniTask, setSelectedUniTask] = useState<"essay" | "science" | "synthesis" | "socratic" | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
+  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectMemory, setNewSubjectMemory] = useState("");
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -82,6 +95,12 @@ export default function Home() {
 
     const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
     if (savedModel) setModel(savedModel);
+
+    const savedSubjects = localStorage.getItem("chimuelo_subjects");
+    if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
+    
+    const savedActiveSubject = localStorage.getItem("chimuelo_active_subject");
+    if (savedActiveSubject) setActiveSubjectId(savedActiveSubject);
 
     const currentChat = localStorage.getItem("chimuelo_current_chat");
     if (currentChat) {
@@ -227,6 +246,23 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleCreateSubject = () => {
+    if (!newSubjectName.trim()) return;
+    const newSubject: Subject = {
+      id: Date.now().toString(),
+      name: newSubjectName,
+      baseMemory: newSubjectMemory
+    };
+    const updated = [...subjects, newSubject];
+    setSubjects(updated);
+    localStorage.setItem("chimuelo_subjects", JSON.stringify(updated));
+    setActiveSubjectId(newSubject.id);
+    localStorage.setItem("chimuelo_active_subject", newSubject.id);
+    setNewSubjectName("");
+    setNewSubjectMemory("");
+    setIsCreatingSubject(false);
+  };
+
   const openConfigModal = (type: "essay" | "science" | "synthesis" | "socratic") => {
     setSelectedUniTask(type);
     setConfigModalOpen(true);
@@ -266,7 +302,9 @@ export default function Home() {
           content: firstMessage
         }
       ],
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      systemPrompt: systemPrompt,
+      subjectId: activeSubjectId || undefined
     };
     
     setChats(prev => {
@@ -277,7 +315,6 @@ export default function Home() {
     setCurrentChatId(newChatId);
     localStorage.setItem("chimuelo_current_chat", newChatId);
     setDisplayMessages(newChat.messages);
-    setCustomInstructions(systemPrompt);
     setViewMode("chat");
     setSidebarOpen(false);
     setConfigModalOpen(false);
@@ -360,20 +397,31 @@ export default function Home() {
         .map(m => ({ role: m.role, content: m.content }));
       historyMsgs.push({ role: 'user' as const, content: finalContent });
 
+      let finalSystemPrompt = customInstructions;
+      if (chatForApi) {
+        if (chatForApi.systemPrompt) finalSystemPrompt = chatForApi.systemPrompt;
+        if (chatForApi.subjectId) {
+          const subject = subjects.find(s => s.id === chatForApi.subjectId);
+          if (subject && subject.baseMemory) {
+            finalSystemPrompt += `\n\n[SISTEMA DE MEMORIA ACTIVO]\nESTÁS EN EL CONTEXTO DE LA MATERIA: "${subject.name}".\nSyllabus o apuntes base obligatorios de esta clase:\n${subject.baseMemory}\n[FIN DE MEMORIA. Todo lo que respondas debe tener en cuenta este contexto estrictamente.]`;
+          }
+        }
+      }
+
       let res: Response;
       if (imagePayload) {
         // Use Claude Haiku vision endpoint
         res = await fetch('/api/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions })
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt })
         });
       } else {
         // Use DeepSeek text endpoint
         res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions })
+          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt })
         });
       }
 
@@ -538,8 +586,50 @@ export default function Home() {
               document.body.removeChild(a);
             }}
           >
-            <Download size={18} />
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const exportToAPA = (text: string) => {
+    const doc = new jsPDF();
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    
+    const cleanText = text.replace(/[*_#`>]/g, "");
+    const lines = doc.splitTextToSize(cleanText, 160);
+    let y = 25.4;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (y > pageHeight - 25.4) {
+        doc.addPage();
+        y = 25.4;
+      }
+      doc.text(lines[i], 25.4, y);
+      y += 8.4;
+    }
+    doc.save("Documento_APA.pdf");
+  };
+
+  const InteractiveFlashcard = ({ q, a }: { q: string, a: string }) => {
+    const [flipped, setFlipped] = useState(false);
+    return (
+      <div 
+        className={`flashcard-container ${flipped ? 'flipped' : ''}`}
+        onClick={() => setFlipped(!flipped)}
+      >
+        <div className="flashcard-inner">
+          <div className="flashcard-front">
+            <div className="flashcard-label">Pregunta</div>
+            <div className="flashcard-text">{q}</div>
+            <div className="flashcard-hint">Toca para voltear ↺</div>
+          </div>
+          <div className="flashcard-back">
+            <div className="flashcard-label">Respuesta</div>
+            <div className="flashcard-text">{a}</div>
+          </div>
         </div>
       </div>
     );
@@ -751,9 +841,65 @@ export default function Home() {
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
-                <h1>Asistente Universitario</h1>
-                <p>Herramientas avanzadas potenciadas por modelos de razonamiento de alto CI.</p>
+                <h1>Cerebro Académico</h1>
+                <p>Workspaces con memoria persistente e IA de nivel superior.</p>
               </div>
+              
+              <div className="workspace-selector" style={{ width: '100%', maxWidth: '850px', marginBottom: '2rem', background: 'var(--input-bg)', padding: '1.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', animation: 'fadeUpStagger 0.4s ease both' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}><Book size={20} /> Entorno de Estudio Activo</h3>
+                  {!isCreatingSubject && (
+                    <button className="download-btn" onClick={() => setIsCreatingSubject(true)} style={{ background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', color: '#1a1a1a' }}>
+                      <Plus size={16} style={{ marginRight: '6px' }} /> Nueva Materia
+                    </button>
+                  )}
+                </div>
+
+                {isCreatingSubject ? (
+                  <div className="subject-creator" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Nombre de la Materia (Ej. Física Cuántica)" 
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      className="auth-input-modern"
+                    />
+                    <textarea 
+                      placeholder="Syllabus / Memoria Base: Pega aquí los apuntes clave, formato esperado o rúbrica de esta clase. La IA heredará todo este conocimiento invisiblemente para cada tarea de esta materia."
+                      value={newSubjectMemory}
+                      onChange={(e) => setNewSubjectMemory(e.target.value)}
+                      className="auth-input-modern"
+                      style={{ minHeight: '120px', resize: 'vertical' }}
+                    />
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                      <button className="action-btn" onClick={() => setIsCreatingSubject(false)}>Cancelar</button>
+                      <button className="download-btn" onClick={handleCreateSubject} style={{ background: '#4FACFE' }}>Crear Espacio</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {subjects.length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>No tienes espacios creados. Crea uno para inyectar memoria a largo plazo a tus chats.</p>
+                    ) : (
+                      <select 
+                        value={activeSubjectId || ""} 
+                        onChange={(e) => {
+                          setActiveSubjectId(e.target.value);
+                          localStorage.setItem("chimuelo_active_subject", e.target.value);
+                        }}
+                        className="auth-input-modern"
+                        style={{ padding: '0.75rem', cursor: 'pointer', appearance: 'auto' }}
+                      >
+                        <option value="">-- Sin Materia Activa (Modo General Universitario) --</option>
+                        {subjects.map(s => (
+                          <option key={s.id} value={s.id}>📖 {s.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="university-grid">
                 <div className="university-card essay" onClick={() => openConfigModal("essay")}>
                   <div className="uni-card-header">
@@ -859,6 +1005,18 @@ export default function Home() {
                       let artifactContent = '';
                       let artifactTitle = 'Diseño Generado';
                       let artifactDesc = 'Haz clic para previsualizar y descargar PDF';
+                      let flashcards: {q: string, a: string}[] | null = null;
+                      
+                      const jsonMatch = currentBody.match(/```(?:json)?\n([\s\S]*?)\n```/);
+                      if (jsonMatch) {
+                        try {
+                          const parsed = JSON.parse(jsonMatch[1]);
+                          if (parsed.flashcards && Array.isArray(parsed.flashcards)) {
+                            flashcards = parsed.flashcards;
+                            currentBody = currentBody.replace(jsonMatch[0], '').trim();
+                          }
+                        } catch(e) {}
+                      }
                       
                       if (hasImageTag) {
                         currentBody = currentBody.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen... por favor espera.').trim();
@@ -900,6 +1058,22 @@ export default function Home() {
                             >
                               {currentBody}
                             </ReactMarkdown>
+                            {msg.role === 'assistant' && activeChat?.subjectId && (
+                               <div className="apa-export-bar" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+                                  <button className="download-btn" onClick={() => exportToAPA(currentBody)}>
+                                    <Download size={14} style={{ marginRight: '6px' }} /> Exportar a PDF (Formato APA)
+                                  </button>
+                               </div>
+                            )}
+                            
+                            {flashcards && flashcards.length > 0 && (
+                              <div className="flashcards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                                {flashcards.map((fc, idx) => (
+                                  <InteractiveFlashcard key={idx} q={fc.q} a={fc.a} />
+                                ))}
+                              </div>
+                            )}
+                            
                             {msg.role === 'assistant' && showArtifact && (
                               <div 
                                 className={`artifact-card ${isArtifactComplete ? '' : 'loading'}`}
