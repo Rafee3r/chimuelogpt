@@ -2113,3 +2113,87 @@ a {
   background: var(--sidebar-hover);
   color: var(--text-primary);
 }
+
+/* =========================================================================
+   Mobile Responsive Fixes (≤520px) — solo afecta pantallas pequeñas
+   ========================================================================= */
+@media (max-width: 520px) {
+
+  /* ── Empty State ── */
+  .v2-orb-container {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1.2rem;
+  }
+
+  .glowing-orb-core {
+    width: 44px;
+    height: 44px;
+  }
+
+  .greeting-text-gradient {
+    font-size: 1.45rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.35;
+  }
+
+  /* Pone las píldoras en 2 columnas simétricas en lugar de 1 */
+  .smart-pills-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .smart-pill {
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* ── Model Selector Buttons ── */
+  .v2-model-btn {
+    white-space: nowrap;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* ── Input Bar ── */
+  .v2-input-textarea {
+    font-size: 0.9rem;
+  }
+
+  .disclaimer {
+    font-size: 0.68rem;
+    padding: 0 0.5rem;
+  }
+
+  /* ── University Dashboard ── */
+  .university-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .university-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subject-form-card {
+    padding: 1rem;
+  }
+
+  .subject-add-first-btn {
+    font-size: 0.9rem;
+    padding: 10px 18px;
+  }
+
+  /* Chips en móvil: wrap más apretado */
+  .subject-chips-list {
+    gap: 6px;
+  }
+
+  .subject-chip {
+    font-size: 0.82rem;
+    padding: 7px 12px;
+  }
+}
