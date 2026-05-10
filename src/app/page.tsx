@@ -858,7 +858,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="chat-area">
+        <div className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : undefined }}>
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
