@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -261,6 +261,16 @@ export default function Home() {
     setNewSubjectName("");
     setNewSubjectMemory("");
     setIsCreatingSubject(false);
+  };
+
+  const handleDeleteSubject = (id: string) => {
+    const updated = subjects.filter(s => s.id !== id);
+    setSubjects(updated);
+    localStorage.setItem("chimuelo_subjects", JSON.stringify(updated));
+    if (activeSubjectId === id) {
+      setActiveSubjectId(null);
+      localStorage.removeItem("chimuelo_active_subject");
+    }
   };
 
   const openConfigModal = (type: "essay" | "science" | "synthesis" | "socratic") => {
@@ -543,11 +553,16 @@ export default function Home() {
   };
 
   const clearAllHistory = () => {
-    if (confirm("¿Estás seguro de que quieres borrar todo el historial? Esto no se puede deshacer.")) {
+    if (window.confirm("¿Seguro que quieres borrar todas tus conversaciones y espacios de estudio? Esta acción no se puede deshacer.")) {
       setChats([]);
+      setDisplayMessages([]);
       setCurrentChatId(null);
+      setSubjects([]);
+      setActiveSubjectId(null);
       localStorage.removeItem("chimuelo_chats");
       localStorage.removeItem("chimuelo_current_chat");
+      localStorage.removeItem("chimuelo_subjects");
+      localStorage.removeItem("chimuelo_active_subject");
       setSettingsOpen(false);
     }
   };
@@ -565,6 +580,7 @@ export default function Home() {
     } else {
       createNewChat();
     }
+    setAttachedImage(null);
     setSidebarOpen(false);
     setViewMode("chat");
   };
@@ -597,13 +613,18 @@ export default function Home() {
     doc.setFont("times", "normal");
     doc.setFontSize(12);
     
-    const cleanText = text.replace(/[*_#`>]/g, "");
+    // Better markdown cleaning for APA
+    let cleanText = text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Remove links but keep text
+      .replace(/[*_#`>]/g, "") // Remove bold, italic, headings, blockquotes
+      .replace(/<[^>]*>?/gm, ""); // Remove any stray HTML
+      
     const lines = doc.splitTextToSize(cleanText, 160);
     let y = 25.4;
     const pageHeight = doc.internal.pageSize.height;
     
     for (let i = 0; i < lines.length; i++) {
-      if (y > pageHeight - 25.4) {
+      if (y > pageHeight - 20) {
         doc.addPage();
         y = 25.4;
       }
@@ -816,7 +837,11 @@ export default function Home() {
           <div className="mobile-segmented-control d-md-none" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'none' : 'flex' }}>
             <button 
               className={`segment-btn ${viewMode === 'chat' ? 'active' : ''}`}
-              onClick={() => setViewMode('chat')}
+              onClick={() => {
+                setViewMode('chat');
+                setCurrentChatId(null);
+                setDisplayMessages([]);
+              }}
             >
               <MessageSquare size={14} /> Chat
             </button>
@@ -881,20 +906,36 @@ export default function Home() {
                     {subjects.length === 0 ? (
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>No tienes espacios creados. Crea uno para inyectar memoria a largo plazo a tus chats.</p>
                     ) : (
-                      <select 
-                        value={activeSubjectId || ""} 
-                        onChange={(e) => {
-                          setActiveSubjectId(e.target.value);
-                          localStorage.setItem("chimuelo_active_subject", e.target.value);
-                        }}
-                        className="auth-input-modern"
-                        style={{ padding: '0.75rem', cursor: 'pointer', appearance: 'auto' }}
-                      >
-                        <option value="">-- Sin Materia Activa (Modo General Universitario) --</option>
-                        {subjects.map(s => (
-                          <option key={s.id} value={s.id}>📖 {s.name}</option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select 
+                          value={activeSubjectId || ""} 
+                          onChange={(e) => {
+                            setActiveSubjectId(e.target.value || null);
+                            if (e.target.value) {
+                              localStorage.setItem("chimuelo_active_subject", e.target.value);
+                            } else {
+                              localStorage.removeItem("chimuelo_active_subject");
+                            }
+                          }}
+                          className="auth-input-modern"
+                          style={{ padding: '0.75rem', cursor: 'pointer', appearance: 'auto', flex: 1 }}
+                        >
+                          <option value="">-- Sin Materia Activa (Modo General Universitario) --</option>
+                          {subjects.map(s => (
+                            <option key={s.id} value={s.id}>📖 {s.name}</option>
+                          ))}
+                        </select>
+                        {activeSubjectId && (
+                          <button 
+                            onClick={() => handleDeleteSubject(activeSubjectId)}
+                            className="icon-btn hover-bg"
+                            style={{ color: '#ef4444' }}
+                            title="Eliminar Materia Activa"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
