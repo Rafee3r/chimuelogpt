@@ -1208,3 +1208,116 @@ a {
 .download-btn:hover {
   opacity: 0.9;
 }
+
+/* University Mode Styles */
+.university-dashboard {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+  align-items: center;
+}
+
+.university-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.university-header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.university-header p {
+  color: var(--text-secondary);
+  max-width: 500px;
+}
+
+.university-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 800px;
+}
+
+@media (min-width: 768px) {
+  .university-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.university-card {
+  background: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.university-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(84, 54, 218, 0.1) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.university-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(84, 54, 218, 0.5);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.university-card:hover::before {
+  opacity: 1;
+}
+
+.uni-card-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.uni-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 1;
+}
+
+.uni-card-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+.uni-sidebar-btn {
+  background: linear-gradient(90deg, rgba(84, 54, 218, 0.1) 0%, transparent 100%);
+  border: 1px solid rgba(84, 54, 218, 0.3);
+  color: #a8c0ff;
+  margin-top: 8px;
+}
+
+.uni-sidebar-btn:hover {
+  background: rgba(84, 54, 218, 0.2);
+  border-color: rgba(84, 54, 218, 0.5);
+}

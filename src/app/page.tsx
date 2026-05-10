@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -38,6 +38,7 @@ export default function Home() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"chat" | "university">("chat");
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -171,6 +172,7 @@ export default function Home() {
     localStorage.setItem("chimuelo_current_chat", newChat.id);
     setDisplayMessages([]);
     setSidebarOpen(false);
+    setViewMode("chat");
   };
 
   const compressImage = (base64Str: string): Promise<string> => {
@@ -221,6 +223,56 @@ export default function Home() {
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const startUniversityTask = (type: "essay" | "science" | "synthesis" | "socratic") => {
+    let systemPrompt = "";
+    let firstMessage = "";
+
+    switch (type) {
+      case "essay":
+        systemPrompt = "Eres un Editor Académico experto nivel PhD y Profesor de Lenguaje. Tu objetivo es revisar textos, corregir ortografía, gramática, estructura argumentativa y asegurar que el tono cumpla con los estándares académicos (ej. formato APA). Siempre explica QUÉ cambiaste y POR QUÉ lo cambiaste para que el estudiante aprenda. NO escribas el ensayo desde cero, sino mejora lo que te dan.";
+        firstMessage = "¡Hola! He activado el Revisor de Ensayos. Por favor, pega aquí el texto o párrafo que quieres que revise, y me encargaré de pulirlo al máximo nivel académico.";
+        break;
+      case "science":
+        systemPrompt = "Eres un Tutor de Ciencias (Matemáticas, Física, Química, Computación) de la Universidad de Harvard. Tu enfoque es didáctico y de primer nivel. Cuando te presenten un problema, NO des solo la respuesta final. DEBES desglosar el razonamiento en pasos lógicos, usar fórmulas claras, explicar las leyes subyacentes y asegurarte de que el estudiante comprenda el mecanismo de resolución.";
+        firstMessage = "¡Hola! Soy tu Tutor de Ciencias. Sube una foto del problema o escríbelo aquí, y lo resolveremos paso a paso para que entiendas toda la lógica detrás.";
+        break;
+      case "synthesis":
+        systemPrompt = "Eres un Investigador Académico experto en Análisis Crítico del Discurso. Tu objetivo es ayudar al usuario a sintetizar textos complejos, papers o libros. Extrae la tesis central, los 3-5 argumentos principales que la sostienen, y las conclusiones. Si te suben imágenes de apuntes o libros, transcríbelas internamente y entrega el resumen estructurado en Markdown con bullet points claros.";
+        firstMessage = "¡Hola! Estoy listo para sintetizar tus lecturas. Sube las fotos de tus apuntes, páginas de libros o pega el texto, y extraeré las ideas clave.";
+        break;
+      case "socratic":
+        systemPrompt = "Eres un Profesor Socrático experto. Tu objetivo es preparar al estudiante para un examen oral o escrito. NO des respuestas directas. Pide al estudiante que defina el tema de estudio, y luego hazle preguntas progresivamente más difíciles. Corrige amablemente si se equivoca, y llévalo a deducir las respuestas por sí mismo. Usa un tono motivador pero académicamente riguroso.";
+        firstMessage = "¡Hola! Vamos a prepararte para tu examen. ¿Qué tema vas a estudiar hoy? Dame un poco de contexto y empezaré a hacerte preguntas para poner a prueba tu conocimiento.";
+        break;
+    }
+
+    const newChatId = Date.now().toString();
+    const newChat: Chat = {
+      id: newChatId,
+      title: `Asistente: ${type === 'essay' ? 'Ensayos' : type === 'science' ? 'Ciencias' : type === 'synthesis' ? 'Síntesis' : 'Tutor Socrático'}`,
+      messages: [
+        {
+          id: Date.now().toString() + "_sys",
+          role: "assistant",
+          content: firstMessage
+        }
+      ],
+      updatedAt: Date.now()
+    };
+    
+    setChats(prev => {
+      const updated = [newChat, ...prev];
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
+    setCurrentChatId(newChatId);
+    localStorage.setItem("chimuelo_current_chat", newChatId);
+    setDisplayMessages(newChat.messages);
+    setCustomInstructions(systemPrompt);
+    setViewMode("chat");
+    setSidebarOpen(false);
   };
 
   const handleSendMessage = async (customMessage?: string) => {
@@ -458,6 +510,7 @@ export default function Home() {
       createNewChat();
     }
     setSidebarOpen(false);
+    setViewMode("chat");
   };
 
   const ImageRenderer = ({ node, ...props }: any) => {
@@ -558,6 +611,10 @@ export default function Home() {
             <SquarePen size={18} style={{ flexShrink: 0 }} />
             <span>Nueva conversación</span>
           </button>
+          <button className="new-chat-btn uni-sidebar-btn" onClick={() => { setViewMode("university"); setSidebarOpen(false); }}>
+            <GraduationCap size={18} style={{ flexShrink: 0 }} />
+            <span>Modo Universitario</span>
+          </button>
         </div>
 
         <div className="sidebar-section-title">Conversaciones</div>
@@ -599,7 +656,36 @@ export default function Home() {
         </div>
 
         <div className="chat-area">
-          {displayMessages.length === 0 ? (
+          {viewMode === "university" ? (
+            <div className="university-dashboard">
+              <div className="university-header">
+                <h1>Asistente Universitario 🎓</h1>
+                <p>Herramientas especializadas con prompts de alto rendimiento diseñadas para maximizar tus resultados académicos.</p>
+              </div>
+              <div className="university-grid">
+                <div className="university-card" onClick={() => startUniversityTask("essay")}>
+                  <div className="uni-card-icon">✍️</div>
+                  <div className="uni-card-title">Revisor de Ensayos (APA)</div>
+                  <div className="uni-card-desc">Mejora la gramática, estructura argumentativa y tono académico de tus textos.</div>
+                </div>
+                <div className="university-card" onClick={() => startUniversityTask("science")}>
+                  <div className="uni-card-icon">🧮</div>
+                  <div className="uni-card-title">Tutor de Ciencias Exactas</div>
+                  <div className="uni-card-desc">Resuelve problemas de matemáticas, física o química paso a paso, explicando el razonamiento.</div>
+                </div>
+                <div className="university-card" onClick={() => startUniversityTask("synthesis")}>
+                  <div className="uni-card-icon">📚</div>
+                  <div className="uni-card-title">Sintetizador de Lecturas</div>
+                  <div className="uni-card-desc">Sube fotos de papers o textos largos y extraeré tesis principales, argumentos y conclusiones críticas.</div>
+                </div>
+                <div className="university-card" onClick={() => startUniversityTask("socratic")}>
+                  <div className="uni-card-icon">🧠</div>
+                  <div className="uni-card-title">Preparación de Exámenes (Socrático)</div>
+                  <div className="uni-card-desc">Te haré preguntas difíciles sobre un tema para poner a prueba tu conocimiento antes del examen.</div>
+                </div>
+              </div>
+            </div>
+          ) : displayMessages.length === 0 ? (
             <div className="empty-state-container">
               <Cat size={48} strokeWidth={1.5} style={{ marginBottom: '1rem', color: 'var(--text-primary)' }} />
               <h2 className="empty-state-title">ChimueloGPT</h2>
