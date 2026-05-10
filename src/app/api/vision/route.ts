@@ -16,7 +16,17 @@ export async function POST(req: Request) {
     const lastUserMsg = messages[messages.length - 1];
     const priorMessages = messages.slice(0, -1)
       .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-      .map((m: any) => ({ role: m.role, content: m.content || '' }));
+      .map((m: any) => {
+        // If content is an array (from a previous vision message), extract only text parts
+        if (Array.isArray(m.content)) {
+          const textContent = m.content
+            .filter((c: any) => c.type === 'text')
+            .map((c: any) => c.text)
+            .join('\n');
+          return { role: m.role, content: textContent || 'Ver imagen adjunta.' };
+        }
+        return { role: m.role, content: m.content || '' };
+      });
 
     // Detect media type from base64 header
     const mediaTypeMatch = imageBase64?.match(/^data:(image\/\w+);base64,/);
@@ -63,7 +73,7 @@ export async function POST(req: Request) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku',
+        model: 'claude-3-5-sonnet-20240620',
         max_tokens: 4096,
         system: `${personaPrompt}${customInstructionsPrompt}
 REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
