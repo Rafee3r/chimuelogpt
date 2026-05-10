@@ -873,7 +873,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : undefined }}>
+        <div className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
@@ -881,72 +881,113 @@ export default function Home() {
                 <p>Tu propio lugar de estudio. Añade tus materias y la IA recordará tus apuntes.</p>
               </div>
               
-              <div className="workspace-selector" style={{ width: '100%', maxWidth: '850px', marginBottom: '2rem', background: 'var(--input-bg)', padding: '1.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', animation: 'fadeUpStagger 0.4s ease both' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}><Book size={20} /> Tus Ramos / Materias</h3>
-                  {!isCreatingSubject && (
-                    <button className="download-btn" onClick={() => setIsCreatingSubject(true)} style={{ background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', color: '#1a1a1a' }}>
-                      <Plus size={16} style={{ marginRight: '6px' }} /> Nueva Materia
-                    </button>
-                  )}
-                </div>
+              <div className="subject-section" style={{ width: '100%', maxWidth: '850px', marginBottom: '2rem', animation: 'fadeUpStagger 0.4s ease both' }}>
 
                 {isCreatingSubject ? (
-                  <div className="subject-creator" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Nombre de la Materia (Ej. Física Cuántica)" 
-                      value={newSubjectName}
-                      onChange={(e) => setNewSubjectName(e.target.value)}
-                      className="auth-input-modern"
-                    />
-                    <textarea 
-                      placeholder="Apuntes Clave o Reglas: Pega aquí el resumen del curso, las reglas del profe o el PDF de la clase. La IA leerá esto antes de responder cualquier cosa en esta materia (Ej: 'El profe odia Wikipedia', 'Usa siempre APA')."
-                      value={newSubjectMemory}
-                      onChange={(e) => setNewSubjectMemory(e.target.value)}
-                      className="auth-input-modern"
-                      style={{ minHeight: '120px', resize: 'vertical' }}
-                    />
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                      <button className="action-btn" onClick={() => setIsCreatingSubject(false)}>Cancelar</button>
-                      <button className="download-btn" onClick={handleCreateSubject} style={{ background: '#4FACFE' }}>Guardar Materia</button>
+                  /* ── CREAR MATERIA: Formulario guiado ── */
+                  <div className="subject-form-card">
+                    <div className="subject-form-header">
+                      <div style={{ fontSize: '2rem' }}>📚</div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Añadir un Ramo</h3>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Chimuelo recordará todo lo que pongas aquí</p>
+                      </div>
+                    </div>
+
+                    <div className="subject-form-field">
+                      <label className="subject-form-label">
+                        <span className="subject-label-icon">📝</span>
+                        <span>¿Cómo se llama la materia?</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Cálculo 2, Historia de México, Programación..."
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        className="subject-field-input"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="subject-form-field">
+                      <label className="subject-form-label">
+                        <span className="subject-label-icon">💡</span>
+                        <span>¿Qué debe saber Chimuelo de esta materia? <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(opcional)</span></span>
+                      </label>
+                      <p className="subject-field-hint">Pega aquí: apuntes del curso, cómo le gusta al profe que entregues, el formato APA o lo que quieras que Chimuelo siempre recuerde de esta materia.</p>
+                      <textarea
+                        placeholder={"Ej:\n- El profe pide todo en APA\n- Las tareas deben tener al menos 3 fuentes\n- No usa Wikipedia como referencia válida"}
+                        value={newSubjectMemory}
+                        onChange={(e) => setNewSubjectMemory(e.target.value)}
+                        className="subject-field-textarea"
+                      />
+                    </div>
+
+                    <div className="subject-form-actions">
+                      <button className="subject-cancel-btn" onClick={() => { setIsCreatingSubject(false); setNewSubjectName(''); setNewSubjectMemory(''); }}>
+                        Cancelar
+                      </button>
+                      <button className="subject-save-btn" onClick={handleCreateSubject} disabled={!newSubjectName.trim()}>
+                        ✓ Guardar Materia
+                      </button>
                     </div>
                   </div>
+
+                ) : subjects.length === 0 ? (
+                  /* ── ESTADO VACÍO: Invitar a crear ── */
+                  <div className="subject-empty-state">
+                    <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎒</div>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700 }}>Aún no tienes materias guardadas</h3>
+                    <p style={{ margin: '0 0 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '320px', textAlign: 'center', lineHeight: 1.5 }}>
+                      Agrega un ramo y Chimuelo recordará tus apuntes, el formato del profe y lo que necesitas para cada clase.
+                    </p>
+                    <button className="subject-add-first-btn" onClick={() => setIsCreatingSubject(true)}>
+                      <Plus size={18} /> Agregar mi primer ramo
+                    </button>
+                  </div>
+
                 ) : (
+                  /* ── LISTA DE MATERIAS: Chips seleccionables ── */
                   <div>
-                    {subjects.length === 0 ? (
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>Aún no tienes materias. Agrega una para que Chimuelo recuerde tus apuntes en cada chat nuevo.</p>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <select 
-                          value={activeSubjectId || ""} 
-                          onChange={(e) => {
-                            setActiveSubjectId(e.target.value || null);
-                            if (e.target.value) {
-                              localStorage.setItem("chimuelo_active_subject", e.target.value);
-                            } else {
-                              localStorage.removeItem("chimuelo_active_subject");
-                            }
-                          }}
-                          className="auth-input-modern"
-                          style={{ padding: '0.75rem', cursor: 'pointer', appearance: 'auto', flex: 1 }}
-                        >
-                          <option value="">-- Sin Ramo Activo (Asistente General) --</option>
-                          {subjects.map(s => (
-                            <option key={s.id} value={s.id}>📖 {s.name}</option>
-                          ))}
-                        </select>
-                        {activeSubjectId && (
-                          <button 
-                            onClick={() => handleDeleteSubject(activeSubjectId)}
-                            className="icon-btn hover-bg"
-                            style={{ color: '#ef4444' }}
-                            title="Eliminar Materia Activa"
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        Elige con qué materia quieres trabajar ahora:
+                      </p>
+                      <button className="subject-add-more-btn" onClick={() => setIsCreatingSubject(true)}>
+                        <Plus size={14} /> Añadir
+                      </button>
+                    </div>
+                    <div className="subject-chips-list">
+                      <button
+                        className={`subject-chip ${!activeSubjectId ? 'active' : ''}`}
+                        onClick={() => { setActiveSubjectId(null); localStorage.removeItem('chimuelo_active_subject'); }}
+                      >
+                        <span>🌐</span> General
+                      </button>
+                      {subjects.map(s => (
+                        <div key={s.id} className="subject-chip-wrapper">
+                          <button
+                            className={`subject-chip ${activeSubjectId === s.id ? 'active' : ''}`}
+                            onClick={() => { setActiveSubjectId(s.id); localStorage.setItem('chimuelo_active_subject', s.id); }}
                           >
-                            <Trash2 size={20} />
+                            <span>📖</span> {s.name}
                           </button>
-                        )}
-                      </div>
+                          {activeSubjectId === s.id && (
+                            <button
+                              className="subject-chip-delete"
+                              onClick={() => handleDeleteSubject(s.id)}
+                              title="Eliminar materia"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {activeSubjectId && (
+                      <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        ✅ Chimuelo recordará los apuntes de <strong>{subjects.find(s => s.id === activeSubjectId)?.name}</strong> en este chat.
+                      </p>
                     )}
                   </div>
                 )}
@@ -1036,18 +1077,37 @@ export default function Home() {
                     
                     {role === 'assistant' && reasoning && (() => {
                       const isStreaming = !displayContent;
-                      const previewText = reasoning.length > 60 ? reasoning.slice(0, 60) + '...' : reasoning;
                       return (
-                        <details className="reasoning-box">
-                          <summary className="reasoning-summary">
-                            <span className={`reasoning-icon ${isStreaming ? 'reasoning-pulse' : ''}`}>🧠</span>
-                            <span>{isStreaming ? 'Pensando...' : 'Pensamiento'}</span>
-                            <span className="reasoning-preview">{previewText}</span>
-                          </summary>
-                          <div className="reasoning-content">
-                            {reasoning}
+                        <div className={`reasoning-v2-card ${isStreaming ? 'streaming' : 'done'}`}>
+                          <div className="reasoning-v2-header">
+                            <div className="reasoning-v2-orb">
+                              <span className="reasoning-v2-brain">🧠</span>
+                            </div>
+                            <div className="reasoning-v2-title-area">
+                              {isStreaming ? (
+                                <>
+                                  <span className="reasoning-v2-title">Pensando profundamente...</span>
+                                  <div className="reasoning-v2-dots">
+                                    <span></span><span></span><span></span>
+                                  </div>
+                                </>
+                              ) : (
+                                <details style={{ listStyle: 'none', width: '100%' }}>
+                                  <summary className="reasoning-v2-summary">
+                                    <span className="reasoning-v2-title">Proceso de pensamiento</span>
+                                    <span className="reasoning-v2-toggle-hint">Toca para ver ↓</span>
+                                  </summary>
+                                  <div className="reasoning-v2-body">{reasoning}</div>
+                                </details>
+                              )}
+                            </div>
                           </div>
-                        </details>
+                          {isStreaming && (
+                            <div className="reasoning-v2-live">
+                              <div className="reasoning-v2-live-text">{reasoning}</div>
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
 

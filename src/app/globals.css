@@ -806,6 +806,148 @@ a {
   font-style: italic;
 }
 
+/* ── Reasoning V2 Card ── */
+.reasoning-v2-card {
+  margin: 10px 0 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  font-size: 0.88rem;
+  transition: all 0.3s ease;
+}
+
+.reasoning-v2-card.streaming {
+  background: linear-gradient(135deg, rgba(99,140,255,0.08) 0%, rgba(161,140,209,0.06) 100%);
+  border: 1px solid rgba(99,140,255,0.25);
+  animation: reasoning-card-pulse 2s ease-in-out infinite;
+}
+
+.reasoning-v2-card.done {
+  background: rgba(99,140,255,0.04);
+  border: 1px solid rgba(99,140,255,0.12);
+}
+
+@keyframes reasoning-card-pulse {
+  0%, 100% { border-color: rgba(99,140,255,0.25); box-shadow: 0 0 0 rgba(99,140,255,0); }
+  50% { border-color: rgba(161,140,209,0.5); box-shadow: 0 0 12px rgba(99,140,255,0.1); }
+}
+
+.reasoning-v2-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.reasoning-v2-orb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(99,140,255,0.3), rgba(161,140,209,0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.reasoning-v2-card.streaming .reasoning-v2-orb {
+  animation: reasoning-orb-spin 3s linear infinite;
+}
+
+@keyframes reasoning-orb-spin {
+  0% { box-shadow: 0 0 0 rgba(99,140,255,0); }
+  50% { box-shadow: 0 0 10px rgba(99,140,255,0.4); }
+  100% { box-shadow: 0 0 0 rgba(99,140,255,0); }
+}
+
+.reasoning-v2-title-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.reasoning-v2-title {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.reasoning-v2-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.reasoning-v2-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(99,140,255,0.6);
+  animation: reasoning-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.reasoning-v2-dots span:nth-child(2) { animation-delay: 0.2s; }
+.reasoning-v2-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes reasoning-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+.reasoning-v2-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  width: 100%;
+}
+
+.reasoning-v2-summary::-webkit-details-marker { display: none; }
+
+.reasoning-v2-toggle-hint {
+  font-size: 0.78rem;
+  color: rgba(99,140,255,0.7);
+  font-weight: 400;
+}
+
+.reasoning-v2-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  opacity: 0.85;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.reasoning-v2-live {
+  padding: 0 14px 12px;
+}
+
+.reasoning-v2-live-text {
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  max-height: 140px;
+  overflow-y: auto;
+  opacity: 0.8;
+}
+
 .model-pill {
   display: flex;
   align-items: center;
@@ -1717,4 +1859,257 @@ a {
   font-size: 0.75rem;
   color: var(--text-secondary);
   opacity: 0.7;
+}
+
+/* =========================================================================
+   Subject Form V2 - Accessible Card Design
+   ========================================================================= */
+
+.subject-section {
+  animation: fadeUpStagger 0.4s ease both;
+}
+
+/* ─ Estado vacío ─ */
+.subject-empty-state {
+  background: var(--input-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: 20px;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+}
+
+.subject-add-first-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+  color: #1a1a1a;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.subject-add-first-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(161, 140, 209, 0.4);
+}
+
+/* ─ Tarjeta de creación ─ */
+.subject-form-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.subject-form-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.subject-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subject-form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.subject-label-icon {
+  font-size: 1.1rem;
+}
+
+.subject-field-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+  line-height: 1.5;
+  padding-left: 28px;
+}
+
+.subject-field-input {
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.subject-field-input:focus {
+  border-color: #a18cd1;
+  box-shadow: 0 0 0 3px rgba(161, 140, 209, 0.15);
+}
+
+.subject-field-textarea {
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 110px;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+
+.subject-field-textarea:focus {
+  border-color: #a18cd1;
+  box-shadow: 0 0 0 3px rgba(161, 140, 209, 0.15);
+}
+
+.subject-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.subject-cancel-btn {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-cancel-btn:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+
+.subject-save-btn {
+  padding: 10px 24px;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(135deg, #a18cd1 0%, #4FACFE 100%);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 172, 254, 0.35);
+}
+
+.subject-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ─ Chips de Materias ─ */
+.subject-chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subject-chip-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.subject-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.subject-chip:hover {
+  border-color: #a18cd1;
+  color: var(--text-primary);
+}
+
+.subject-chip.active {
+  background: linear-gradient(135deg, rgba(161,140,209,0.25) 0%, rgba(79,172,254,0.15) 100%);
+  border-color: #a18cd1;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.subject-chip-delete {
+  background: rgba(239, 68, 68, 0.1);
+  border: none;
+  color: #ef4444;
+  padding: 4px 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.subject-chip-delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.subject-add-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-add-more-btn:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
 }
