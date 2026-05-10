@@ -13,6 +13,7 @@ type BaseMessage = {
   content: string;
   imagePlaceholder?: string;
   reasoning?: string;
+  model?: string;
 };
 
 type Chat = {
@@ -517,7 +518,9 @@ export default function Home() {
         }
       }
 
-      const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning };
+      // Only keep reasoning if the model that generated this message supports it
+      const finalReasoning = model === 'deepseek-v4-pro' ? reasoning : undefined;
+      const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning: finalReasoning, model };
 
       // Update display
       setDisplayMessages(prev => prev.map(m => m.id === assistantId ? finalAssistantMsg : m));
@@ -1012,7 +1015,7 @@ export default function Home() {
             displayMessages.map((msg: any, i) => {
               const role = msg.role;
               const contentStr = msg.content || '';
-              const reasoning = model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
+              const reasoning = msg.model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
               const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
               return (

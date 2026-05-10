@@ -521,7 +521,7 @@ a {
   display: flex;
   flex-direction: column;
   padding-top: 1rem;
-  padding-bottom: 220px;
+  padding-bottom: 120px;
   scroll-behavior: smooth;
   gap: 12px;
 }
@@ -1129,9 +1129,9 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  padding: 0 1rem;
-  padding-bottom: 50px;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
 }
 
 .v2-orb-container {
