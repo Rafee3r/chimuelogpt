@@ -70,10 +70,9 @@ export async function POST(req: Request) {
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
 
     const modelsToTry = [
-      'claude-3-5-haiku-20241022',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-haiku-20240307',
-      'claude-3-sonnet-20240229'
+      'claude-haiku-4-5-20251001',
+      'claude-3-5-sonnet-latest',
+      'claude-3-5-haiku-20241022'
     ];
 
     let anthropicRes;
