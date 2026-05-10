@@ -39,7 +39,7 @@ export default function Home() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   const [inputMessage, setInputMessage] = useState("");
-  const [attachedImage, setAttachedImage] = useState<{base64: string, name: string} | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{base64: string, name: string, type?: string} | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
@@ -238,11 +238,16 @@ export default function Home() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       const originalBase64 = reader.result as string;
-      // Compress if it's likely too large
-      const compressedBase64 = await compressImage(originalBase64);
+      let finalBase64 = originalBase64;
+      
+      if (file.type.startsWith('image/')) {
+        finalBase64 = await compressImage(originalBase64);
+      }
+      
       setAttachedImage({
-        base64: compressedBase64,
-        name: file.name
+        base64: finalBase64,
+        name: file.name,
+        type: file.type
       });
     };
     reader.readAsDataURL(file);
@@ -1225,100 +1230,73 @@ export default function Home() {
         </div>
 
         {viewMode !== "university" && (
-          <div className="input-area">
-          <div className="input-container">
-            
-            <div className="model-selector-container">
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '12px', marginBottom: '2px', display: 'block' }}>Modo</span>
-              <div 
-                className="model-pill"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setModelDropdownOpen(!modelDropdownOpen);
-                }}
+          <div className="v2-input-area">
+            <div className="v2-model-selector">
+              <button 
+                className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
+                onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); }}
               >
-                {model === 'deepseek-v4-pro' ? 'Pro' : 'Rápido'}
-                <ChevronDown size={14} />
-              </div>
-              
-              {modelDropdownOpen && (
-                <div className="model-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div 
-                    className="model-option"
-                    onClick={() => {
-                      setModel('deepseek-v4-pro');
-                      localStorage.setItem("chimuelo_model", "deepseek-v4-pro");
-                      setModelDropdownOpen(false);
-                    }}
-                  >
-                    <span className="model-option-title">Pro {model === 'deepseek-v4-pro' && '✓'}</span>
-                    <span className="model-option-desc">Matemáticas y programación avanzadas</span>
-                  </div>
-                  <div 
-                    className="model-option"
-                    onClick={() => {
-                      setModel('deepseek-v4-flash');
-                      localStorage.setItem("chimuelo_model", "deepseek-v4-flash");
-                      setModelDropdownOpen(false);
-                    }}
-                  >
-                    <span className="model-option-title">Rápido {model === 'deepseek-v4-flash' && '✓'}</span>
-                    <span className="model-option-desc">Responde rápidamente a preguntas diarias</span>
+                ⚡ Respuestas Rápidas
+              </button>
+              <button 
+                className={`v2-model-btn ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
+                onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
+              >
+                🧠 Pensamiento Profundo
+              </button>
+            </div>
+
+            <div className="v2-input-container">
+              {attachedImage && (
+                <div className="image-preview-container">
+                  <div className="image-preview-item" style={{ background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {attachedImage.type?.startsWith('image/') ? (
+                      <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
+                    ) : (
+                      <div style={{ padding: '8px', fontSize: '0.7rem', textAlign: 'center', wordBreak: 'break-all', color: 'var(--text-primary)' }}>
+                        📄 {attachedImage.name.length > 10 ? attachedImage.name.substring(0, 10) + '...' : attachedImage.name}
+                      </div>
+                    )}
+                    <button className="image-preview-remove" onClick={() => setAttachedImage(null)}>
+                      <XCircle size={16} fill="white" color="#333" />
+                    </button>
                   </div>
                 </div>
               )}
-            </div>
-
-            {attachedImage && (
-              <div className="image-preview-container">
-                <div className="image-preview-item">
-                  <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
-                  <button 
-                    className="image-preview-remove" 
-                    onClick={() => setAttachedImage(null)}
-                  >
-                    <XCircle size={16} fill="white" color="#333" />
-                  </button>
-                </div>
+              
+              <input type="file" accept="*/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              
+              <div className="v2-input-row">
+                <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
+                  <div className="v2-attach-icon-wrapper">
+                    <Plus size={20} />
+                  </div>
+                </button>
+                
+                <textarea
+                  ref={textareaRef}
+                  className="v2-input-textarea"
+                  placeholder="Escribe tu pregunta o pídele algo aquí..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+                
+                <button 
+                  className={`v2-send-btn ${inputMessage.trim() || attachedImage ? 'active' : ''}`} 
+                  onClick={() => handleSendMessage()}
+                  disabled={(!inputMessage.trim() && !attachedImage) || isThinking}
+                >
+                  <Send size={18} />
+                </button>
               </div>
-            )}
+            </div>
             
-            <input 
-              type="file" 
-              accept="image/*" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              onChange={handleFileChange}
-            />
-            
-            <button 
-              className="attach-btn" 
-              title="Adjuntar imagen"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip size={20} />
-            </button>
-            <textarea
-              ref={textareaRef}
-              className="input-textarea"
-              placeholder="Mensaje a ChimueloGPT..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-            />
-            <button 
-              className="send-btn" 
-              onClick={() => handleSendMessage()}
-              disabled={(!inputMessage.trim() && !attachedImage) || isThinking}
-            >
-              <Send size={16} />
-            </button>
+            <div className="disclaimer">
+              ChimueloGPT puede cometer errores. Considera verificar la información importante.
+            </div>
           </div>
-          <div className="disclaimer">
-            ChimueloGPT puede cometer errores. Considera verificar la información importante.
-          </div>
-        </div>
         )}
       </div>
 

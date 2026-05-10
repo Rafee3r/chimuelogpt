@@ -1242,6 +1242,147 @@ a {
 }
 
 /* =========================================================================
+   V2 Input Area - Accessible & Premium 
+   ========================================================================= */
+
+.v2-input-area {
+  padding: 1rem;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.v2-model-selector {
+  display: flex;
+  gap: 8px;
+  background: var(--input-bg);
+  padding: 4px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.v2-model-btn {
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.v2-model-btn.active {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.v2-input-container {
+  width: 100%;
+  max-width: 48rem;
+  background: rgba(40, 40, 40, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.v2-input-container:focus-within {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+
+.v2-input-row {
+  display: flex;
+  align-items: flex-end;
+  padding: 8px;
+  gap: 8px;
+}
+
+.v2-attach-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.v2-attach-icon-wrapper {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.v2-attach-btn:hover .v2-attach-icon-wrapper {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.v2-input-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  resize: none;
+  padding: 12px 4px;
+  min-height: 24px;
+  max-height: 200px;
+  outline: none;
+  line-height: 1.5;
+}
+
+.v2-input-textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.v2-send-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  cursor: not-allowed;
+  margin-bottom: 4px;
+  margin-right: 4px;
+}
+
+.v2-send-btn.active {
+  background: white;
+  color: black;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+.v2-send-btn.active:hover {
+  transform: scale(1.05);
+}
+
+/* =========================================================================
    University Mode V2 - "Apple Intelligence" Aesthetic 
    ========================================================================= */
 
