@@ -12,21 +12,35 @@ export async function POST(req: Request) {
       });
     }
 
-    // Build the content array for the last user message with image
-    const lastUserMsg = messages[messages.length - 1];
-    const priorMessages = messages.slice(0, -1)
-      .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-      .map((m: any) => ({ role: m.role, content: m.content || '' }));
-
-    // Detect media type from base64 header
-    const mediaTypeMatch = imageBase64?.match(/^data:(image\/\w+);base64,/);
+    // Detect media type and extract raw base64 data
+    const mediaTypeMatch = imageBase64?.match(/^data:([^;]+);base64,/);
     const mediaType = mediaTypeMatch ? mediaTypeMatch[1] : 'image/jpeg';
-    const base64Data = imageBase64?.replace(/^data:image\/\w+;base64,/, '') || '';
+    const base64Data = imageBase64?.split('base64,')[1] || '';
 
-    // Build content parts for the message with vision
-    const contentParts: any[] = [];
+    // Process history to ensure it's clean for Anthropic and roles alternate
+    const processedHistory: any[] = [];
+    const rawMessages = messages
+      .filter((m: any) => m.role && m.content)
+      .map((m: any) => ({ role: m.role, content: String(m.content) }));
+
+    for (const msg of rawMessages) {
+      const last = processedHistory[processedHistory.length - 1];
+      if (last && last.role === msg.role) {
+        last.content += "\n\n" + msg.content;
+      } else {
+        processedHistory.push(msg);
+      }
+    }
+
+    // Prepare content parts for the message with vision (always at the end)
+    const lastMsg = processedHistory[processedHistory.length - 1] || { role: 'user', content: 'Describe esta imagen.' };
+    if (processedHistory.length > 0 && lastMsg.role === 'user') {
+      processedHistory.pop(); // Remove it to replace it with vision blocks
+    }
+
+    const visionContent: any[] = [];
     if (base64Data) {
-      contentParts.push({
+      visionContent.push({
         type: 'image',
         source: {
           type: 'base64',
@@ -35,13 +49,14 @@ export async function POST(req: Request) {
         }
       });
     }
-    contentParts.push({
+    visionContent.push({
       type: 'text',
-      text: lastUserMsg.content || 'Describe esta imagen.'
+      text: lastMsg.content || 'Describe esta imagen.'
     });
 
     const anthropicMessages = [
-      { role: 'user', content: contentParts }
+      ...processedHistory,
+      { role: 'user', content: visionContent }
     ];
 
     let personaPrompt = "Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
@@ -54,9 +69,6 @@ export async function POST(req: Request) {
 
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
 
-    console.log("Vision API Request Model:", 'claude-3-5-sonnet-latest');
-    console.log("API Key Start:", apiKey.substring(0, 10));
-    
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -65,11 +77,20 @@ export async function POST(req: Request) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-latest',
+        model: 'claude-3-5-haiku-20241022',
         max_tokens: 4096,
         system: `${personaPrompt}${customInstructionsPrompt}
-REGLAS PARA IMÁGENES:
-Si el usuario pide editar/crear imágenes, responde con un mensaje breve y luego usa la etiqueta <generate_image mode="img2img" strength="0.7"> o <generate_image mode="text2img">.`,
+REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
+Si el usuario pide editar o transformar la foto adjunta, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu imagen editada!", "Mira cómo quedó:"), y luego debes decidir el modo de generación y responder INMEDIATAMENTE con esta etiqueta XML (no agregues texto después de la etiqueta):
+
+1. MODO IMG2IMG (Ediciones menores): Si pide cambiar color de pelo, ropa, agregar lentes, o cambiar el fondo, pero MANTENIENDO la anatomía y estructura humana original:
+<generate_image mode="img2img" strength="0.7">Descripción EN INGLÉS MUY DETALLADA de la imagen final, incluyendo todos los rasgos originales de la persona + las modificaciones</generate_image>
+(NOTA: el atributo "strength" define qué tanto cambia la imagen original de 0.1 a 1.0. Usa 0.35 para preservar textos/interfaces o rostros exactos, 0.6 para ediciones medias, y 0.85 para cambios importantes de estilo o anatomía).
+
+2. MODO TEXT2IMG (Transformaciones drásticas): Si pide convertirse en animal (ej: pony, perro), caricatura, estilo anime, Pixar, 3D, o cambiar de género. Aquí extraerás sus características visuales (ropa, color de pelo, pose) y crearás un prompt desde cero:
+<generate_image mode="text2img">Descripción EN INGLÉS MUY DETALLADA del nuevo personaje (ej: A my little pony character with brown hair and a brown jacket...) en el estilo solicitado</generate_image>
+
+Si el usuario SOLO pide describir o explicar la imagen, responde normalmente en español sin usar la etiqueta.`,
         messages: anthropicMessages,
         stream: true
       })
