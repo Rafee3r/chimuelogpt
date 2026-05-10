@@ -1214,7 +1214,8 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="input-area">
+        {viewMode !== "university" && (
+          <div className="input-area">
           <div className="input-container">
             
             <div className="model-selector-container">
@@ -1308,6 +1309,7 @@ export default function Home() {
             ChimueloGPT puede cometer errores. Considera verificar la información importante.
           </div>
         </div>
+        )}
       </div>
 
       {settingsOpen && (
