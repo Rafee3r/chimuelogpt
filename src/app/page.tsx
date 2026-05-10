@@ -62,7 +62,6 @@ export default function Home() {
   const [theme, setTheme] = useState<"system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow">("system");
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium");
   const [persona, setPersona] = useState<"default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional">("default");
-  const [customInstructions, setCustomInstructions] = useState("");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
@@ -90,8 +89,9 @@ export default function Home() {
     const savedPersona = localStorage.getItem("chimuelo_persona") as "default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional";
     if (savedPersona) setPersona(savedPersona);
 
-    const savedInstructions = localStorage.getItem("chimuelo_customInstructions");
-    if (savedInstructions) setCustomInstructions(savedInstructions);
+    // Auto-wipe old bugged instructions from localStorage
+    localStorage.removeItem("chimuelo_customInstructions");
+    localStorage.removeItem("chimuelo_custom_instructions");
 
     const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
     if (savedModel) setModel(savedModel);
@@ -150,10 +150,6 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
-
-  useEffect(() => {
-    localStorage.setItem("chimuelo_customInstructions", customInstructions);
-  }, [customInstructions]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -407,7 +403,7 @@ export default function Home() {
         .map(m => ({ role: m.role, content: m.content }));
       historyMsgs.push({ role: 'user' as const, content: finalContent });
 
-      let finalSystemPrompt = customInstructions;
+      let finalSystemPrompt = "";
       if (chatForApi) {
         if (chatForApi.systemPrompt) finalSystemPrompt = chatForApi.systemPrompt;
         if (chatForApi.subjectId) {
@@ -1391,22 +1387,6 @@ export default function Home() {
                     <option value="profesional">Profesional (Corporativo, de usted)</option>
                   </select>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
-                </div>
-
-                <div className="settings-group" style={{ marginTop: '1rem' }}>
-                  <label className="settings-label">Instrucciones Especiales (Opcional)</label>
-                  <textarea
-                    className="settings-textarea"
-                    placeholder="Ej: Llámame siempre 'Jefe', nunca uses listas..."
-                    value={customInstructions}
-                    onChange={(e) => setCustomInstructions(e.target.value)}
-                    style={{ 
-                      width: '100%', minHeight: '80px', padding: '12px', borderRadius: '8px',
-                      background: 'var(--input-bg)', border: '1px solid var(--border-color)',
-                      color: 'var(--text-primary)', resize: 'vertical', marginTop: '8px'
-                    }}
-                  />
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Reglas extra que la IA siempre deberá obedecer.</p>
                 </div>
               </div>
 
