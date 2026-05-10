@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-3-5-haiku',
         max_tokens: 4096,
         system: `${personaPrompt}${customInstructionsPrompt}
 REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
