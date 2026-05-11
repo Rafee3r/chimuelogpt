@@ -1503,28 +1503,26 @@ a {
 }
 
 .v2-model-btn.active {
-  background: var(--sidebar-hover);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .v2-input-container {
   width: 100%;
   max-width: 48rem;
-  background: rgba(40, 40, 40, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 24px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 
 .v2-input-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
 }
 
 .v2-input-row {
@@ -1547,7 +1545,7 @@ a {
 }
 
 .v2-attach-icon-wrapper {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--sidebar-hover);
   border-radius: 50%;
   padding: 6px;
   display: flex;
@@ -1557,8 +1555,8 @@ a {
 }
 
 .v2-attach-btn:hover .v2-attach-icon-wrapper {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: var(--border-color);
+  color: var(--text-primary);
 }
 
 .v2-input-textarea {
@@ -1582,7 +1580,7 @@ a {
 }
 
 .v2-send-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--sidebar-hover);
   color: var(--text-secondary);
   border: none;
   width: 36px;
@@ -1598,10 +1596,10 @@ a {
 }
 
 .v2-send-btn.active {
-  background: white;
-  color: black;
+  background: var(--text-primary);
+  color: var(--bg-primary);
   cursor: pointer;
-  box-shadow: 0 0 15px rgba(255,255,255,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .v2-send-btn.active:hover {
@@ -1643,9 +1641,9 @@ a {
 }
 
 .segment-btn.active {
-  color: #fff;
-  background: var(--sidebar-hover);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  color: var(--bg-primary);
+  background: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 /* Dashboard Animations */
