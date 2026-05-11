@@ -374,7 +374,6 @@ export default function Home() {
     };
 
     const handleScroll = () => {
-      // Always keep prevScrollTop in sync, even when we bail out
       const currentTop = el.scrollTop;
       const wasProgrammatic = isProgrammaticScroll.current;
       const inTouchIgnore = isTouching.current || (Date.now() - touchEndTime.current < 350);
@@ -384,15 +383,19 @@ export default function Home() {
         return;
       }
 
-      // *** Critical fix: detect scroll-UP from scrollbar/keyboard/PageUp ***
-      // If scrollTop decreased by more than 1px, the user manually scrolled up.
-      if (currentTop < prevScrollTop - 1) {
-        userScrolledUp.current = true;
-      }
-
-      // Re-enable auto-scroll only when user lands AT the bottom (≤8px)
+      const delta = currentTop - prevScrollTop;
       const distFromBottom = el.scrollHeight - currentTop - el.clientHeight;
-      if (distFromBottom < 8) userScrolledUp.current = false;
+
+      // Direction-aware updates — the previous version had the "near bottom"
+      // check unconditionally overriding the "scrolled up" detection, which
+      // broke small trackpad nudges that stay within 8px of bottom.
+      if (delta < -1) {
+        // User moved UP (any input device, any pixel count)
+        userScrolledUp.current = true;
+      } else if (delta > 1 && distFromBottom < 8) {
+        // User moved DOWN and landed at the bottom — follow the stream again
+        userScrolledUp.current = false;
+      }
 
       prevScrollTop = currentTop;
     };
