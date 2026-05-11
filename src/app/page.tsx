@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -162,21 +162,30 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
+  // Smart auto-scroll: only follow bottom if user hasn't scrolled up
+  useEffect(() => {
+    if (!userScrolledUp.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [displayMessages, isThinking]);
+
+  // Attach onScroll listener to detect user scrolling up
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
-    // Only auto-scroll if user is near the bottom (within 120px)
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-    if (isNearBottom || !isThinking) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      userScrolledUp.current = false;
-    }
-  }, [displayMessages, isThinking]);
+    const handleScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      // If user is more than 150px from bottom, they scrolled up intentionally
+      userScrolledUp.current = distFromBottom > 150;
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Reset scroll lock when switching chats
   useEffect(() => {
     userScrolledUp.current = false;
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
   }, [currentChatId]);
 
   useEffect(() => {
@@ -417,6 +426,7 @@ export default function Home() {
 
     setInputMessage("");
     setAttachedImage(null);
+    userScrolledUp.current = false;
     setIsThinking(true);
 
     // Add user message to display immediately
@@ -484,7 +494,7 @@ export default function Home() {
         if (streamContent.includes('<generate_image')) {
           streamContent = streamContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...').trim();
         }
-        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined };
+        const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
         setDisplayMessages(prev => {
           const existing = prev.findIndex(m => m.id === assistantId);
           if (existing !== -1) {
@@ -793,9 +803,9 @@ export default function Home() {
           <div className="uni-modal-content">
             <div className="uni-modal-header">
               <div className="uni-modal-title">
-                {selectedUniTask === "essay" ? "✍️ Configurar Edición" : 
-                 selectedUniTask === "science" ? "🧮 Seleccionar Materia" : 
-                 selectedUniTask === "synthesis" ? "📚 Modo de Síntesis" : "🧠 Tipo de Examen"}
+                {selectedUniTask === "essay" ? "✍️ ¿Cómo quieres que lo revise?" : 
+                 selectedUniTask === "science" ? "🧠 ¿Qué tipo de ejercicio es?" : 
+                 selectedUniTask === "synthesis" ? "📚 ¿Cómo quieres el resumen?" : "🎯 ¿Qué tipo de práctica quieres?"}
               </div>
               <button className="icon-btn" onClick={() => setConfigModalOpen(false)}>
                 <X size={20} />
@@ -805,13 +815,13 @@ export default function Home() {
             {selectedUniTask === "essay" && (
               <>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato APA (Estricto)")}>
-                  <span>Formato APA (Estricto)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>📋 Con formato APA <small style={{color:'var(--text-secondary)',fontWeight:400}}>(el más pedido en universidades)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato MLA")}>
-                  <span>Formato MLA</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>📖 Con formato MLA <small style={{color:'var(--text-secondary)',fontWeight:400}}>(común en letras e historia)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Revisión de Ortografía General")}>
-                  <span>Solo Gramática Libre</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>✏️ Solo revisar ortografía y redacción</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
               </>
             )}
@@ -819,13 +829,13 @@ export default function Home() {
             {selectedUniTask === "science" && (
               <>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Matemáticas y Cálculo")}>
-                  <span>Matemáticas y Cálculo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>➕ Matemáticas y Cálculo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Física General")}>
-                  <span>Física General</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>⚡ Física General</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Química Orgánica")}>
-                  <span>Química Orgánica</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>🧪 Química</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
               </>
             )}
@@ -833,10 +843,10 @@ export default function Home() {
             {selectedUniTask === "synthesis" && (
               <>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Síntesis Rápida (Bullet points)")}>
-                  <span>Síntesis Rápida (Puntos Clave)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>⚡ Resumen corto con los puntos clave</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Análisis Crítico Profundo")}>
-                  <span>Análisis Crítico Profundo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>🔍 Análisis completo y detallado</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
               </>
             )}
@@ -844,10 +854,10 @@ export default function Home() {
             {selectedUniTask === "socratic" && (
               <>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Examen Oral (Muy Estricto)")}>
-                  <span>Simulador Examen Oral (Estricto)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>😐 Modo difícil <small style={{color:'var(--text-secondary)',fontWeight:400}}>(profe muy estricto, sin pistas)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
                 <button className="uni-option-btn" onClick={() => launchUniversityTask("Cuestionario Escrito (Amable)")}>
-                  <span>Práctica Escrita (Amable)</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
+                  <span>😊 Modo fácil <small style={{color:'var(--text-secondary)',fontWeight:400}}>(para practicar sin presión)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
                 </button>
               </>
             )}
@@ -901,23 +911,18 @@ export default function Home() {
 
                 {isCreatingSubject ? (
                   /* ── CREAR MATERIA: Formulario guiado ── */
-                  <div className="subject-form-card">
+                  <div className="subject-form-card compact">
                     <div className="subject-form-header">
-                      <div style={{ fontSize: '2rem' }}>📚</div>
+                      <div style={{ fontSize: '1.5rem' }}>📚</div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Añadir un Ramo</h3>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Chimuelo recordará todo lo que pongas aquí</p>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Añadir un Ramo</h3>
                       </div>
                     </div>
 
                     <div className="subject-form-field">
-                      <label className="subject-form-label">
-                        <span className="subject-label-icon">📝</span>
-                        <span>¿Cómo se llama la materia?</span>
-                      </label>
                       <input
                         type="text"
-                        placeholder="Ej: Cálculo 2, Historia de México, Programación..."
+                        placeholder="Nombre de la materia (Ej: Cálculo 2)"
                         value={newSubjectName}
                         onChange={(e) => setNewSubjectName(e.target.value)}
                         className="subject-field-input"
@@ -925,26 +930,25 @@ export default function Home() {
                       />
                     </div>
 
-                    <div className="subject-form-field">
-                      <label className="subject-form-label">
-                        <span className="subject-label-icon">💡</span>
-                        <span>¿Qué debe saber Chimuelo de esta materia? <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(opcional)</span></span>
-                      </label>
-                      <p className="subject-field-hint">Pega aquí: apuntes del curso, cómo le gusta al profe que entregues, el formato APA o lo que quieras que Chimuelo siempre recuerde de esta materia.</p>
-                      <textarea
-                        placeholder={"Ej:\n- El profe pide todo en APA\n- Las tareas deben tener al menos 3 fuentes\n- No usa Wikipedia como referencia válida"}
-                        value={newSubjectMemory}
-                        onChange={(e) => setNewSubjectMemory(e.target.value)}
-                        className="subject-field-textarea"
-                      />
-                    </div>
+                    <details className="subject-advanced-opt">
+                      <summary>Añadir apuntes o reglas extra ▾</summary>
+                      <div className="subject-form-field" style={{ marginTop: '8px' }}>
+                        <textarea
+                          placeholder={"Cosas que Chimuelo debe recordar:\n- El profe pide todo en APA\n- No usar Wikipedia"}
+                          value={newSubjectMemory}
+                          onChange={(e) => setNewSubjectMemory(e.target.value)}
+                          className="subject-field-textarea"
+                          style={{ minHeight: '80px' }}
+                        />
+                      </div>
+                    </details>
 
-                    <div className="subject-form-actions">
+                    <div className="subject-form-actions" style={{ paddingTop: '8px' }}>
                       <button className="subject-cancel-btn" onClick={() => { setIsCreatingSubject(false); setNewSubjectName(''); setNewSubjectMemory(''); }}>
                         Cancelar
                       </button>
                       <button className="subject-save-btn" onClick={handleCreateSubject} disabled={!newSubjectName.trim()}>
-                        ✓ Guardar Materia
+                        ✓ Guardar
                       </button>
                     </div>
                   </div>
@@ -1094,7 +1098,7 @@ export default function Home() {
                     {role === 'assistant' && reasoning && (() => {
                       const isStreaming = !displayContent;
                       return (
-                        <div className={`reasoning-v2-card ${isStreaming ? 'streaming' : 'done'}`}>
+                        <div className={`reasoning-v2-card v3 ${isStreaming ? 'streaming' : 'done'}`}>
                           <div className="reasoning-v2-header">
                             <div className="reasoning-v2-orb">
                               <span className="reasoning-v2-brain">🧠</span>
@@ -1102,7 +1106,7 @@ export default function Home() {
                             <div className="reasoning-v2-title-area">
                               {isStreaming ? (
                                 <>
-                                  <span className="reasoning-v2-title">Pensando profundamente...</span>
+                                  <span className="reasoning-v2-title">Analizando tu pregunta...</span>
                                   <div className="reasoning-v2-dots">
                                     <span></span><span></span><span></span>
                                   </div>
@@ -1110,8 +1114,7 @@ export default function Home() {
                               ) : (
                                 <details style={{ listStyle: 'none', width: '100%' }}>
                                   <summary className="reasoning-v2-summary">
-                                    <span className="reasoning-v2-title">Proceso de pensamiento</span>
-                                    <span className="reasoning-v2-toggle-hint">Toca para ver ↓</span>
+                                    <span className="reasoning-v2-title">Ver cómo lo pensé →</span>
                                   </summary>
                                   <div className="reasoning-v2-body">{reasoning}</div>
                                 </details>
@@ -1119,7 +1122,7 @@ export default function Home() {
                             </div>
                           </div>
                           {isStreaming && (
-                            <div className="reasoning-v2-live">
+                            <div className="reasoning-v2-live typewriter">
                               <div className="reasoning-v2-live-text">{reasoning}</div>
                             </div>
                           )}
@@ -1460,11 +1463,28 @@ export default function Home() {
               </div>
 
               {/* Peligro Card */}
-              <div className="settings-card" style={{ border: '1px solid #ef444433', background: 'var(--danger-bg, transparent)' }}>
-                <h3 className="settings-card-title" style={{ color: '#ef4444' }}>Zona de Peligro</h3>
-                <button onClick={clearAllHistory} className="danger-btn" style={{ width: '100%' }}>
-                  Borrar todos los chats e historial
-                </button>
+              <div className="settings-card danger">
+                <h3 className="settings-card-title">Cuenta y Datos</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button onClick={() => setPwaModalOpen(true)} className="settings-action-btn">
+                    <Smartphone size={16} /> Instalar como App
+                  </button>
+                  
+                  <button onClick={clearAllHistory} className="settings-action-btn">
+                    <Trash2 size={16} /> Borrar todos los chats
+                  </button>
+                  
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem("chimuelo_auth");
+                      window.location.reload();
+                    }} 
+                    className="settings-action-btn logout"
+                  >
+                    <LogOut size={16} /> Cerrar sesión
+                  </button>
+                </div>
               </div>
 
             </div>
