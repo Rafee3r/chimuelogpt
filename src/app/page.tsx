@@ -1694,7 +1694,7 @@ export default function Home() {
             </div>
             
             <div className="disclaimer">
-              ChimueloGPT puede cometer errores. Considera verificar la información importante.
+              Chimuelo puede cometer errores. Considera verificar la información importante.
             </div>
           </div>
         )}
