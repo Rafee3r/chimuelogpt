@@ -352,7 +352,10 @@ export default function Home() {
     const el = chatScrollRef.current;
     if (!el) return;
 
-    // Wheel up = explicit user intent to scroll up
+    // We track scrollTop ourselves so we can detect "user scrolled up" via
+    // scrollbar drag / keyboard / arrow keys — events that DON'T fire wheel.
+    let prevScrollTop = el.scrollTop;
+
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY < 0) userScrolledUp.current = true;
     };
@@ -370,15 +373,28 @@ export default function Home() {
       touchEndTime.current = Date.now();
     };
 
-    // Only re-enable auto-scroll when user manually lands AT the bottom — and only
-    // for HUMAN scroll events (not our programmatic scrolls, not iOS momentum).
     const handleScroll = () => {
-      if (isProgrammaticScroll.current) return;
-      if (isTouching.current) return;
-      // iOS momentum can fire scroll events for ~300ms after touchend.
-      if (Date.now() - touchEndTime.current < 350) return;
-      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      // Always keep prevScrollTop in sync, even when we bail out
+      const currentTop = el.scrollTop;
+      const wasProgrammatic = isProgrammaticScroll.current;
+      const inTouchIgnore = isTouching.current || (Date.now() - touchEndTime.current < 350);
+
+      if (wasProgrammatic || inTouchIgnore) {
+        prevScrollTop = currentTop;
+        return;
+      }
+
+      // *** Critical fix: detect scroll-UP from scrollbar/keyboard/PageUp ***
+      // If scrollTop decreased by more than 1px, the user manually scrolled up.
+      if (currentTop < prevScrollTop - 1) {
+        userScrolledUp.current = true;
+      }
+
+      // Re-enable auto-scroll only when user lands AT the bottom (≤8px)
+      const distFromBottom = el.scrollHeight - currentTop - el.clientHeight;
       if (distFromBottom < 8) userScrolledUp.current = false;
+
+      prevScrollTop = currentTop;
     };
 
     el.addEventListener('wheel', handleWheel, { passive: true });
