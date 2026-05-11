@@ -170,7 +170,7 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
-  font-size: 16px;
+  font-size: 100%; /* hereda preferencia de tamaño del SO/browser */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
@@ -704,7 +704,7 @@ a {
   flex-shrink: 0;
   color: white;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .avatar.user {
@@ -2369,9 +2369,7 @@ a {
   }
 
   /* ── Input Bar ── */
-  .v2-input-textarea {
-    font-size: 0.9rem;
-  }
+  /* .v2-input-textarea: mantiene font-size: 16px del base (previene zoom iOS) */
 
   .disclaimer {
     font-size: 0.68rem;
