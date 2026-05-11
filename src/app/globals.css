@@ -13,6 +13,8 @@
   --input-bg: #f4f4f5;
   --code-bg: #1e1e2e;
   --code-text: #cdd6f4;
+  --active-bg: rgba(59, 130, 246, 0.12);
+  --active-text: #2563eb;
 
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
@@ -67,6 +69,8 @@
   --sidebar-hover: #ececf1;
   --code-bg: #1e1e2e;
   --code-text: #cdd6f4;
+  --active-bg: rgba(59, 130, 246, 0.12);
+  --active-text: #2563eb;
 }
 
 :root[data-theme="dark"] {
@@ -81,6 +85,8 @@
   --sidebar-hover: #27272a;
   --code-bg: #0d0d0d;
   --code-text: #e2e8f0;
+  --active-bg: rgba(96, 165, 250, 0.18);
+  --active-text: #60a5fa;
 }
 
 :root[data-theme="pink"] {
@@ -95,6 +101,8 @@
   --sidebar-hover: #fbcfe8;
   --code-bg: #3b0d2a;
   --code-text: #fce7f3;
+  --active-bg: rgba(219, 39, 119, 0.15);
+  --active-text: #be185d;
 }
 
 :root[data-theme="orange"] {
@@ -109,6 +117,8 @@
   --sidebar-hover: #fed7aa;
   --code-bg: #431407;
   --code-text: #ffedd5;
+  --active-bg: rgba(234, 88, 12, 0.15);
+  --active-text: #c2410c;
 }
 
 :root[data-theme="oled"] {
@@ -123,6 +133,8 @@
   --sidebar-hover: #18181b;
   --code-bg: #0a0a0a;
   --code-text: #e4e4e7;
+  --active-bg: rgba(96, 165, 250, 0.2);
+  --active-text: #60a5fa;
 }
 
 :root[data-theme="snow"] {
@@ -137,6 +149,8 @@
   --sidebar-hover: #e2e8f0;
   --code-bg: #0f172a;
   --code-text: #e2e8f0;
+  --active-bg: rgba(59, 130, 246, 0.12);
+  --active-text: #1d4ed8;
 }
 
 * {
@@ -505,7 +519,7 @@ a {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 40;
+  z-index: 45;
   transition: opacity 0.25s ease;
 }
 
@@ -567,8 +581,8 @@ a {
 }
 
 .sidebar-item.active {
-  background-color: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background-color: var(--active-bg);
+  color: var(--active-text);
   font-weight: 500;
 }
 
@@ -1598,9 +1612,10 @@ a {
 }
 
 .v2-model-btn.active {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  background: var(--active-bg);
+  color: var(--active-text);
+  font-weight: 700;
+  box-shadow: none;
 }
 
 .v2-input-container {
@@ -1736,9 +1751,10 @@ a {
 }
 
 .segment-btn.active {
-  color: var(--bg-primary);
-  background: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  color: var(--active-text);
+  background: var(--active-bg);
+  font-weight: 700;
+  box-shadow: none;
 }
 
 /* Dashboard Animations */
@@ -2706,7 +2722,7 @@ a {
 }
 
 .sidebar-actions {
-  padding: 0 10px 10px;
+  padding: 16px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;

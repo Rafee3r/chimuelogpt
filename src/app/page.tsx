@@ -35,7 +35,6 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState<"wrong" | "old" | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -820,7 +819,7 @@ export default function Home() {
 
           <div className="auth-field-v2">
             <input
-              type={showPassword ? "text" : "password"}
+              type="password"
               className="auth-input-v2"
               placeholder="Clave familiar..."
               value={passwordInput}
@@ -828,14 +827,6 @@ export default function Home() {
               autoFocus
               autoComplete="current-password"
             />
-            <button
-              type="button"
-              className="auth-eye-btn"
-              onClick={() => setShowPassword(p => !p)}
-              tabIndex={-1}
-            >
-              {showPassword ? <X size={16} /> : <span style={{ fontSize: '1rem' }}>👁</span>}
-            </button>
           </div>
 
           {authError === "wrong" && (
@@ -884,14 +875,6 @@ export default function Home() {
         </div>
       )}
 
-      {sidebarOpen && (
-        <div 
-          className="modal-overlay md:hidden" 
-          style={{ zIndex: 5 }} 
-          onClick={() => setSidebarOpen(false)} 
-        />
-      )}
-
       {lightboxImg && (
         <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
           <img src={lightboxImg} alt="Lightbox" />
@@ -899,9 +882,9 @@ export default function Home() {
       )}
 
       {sidebarOpen && (
-        <div 
-          className="sidebar-backdrop d-md-none" 
-          onClick={() => setSidebarOpen(false)} 
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
