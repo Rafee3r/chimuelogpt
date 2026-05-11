@@ -1,9 +1,50 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+/* ─────────── v2.0 Performance: Memoized markdown per message ─────────── */
+const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, codeRenderer }: {
+  content: string;
+  imgRenderer: any;
+  codeRenderer: any;
+}) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{ img: imgRenderer, code: codeRenderer }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}, (prev, next) => prev.content === next.content);
+
+/* ─────────── v2.0 Code block with copy button ─────────── */
+function CodeBlock({ inline, className, children, ...props }: any) {
+  const [copied, setCopied] = useState(false);
+  const text = String(children).replace(/\n$/, "");
+  if (inline) return <code className={className} {...props}>{children}</code>;
+  return (
+    <div className="code-block-wrapper">
+      <button
+        className="code-copy-btn"
+        onClick={() => {
+          navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1400);
+          });
+        }}
+        title="Copiar código"
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+        <span>{copied ? "Copiado" : "Copiar"}</span>
+      </button>
+      <pre><code className={className} {...props}>{children}</code></pre>
+    </div>
+  );
+}
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -85,6 +126,12 @@ export default function Home() {
   // Manual messages state (replaces useChat)
   const [displayMessages, setDisplayMessages] = useState<BaseMessage[]>([]);
 
+  // v2.0 productivity state
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +139,38 @@ export default function Home() {
   const userScrolledUp = useRef<boolean>(false);
   const isTouching = useRef<boolean>(false);
   const prevViewMode = useRef<"chat" | "university">("chat");
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
+
+  /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
+  const queueChatsToLS = useCallback((chats: Chat[]) => {
+    localStorageQueueRef.current.chats = chats;
+    if (localStorageQueueRef.current.timer) return;
+    localStorageQueueRef.current.timer = setTimeout(() => {
+      const pending = localStorageQueueRef.current.chats;
+      localStorageQueueRef.current.timer = null;
+      if (pending) {
+        try { localStorage.setItem("chimuelo_chats", JSON.stringify(pending)); } catch {}
+      }
+    }, 500);
+  }, []);
+
+  const flushChatsToLS = useCallback((chats: Chat[]) => {
+    if (localStorageQueueRef.current.timer) {
+      clearTimeout(localStorageQueueRef.current.timer);
+      localStorageQueueRef.current.timer = null;
+    }
+    try { localStorage.setItem("chimuelo_chats", JSON.stringify(chats)); } catch {}
+  }, []);
+
+  /* v2.0 — Stop generation */
+  const stopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   const groupChatsByDate = (chats: Chat[]) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -546,6 +625,10 @@ export default function Home() {
     // Add user message to display immediately
     setDisplayMessages(prev => [...prev, userMsg]);
 
+    // v2.0 — fresh AbortController for this stream
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       let finalContent = messageText || 'Describe esta imagen.';
 
@@ -577,14 +660,16 @@ export default function Home() {
         res = await fetch('/api/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt })
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt }),
+          signal: controller.signal,
         });
       } else {
         // Use DeepSeek text endpoint
         res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt })
+          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt }),
+          signal: controller.signal,
         });
       }
 
@@ -708,21 +793,45 @@ export default function Home() {
       }
 
     } catch (e: any) {
-      console.error("Stream error:", e);
-      const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
-      setDisplayMessages(prev => [...prev, errMsg]);
-      setChats(prev => {
-        const updated = prev.map(chat => {
-          if (chat.id === targetChatId) {
-            return { ...chat, messages: [...chat.messages, errMsg], updatedAt: Date.now() };
+      // v2.0 — user-triggered stop: persist whatever streamed so far, no error UI
+      if (e?.name === 'AbortError' || controller.signal.aborted) {
+        setDisplayMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && last.content) {
+            // Save the partial assistant reply
+            const partial: BaseMessage = { ...last, content: last.content + ' ⏹' };
+            const updatedDisplay = [...prev.slice(0, -1), partial];
+            setChats(prevChats => {
+              const updated = prevChats.map(chat =>
+                chat.id === targetChatId
+                  ? { ...chat, messages: [...chat.messages, partial], updatedAt: Date.now() }
+                  : chat
+              );
+              flushChatsToLS(updated);
+              return updated;
+            });
+            return updatedDisplay;
           }
-          return chat;
+          return prev;
         });
-        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
-        return updated;
-      });
+      } else {
+        console.error("Stream error:", e);
+        const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
+        setDisplayMessages(prev => [...prev, errMsg]);
+        setChats(prev => {
+          const updated = prev.map(chat => {
+            if (chat.id === targetChatId) {
+              return { ...chat, messages: [...chat.messages, errMsg], updatedAt: Date.now() };
+            }
+            return chat;
+          });
+          localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+          return updated;
+        });
+      }
     } finally {
       setIsThinking(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -766,6 +875,83 @@ export default function Home() {
     setSidebarOpen(false);
     setViewMode("chat");
   };
+
+  /* ─────────── v2.0 Command Palette items ─────────── */
+  type PaletteItem = { id: string; icon: any; label: string; hint?: string; run: () => void };
+
+  const paletteItems = useMemo<PaletteItem[]>(() => {
+    const actions: PaletteItem[] = [
+      { id: 'a_new', icon: SquarePen, label: 'Nuevo chat', hint: '⌘/', run: () => { handleSwitchChat(null); } },
+      { id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } },
+      { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
+      { id: 'a_model_fast', icon: Zap, label: 'Modelo: ⚡ Rápido', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
+      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Profundo', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
+      { id: 'a_theme_light', icon: Palette, label: 'Tema: Claro', run: () => setTheme('light') },
+      { id: 'a_theme_dark', icon: Palette, label: 'Tema: Oscuro', run: () => setTheme('dark') },
+      { id: 'a_theme_oled', icon: Palette, label: 'Tema: OLED', run: () => setTheme('oled') },
+      { id: 'a_theme_pink', icon: Palette, label: 'Tema: Rosa', run: () => setTheme('pink') },
+      { id: 'a_theme_orange', icon: Palette, label: 'Tema: Naranja', run: () => setTheme('orange') },
+      { id: 'a_theme_snow', icon: Palette, label: 'Tema: Nieve', run: () => setTheme('snow') },
+      { id: 'a_install', icon: Smartphone, label: 'Instalar como app', run: () => setPwaModalOpen(true) },
+    ];
+    const chatItems: PaletteItem[] = chats.slice(0, 50).map(c => ({
+      id: `c_${c.id}`,
+      icon: MessageSquare,
+      label: c.title || 'Sin título',
+      hint: 'Chat',
+      run: () => { handleSwitchChat(c.id); },
+    }));
+    return [...actions, ...chatItems];
+  }, [chats, viewMode]);
+
+  const filteredPaletteItems = useMemo(() => {
+    const q = paletteQuery.trim().toLowerCase();
+    if (!q) return paletteItems;
+    return paletteItems.filter(it => it.label.toLowerCase().includes(q));
+  }, [paletteItems, paletteQuery]);
+
+  useEffect(() => { setPaletteIndex(0); }, [paletteQuery, paletteOpen]);
+
+  useEffect(() => {
+    if (paletteOpen) {
+      setTimeout(() => paletteInputRef.current?.focus(), 30);
+    }
+  }, [paletteOpen]);
+
+  /* ─────────── v2.0 Global keyboard shortcuts ─────────── */
+  useEffect(() => {
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+    const onKey = (e: KeyboardEvent) => {
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (e.key === 'Escape') {
+        if (paletteOpen) { setPaletteOpen(false); e.preventDefault(); return; }
+        if (sidebarOpen) { setSidebarOpen(false); return; }
+      }
+      if (!mod) return;
+      if (e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+        return;
+      }
+      if (e.key === '/') {
+        e.preventDefault();
+        handleSwitchChat(null);
+        return;
+      }
+      if (e.key === '\\') {
+        e.preventDefault();
+        setSidebarOpen(s => !s);
+        return;
+      }
+      if (e.key === ',') {
+        e.preventDefault();
+        prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university');
+        setViewMode(v => v === 'settings' ? prevViewMode.current : 'settings');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [paletteOpen, sidebarOpen, viewMode]);
 
   const ImageRenderer = ({ node, ...props }: any) => {
     return (
@@ -933,6 +1119,25 @@ export default function Home() {
           </button>
         </div>
 
+        {/* v2.0 — Chat search */}
+        {chats.length > 0 && (
+          <div className="sidebar-search-wrap">
+            <Search size={14} className="sidebar-search-icon" />
+            <input
+              type="text"
+              className="sidebar-search-input"
+              placeholder="Buscar chats..."
+              value={sidebarSearch}
+              onChange={(e) => setSidebarSearch(e.target.value)}
+            />
+            {sidebarSearch && (
+              <button className="sidebar-search-clear" onClick={() => setSidebarSearch('')} title="Limpiar">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Chat list grouped by date */}
         <div className="sidebar-chat-list">
           {chats.length === 0 ? (
@@ -942,7 +1147,17 @@ export default function Home() {
               <small>Toca "Nuevo chat" para empezar.</small>
             </div>
           ) : (() => {
-            const groups = groupChatsByDate(chats);
+            const q = sidebarSearch.trim().toLowerCase();
+            const filtered = q
+              ? chats.filter(c =>
+                  (c.title || '').toLowerCase().includes(q) ||
+                  c.messages.some(m => (m.content || '').toLowerCase().includes(q))
+                )
+              : chats;
+            if (q && filtered.length === 0) {
+              return <div className="sidebar-empty-state"><p>Sin coincidencias</p><small>Prueba otra palabra</small></div>;
+            }
+            const groups = groupChatsByDate(filtered);
             const renderGroup = (label: string, items: Chat[]) => items.length === 0 ? null : (
               <div key={label}>
                 <div className="sidebar-group-label">{label}</div>
@@ -1523,12 +1738,11 @@ export default function Home() {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={{ img: ImageRenderer }}
-                            >
-                              {currentBody}
-                            </ReactMarkdown>
+                            <MemoizedMarkdown
+                              content={currentBody}
+                              imgRenderer={ImageRenderer}
+                              codeRenderer={CodeBlock}
+                            />
                             {msg.role === 'assistant' && activeChat?.subjectId && (
                                <div className="apa-export-bar" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
                                   <button className="download-btn" onClick={() => exportToAPA(currentBody)}>
@@ -1702,13 +1916,23 @@ export default function Home() {
                   rows={1}
                 />
                 
-                <button 
-                  className={`v2-send-btn ${inputMessage.trim() || attachedImage ? 'active' : ''}`} 
-                  onClick={() => handleSendMessage()}
-                  disabled={(!inputMessage.trim() && !attachedImage) || isThinking}
-                >
-                  <Send size={18} />
-                </button>
+                {isThinking ? (
+                  <button
+                    className="v2-send-btn stop active"
+                    onClick={stopGeneration}
+                    title="Detener generación"
+                  >
+                    <Square size={16} fill="currentColor" />
+                  </button>
+                ) : (
+                  <button
+                    className={`v2-send-btn ${inputMessage.trim() || attachedImage ? 'active' : ''}`}
+                    onClick={() => handleSendMessage()}
+                    disabled={!inputMessage.trim() && !attachedImage}
+                  >
+                    <Send size={18} />
+                  </button>
+                )}
               </div>
             </div>
             
@@ -1843,6 +2067,73 @@ export default function Home() {
                 title="Artifact Preview"
                 className="artifact-iframe"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* v2.0 — Command Palette (Cmd+K) */}
+      {paletteOpen && (
+        <div className="palette-overlay" onClick={() => setPaletteOpen(false)}>
+          <div className="palette-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="palette-search-row">
+              <Search size={16} />
+              <input
+                ref={paletteInputRef}
+                type="text"
+                className="palette-input"
+                placeholder="Buscar acción o chat..."
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIndex(i => Math.min(i + 1, filteredPaletteItems.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIndex(i => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const item = filteredPaletteItems[paletteIndex];
+                    if (item) {
+                      item.run();
+                      setPaletteOpen(false);
+                      setPaletteQuery('');
+                    }
+                  }
+                }}
+              />
+              <kbd className="palette-kbd">esc</kbd>
+            </div>
+            <div className="palette-list">
+              {filteredPaletteItems.length === 0 ? (
+                <div className="palette-empty">Sin resultados</div>
+              ) : (
+                filteredPaletteItems.map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      className={`palette-item ${i === paletteIndex ? 'active' : ''}`}
+                      onMouseEnter={() => setPaletteIndex(i)}
+                      onClick={() => {
+                        item.run();
+                        setPaletteOpen(false);
+                        setPaletteQuery('');
+                      }}
+                    >
+                      <Icon size={16} className="palette-item-icon" />
+                      <span className="palette-item-label">{item.label}</span>
+                      {item.hint && <span className="palette-item-hint">{item.hint}</span>}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="palette-footer">
+              <span><kbd>↑↓</kbd> Navegar</span>
+              <span><kbd>↵</kbd> Ejecutar</span>
+              <span><kbd>esc</kbd> Cerrar</span>
             </div>
           </div>
         </div>
