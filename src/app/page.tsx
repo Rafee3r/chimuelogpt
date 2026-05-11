@@ -74,8 +74,8 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  // Track if user manually scrolled up during streaming
   const userScrolledUp = useRef<boolean>(false);
+  const isAutoScrolling = useRef<boolean>(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -165,7 +165,9 @@ export default function Home() {
   // Smart auto-scroll: only follow bottom if user hasn't scrolled up
   useEffect(() => {
     if (!userScrolledUp.current) {
+      isAutoScrolling.current = true;
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => { isAutoScrolling.current = false; }, 400);
     }
   }, [displayMessages, isThinking]);
 
@@ -174,8 +176,8 @@ export default function Home() {
     const el = chatScrollRef.current;
     if (!el) return;
     const handleScroll = () => {
+      if (isAutoScrolling.current) return;
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      // If user is more than 150px from bottom, they scrolled up intentionally
       userScrolledUp.current = distFromBottom > 150;
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
