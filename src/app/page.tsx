@@ -1056,24 +1056,35 @@ export default function Home() {
                   </div>
 
                 ) : subjects.length === 0 ? (
-                  /* ── ESTADO VACÍO: Invitar a crear ── */
+                  /* ── ESTADO VACÍO: Guía de primeros pasos ── */
                   <div className="subject-empty-state">
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎒</div>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700 }}>Aún no tienes materias guardadas</h3>
-                    <p style={{ margin: '0 0 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '320px', textAlign: 'center', lineHeight: 1.5 }}>
-                      Agrega un ramo y Chimuelo recordará tus apuntes, el formato del profe y lo que necesitas para cada clase.
-                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%', maxWidth: '440px', marginBottom: '1.25rem' }}>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>¿Cómo funciona?</p>
+                      {[
+                        { n: '1', icon: '📚', title: 'Agrega un ramo', desc: 'Escribe el nombre (ej: Cálculo 2) y pega tus apuntes o el programa del curso.' },
+                        { n: '2', icon: '☝️', title: 'Selecciónalo aquí arriba', desc: 'Chimuelo cargará ese contexto antes de responder — sin que tengas que explicar nada.' },
+                        { n: '3', icon: '🎯', title: 'Elige una tarea abajo', desc: 'Corregir ensayo, resolver ejercicios, resumir papers… lo que necesites para esa materia.' },
+                      ].map(s => (
+                        <div key={s.n} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left' }}>
+                          <div style={{ fontSize: '1.3rem', flexShrink: 0, lineHeight: 1 }}>{s.icon}</div>
+                          <div>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{s.title} </span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{s.desc}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     <button className="subject-add-first-btn" onClick={() => setIsCreatingSubject(true)}>
                       <Plus size={18} /> Agregar mi primer ramo
                     </button>
                   </div>
 
                 ) : (
-                  /* ── LISTA DE MATERIAS: Chips seleccionables ── */
+                  /* ── LISTA DE MATERIAS ── */
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        Elige con qué materia quieres trabajar ahora:
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        {activeSubjectId ? '📖 Ramo activo — Chimuelo usará tus apuntes:' : '👆 Elige un ramo o trabaja en modo General:'}
                       </p>
                       <button className="subject-add-more-btn" onClick={() => setIsCreatingSubject(true)}>
                         <Plus size={14} /> Añadir
@@ -1106,9 +1117,13 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-                    {activeSubjectId && (
-                      <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        ✅ Chimuelo recordará los apuntes de <strong>{subjects.find(s => s.id === activeSubjectId)?.name}</strong> en este chat.
+                    {activeSubjectId ? (
+                      <div style={{ marginTop: '0.75rem', padding: '10px 14px', borderRadius: '10px', background: 'rgba(161,140,209,0.12)', border: '1px solid rgba(161,140,209,0.3)', fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                        🎯 <strong>¡Listo!</strong> Chimuelo ya tiene cargados los apuntes de <strong>{subjects.find(s => s.id === activeSubjectId)?.name}</strong>. Ahora elige una tarea abajo y empezará con todo el contexto de tu ramo.
+                      </div>
+                    ) : (
+                      <p style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        💡 Selecciona un ramo para que Chimuelo use tus apuntes automáticamente, o usa <strong>General</strong> para cualquier consulta sin contexto de materia.
                       </p>
                     )}
                   </div>
