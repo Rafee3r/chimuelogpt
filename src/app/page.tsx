@@ -876,17 +876,6 @@ export default function Home() {
       )}
 
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
-        {/* Brand header */}
-        <div className="sidebar-brand">
-          <div className="sidebar-brand-left">
-            <Cat size={20} className="sidebar-brand-icon" />
-            <span className="sidebar-brand-title">ChimueloGPT</span>
-          </div>
-          <span className="sidebar-model-badge">
-            {model === 'deepseek-v4-flash' ? '⚡ Rápido' : '🧠 Profundo'}
-          </span>
-        </div>
-
         {/* Primary actions */}
         <div className="sidebar-actions">
           <button className="sidebar-primary-btn" onClick={() => { handleSwitchChat(null); setSidebarOpen(false); }}>
