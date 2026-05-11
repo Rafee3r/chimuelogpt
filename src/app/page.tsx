@@ -664,7 +664,8 @@ export default function Home() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && enterToSend) {
+    const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (e.key === "Enter" && !e.shiftKey && enterToSend && !isMobile) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -1563,28 +1564,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Comportamiento Card */}
-              <div className="settings-card">
-                <h3 className="settings-card-title">Comportamiento</h3>
-
-                <div className="settings-group">
-                  <label className="settings-label">Tecla Enter</label>
-                  <div className="settings-toggle-row">
-                    <button
-                      className={`settings-toggle-btn ${enterToSend ? 'active' : ''}`}
-                      onClick={() => { setEnterToSend(true); localStorage.setItem('chimuelo_enterToSend', 'true'); }}
-                    >⏎ Enviar mensaje</button>
-                    <button
-                      className={`settings-toggle-btn ${!enterToSend ? 'active' : ''}`}
-                      onClick={() => { setEnterToSend(false); localStorage.setItem('chimuelo_enterToSend', 'false'); }}
-                    >↵ Nueva línea</button>
-                  </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {enterToSend ? 'Shift+Enter para nueva línea.' : 'Enter agrega línea. Usa el botón enviar o Shift+Enter para enviar.'}
-                  </p>
-                </div>
-              </div>
-
               {/* Estilo de chat Card */}
               <div className="settings-card">
                 <h3 className="settings-card-title">Estilo del Chat</h3>
@@ -1775,7 +1754,7 @@ export default function Home() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
                   className="danger-btn"
-                  style={{ backgroundColor: '#10a37f', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ backgroundColor: '#1877F2', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
                   onClick={async () => {
                     const iframe = document.getElementById('artifact-iframe') as HTMLIFrameElement;
                     if (iframe && iframe.contentDocument) {

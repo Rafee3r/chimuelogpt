@@ -275,7 +275,7 @@ a {
 }
 .artifact-preview-container {
   flex: 1;
-  background-color: white;
+  background-color: var(--bg-primary);
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border-color);
