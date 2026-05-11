@@ -522,6 +522,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -8px 16px var(--sidebar-bg);
 }
 
 .main-content {
