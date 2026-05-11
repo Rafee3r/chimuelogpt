@@ -326,13 +326,17 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // v2.0 — Programmatic scroll helper: coalesces multiple calls per frame
-  // and marks the scroll as ours so handleScroll ignores it. Critical during
-  // token streaming where naive scrolling = visible "creep down" animation.
+  // v2.0 — Programmatic scroll helper.
+  // CRITICAL: re-checks userScrolledUp INSIDE the rAF, not just at schedule time.
+  // Otherwise a chunk's scrollToBottom() that's queued at t=0 will fire at t=16ms
+  // even if the user already scrolled up at t=5ms — that was the real bug.
   const scrollToBottom = useCallback(() => {
-    if (pendingScrollRaf.current != null) return; // already queued for this frame
+    if (pendingScrollRaf.current != null) return;
     pendingScrollRaf.current = requestAnimationFrame(() => {
       pendingScrollRaf.current = null;
+      // Re-check at execution time — user may have scrolled up between
+      // schedule and execution.
+      if (userScrolledUp.current) return;
       if (!messagesEndRef.current) return;
       isProgrammaticScroll.current = true;
       messagesEndRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
