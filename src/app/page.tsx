@@ -372,17 +372,31 @@ export default function Home() {
     const handleScroll = () => {
       const top = el.scrollTop;
       const expected = expectedScrollTop.current;
-      // Tolerance of 2px to absorb subpixel rounding.
+
+      // 2px tolerance absorbs subpixel rounding from programmatic scrolls.
       if (Math.abs(top - expected) < 2) {
-        // Our scroll. Just keep expected in sync.
         expectedScrollTop.current = top;
         return;
       }
-      // User-driven scroll (any device, any method).
+
+      // User-driven scroll. Direction matters more than absolute position:
+      // ANY upward movement → stay (respect their intent immediately).
+      // Downward movement that lands AT the bottom (<5px) → resume follow.
+      // The previous version had a 50px window that swallowed small trackpad
+      // gestures: if the user nudged up 30px from the bottom, distFromBottom=30
+      // was still <50, so intent stayed at 'follow' and the next chunk yanked
+      // them back down. That was the actual bug behind 4 failed attempts.
+      const delta = top - expected;
       expectedScrollTop.current = top;
-      const distFromBottom = el.scrollHeight - top - el.clientHeight;
-      // 50px window: lets the user be "at the bottom" without pixel perfection.
-      userIntent.current = distFromBottom < 50 ? 'follow' : 'stay';
+
+      if (delta < 0) {
+        // User scrolled UP — any amount, any device.
+        userIntent.current = 'stay';
+      } else {
+        // User scrolled DOWN. Only resume auto-scroll if they reached the bottom.
+        const distFromBottom = el.scrollHeight - top - el.clientHeight;
+        if (distFromBottom < 5) userIntent.current = 'follow';
+      }
     };
 
     el.addEventListener('scroll', handleScroll, { passive: true });
