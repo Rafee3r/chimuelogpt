@@ -136,10 +136,11 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const userScrolledUp = useRef<boolean>(false);
-  const isTouching = useRef<boolean>(false);
-  const isProgrammaticScroll = useRef<boolean>(false);
-  const touchEndTime = useRef<number>(0);
+  // Scroll architecture v3 — single source of truth: the actual scrollTop.
+  // We distinguish "our" scrolls from user scrolls by comparing scrollTop
+  // to the value we last set. No flags, no timing races.
+  const userIntent = useRef<'follow' | 'stay'>('follow');
+  const expectedScrollTop = useRef<number>(0);
   const pendingScrollRaf = useRef<number | null>(null);
   const prevViewMode = useRef<"chat" | "university">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -326,103 +327,73 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // v2.0 — Programmatic scroll helper.
-  // CRITICAL: re-checks userScrolledUp INSIDE the rAF, not just at schedule time.
-  // Otherwise a chunk's scrollToBottom() that's queued at t=0 will fire at t=16ms
-  // even if the user already scrolled up at t=5ms — that was the real bug.
-  const scrollToBottom = useCallback(() => {
+  // ──────────── Scroll architecture v3 ────────────
+  //
+  // PROBLEM with flag-based approaches: flags get set at one moment, checked at
+  // another. The window between is enough for the user to start a trackpad gesture
+  // that the system misses. Result: phantom scroll-downs during streaming.
+  //
+  // SOLUTION: distinguish user scrolls from ours by comparing the observed
+  // scrollTop with the value we expect it to be (because we set it). If they
+  // match, it's our scroll. If they differ, it's the user. No timing required.
+  //
+  // Single source of truth: `userIntent` ('follow' = auto-scroll, 'stay' = lock).
+  // Updated ONLY by user scrolls. Programmatic scrolls don't touch it.
+
+  const scrollToBottomNow = useCallback(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    if (userIntent.current !== 'follow') return;
+    const target = el.scrollHeight - el.clientHeight;
+    expectedScrollTop.current = target;
+    el.scrollTop = target;
+  }, []);
+
+  // Schedule a scroll on next frame. Re-checks userIntent inside the rAF
+  // so a gesture between scheduling and execution properly cancels the scroll.
+  const scheduleScroll = useCallback(() => {
     if (pendingScrollRaf.current != null) return;
     pendingScrollRaf.current = requestAnimationFrame(() => {
       pendingScrollRaf.current = null;
-      // Re-check at execution time — user may have scrolled up between
-      // schedule and execution.
-      if (userScrolledUp.current) return;
-      if (!messagesEndRef.current) return;
-      isProgrammaticScroll.current = true;
-      messagesEndRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => { isProgrammaticScroll.current = false; });
-      });
+      scrollToBottomNow();
     });
-  }, []);
+  }, [scrollToBottomNow]);
 
-  // Smart auto-scroll
+  // Auto-scroll on every message/thinking change
   useEffect(() => {
-    if (!userScrolledUp.current) scrollToBottom();
-  }, [displayMessages, isThinking, scrollToBottom]);
+    scheduleScroll();
+  }, [displayMessages, isThinking, scheduleScroll]);
 
-  // Scroll intent detection
+  // Scroll observer — the ONLY place that updates userIntent
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
 
-    // We track scrollTop ourselves so we can detect "user scrolled up" via
-    // scrollbar drag / keyboard / arrow keys — events that DON'T fire wheel.
-    let prevScrollTop = el.scrollTop;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0) userScrolledUp.current = true;
-    };
-
-    let touchStartY = 0;
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY;
-      isTouching.current = true;
-    };
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches[0].clientY > touchStartY + 8) userScrolledUp.current = true;
-    };
-    const handleTouchEnd = () => {
-      isTouching.current = false;
-      touchEndTime.current = Date.now();
-    };
-
     const handleScroll = () => {
-      const currentTop = el.scrollTop;
-      const wasProgrammatic = isProgrammaticScroll.current;
-      const inTouchIgnore = isTouching.current || (Date.now() - touchEndTime.current < 350);
-
-      if (wasProgrammatic || inTouchIgnore) {
-        prevScrollTop = currentTop;
+      const top = el.scrollTop;
+      const expected = expectedScrollTop.current;
+      // Tolerance of 2px to absorb subpixel rounding.
+      if (Math.abs(top - expected) < 2) {
+        // Our scroll. Just keep expected in sync.
+        expectedScrollTop.current = top;
         return;
       }
-
-      const delta = currentTop - prevScrollTop;
-      const distFromBottom = el.scrollHeight - currentTop - el.clientHeight;
-
-      // Direction-aware updates — the previous version had the "near bottom"
-      // check unconditionally overriding the "scrolled up" detection, which
-      // broke small trackpad nudges that stay within 8px of bottom.
-      if (delta < -1) {
-        // User moved UP (any input device, any pixel count)
-        userScrolledUp.current = true;
-      } else if (delta > 1 && distFromBottom < 8) {
-        // User moved DOWN and landed at the bottom — follow the stream again
-        userScrolledUp.current = false;
-      }
-
-      prevScrollTop = currentTop;
+      // User-driven scroll (any device, any method).
+      expectedScrollTop.current = top;
+      const distFromBottom = el.scrollHeight - top - el.clientHeight;
+      // 50px window: lets the user be "at the bottom" without pixel perfection.
+      userIntent.current = distFromBottom < 50 ? 'follow' : 'stay';
     };
 
-    el.addEventListener('wheel', handleWheel, { passive: true });
-    el.addEventListener('touchstart', handleTouchStart, { passive: true });
-    el.addEventListener('touchmove', handleTouchMove, { passive: true });
-    el.addEventListener('touchend', handleTouchEnd, { passive: true });
     el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchmove', handleTouchMove);
-      el.removeEventListener('touchend', handleTouchEnd);
-      el.removeEventListener('scroll', handleScroll);
-    };
+    return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Reset scroll lock when switching chats
+  // Reset to follow-mode when switching chats
   useEffect(() => {
-    userScrolledUp.current = false;
-    setTimeout(() => scrollToBottom(), 50);
-  }, [currentChatId, scrollToBottom]);
+    userIntent.current = 'follow';
+    setTimeout(() => scrollToBottomNow(), 50);
+  }, [currentChatId, scrollToBottomNow]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -665,7 +636,7 @@ export default function Home() {
 
     setInputMessage("");
     setAttachedImage(null);
-    userScrolledUp.current = false;
+    userIntent.current = 'follow'; // user just sent — they want to follow
     setIsThinking(true);
 
     // Add user message to display immediately
