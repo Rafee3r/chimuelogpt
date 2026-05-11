@@ -67,6 +67,10 @@ export default function Home() {
   const [enterToSend, setEnterToSend] = useState<boolean>(true);
   const [bubbleStyle, setBubbleStyle] = useState<"bubbles" | "flat">("bubbles");
   const [messageDensity, setMessageDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
+  const [userMemory, setUserMemory] = useState<{id: string; content: string; createdAt: number}[]>([]);
+  const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
+  const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
+  const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
 
@@ -118,6 +122,12 @@ export default function Home() {
     const savedDensity = localStorage.getItem("chimuelo_density") as "compact" | "comfortable" | "spacious";
     if (savedDensity) setMessageDensity(savedDensity);
 
+    const savedMemory = localStorage.getItem("chimuelo_memory");
+    if (savedMemory) setUserMemory(JSON.parse(savedMemory));
+
+    const savedMemoryEnabled = localStorage.getItem("chimuelo_memoryEnabled");
+    if (savedMemoryEnabled !== null) setMemoryEnabled(savedMemoryEnabled === "true");
+
     const savedSubjects = localStorage.getItem("chimuelo_subjects");
     if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
     
@@ -144,9 +154,9 @@ export default function Home() {
           const storedVersion = localStorage.getItem("chimuelo_version") || "1.0.0";
           if (data.version && data.version !== storedVersion) {
             setAppVersion(data.version);
-            setShowVersionBanner(true);
+            setVersionData(data);
+            setShowVersionModal(true);
             localStorage.setItem("chimuelo_version", data.version);
-            setTimeout(() => setShowVersionBanner(false), 10000);
           }
         }
       } catch (e) {
@@ -483,6 +493,10 @@ export default function Home() {
           }
         }
       }
+      // Inject persistent user memory
+      if (memoryEnabled && userMemory.length > 0) {
+        finalSystemPrompt += `\n\n[MEMORIA PERSISTENTE DEL USUARIO — PRIORIDAD ALTA]\nConoces estos datos del usuario de conversaciones anteriores. Úsalos para personalizar tus respuestas sin que te lo repita:\n${userMemory.map(m => `• ${m.content}`).join('\n')}\n[FIN DE MEMORIA PERSISTENTE]`;
+      }
 
       let res: Response;
       if (imagePayload) {
@@ -593,6 +607,32 @@ export default function Home() {
         localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
         return updated;
       });
+
+      // Extract persistent memory facts (fire-and-forget)
+      if (memoryEnabled && messageText && cleanContent) {
+        fetch('/api/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userMessage: messageText,
+            assistantMessage: cleanContent,
+            existingMemories: userMemory.map(m => m.content),
+          }),
+        }).then(r => r.json()).then(({ facts }) => {
+          if (facts?.length > 0) {
+            setUserMemory(prev => {
+              const newEntries = facts.map((content: string) => ({
+                id: Date.now().toString() + Math.random().toString(36).slice(2),
+                content,
+                createdAt: Date.now(),
+              }));
+              const updated = [...prev, ...newEntries];
+              localStorage.setItem("chimuelo_memory", JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }).catch(() => {});
+      }
 
     } catch (e: any) {
       console.error("Stream error:", e);
@@ -765,9 +805,29 @@ export default function Home() {
 
   return (
     <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
-      {showVersionBanner && (
-        <div className="version-banner">
-          ¡Nueva versión disponible! (v{appVersion})
+      {showVersionModal && (
+        <div className="modal-overlay" onClick={() => setShowVersionModal(false)}>
+          <div className="modal-content version-modal" onClick={e => e.stopPropagation()}>
+            <div className="version-modal-header">
+              <div className="version-modal-badge">✨ Novedad</div>
+              <h2 className="version-modal-title">ChimueloGPT <span className="version-modal-num">v{versionData.version}</span></h2>
+              <p className="version-modal-date">{versionData.date}</p>
+            </div>
+            <div className="version-modal-changes">
+              {versionData.changes?.map((c, i) => (
+                <div key={i} className="version-change-item">
+                  <div className="version-change-icon">{c.icon}</div>
+                  <div>
+                    <div className="version-change-title">{c.title}</div>
+                    <div className="version-change-desc">{c.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="version-modal-close-btn" onClick={() => setShowVersionModal(false)}>
+              Entendido 🎉
+            </button>
+          </div>
         </div>
       )}
 
@@ -1546,6 +1606,54 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Memoria Card */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">🧠 Memoria Persistente</h3>
+
+                <div className="settings-group">
+                  <div className="settings-toggle-row" style={{ marginBottom: '12px' }}>
+                    <button
+                      className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`}
+                      onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}
+                    >✅ Activa</button>
+                    <button
+                      className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`}
+                      onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}
+                    >⏸ Pausada</button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                    Chimuelo extrae datos de tus chats para recordarte entre conversaciones.
+                  </p>
+
+                  {userMemory.length === 0 ? (
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      Aún no hay recuerdos. Aparecerán aquí tras tus primeras conversaciones.
+                    </p>
+                  ) : (
+                    <div className="memory-entries-list">
+                      {userMemory.map(m => (
+                        <div key={m.id} className="memory-entry">
+                          <span className="memory-entry-text">{m.content}</span>
+                          <button
+                            className="memory-entry-delete"
+                            title="Olvidar esto"
+                            onClick={() => {
+                              const updated = userMemory.filter(x => x.id !== m.id);
+                              setUserMemory(updated);
+                              localStorage.setItem('chimuelo_memory', JSON.stringify(updated));
+                            }}
+                          ><X size={12} /></button>
+                        </div>
+                      ))}
+                      <button
+                        style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={() => { setUserMemory([]); localStorage.removeItem('chimuelo_memory'); }}
+                      >Borrar toda la memoria</button>
+                    </div>
+                  )}
                 </div>
               </div>
 

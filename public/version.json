@@ -1,3 +1,10 @@
 {
-  "version": "10.05.2026"
+  "version": "4.0",
+  "date": "2026-05-10",
+  "changes": [
+    { "icon": "🧠", "title": "Memoria Persistente", "desc": "Chimuelo ahora recuerda quién eres entre conversaciones." },
+    { "icon": "✍️", "title": "Tipografía mejorada", "desc": "Texto más legible con Inter, mejor espaciado y jerarquía visual." },
+    { "icon": "⚙️", "title": "Config 2.0", "desc": "Enter configurable, burbujas planas y densidad de mensajes." },
+    { "icon": "🐛", "title": "Scroll corregido", "desc": "Ya no te arrastra hacia abajo cuando intentas subir durante una respuesta." }
+  ]
 }

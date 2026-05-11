@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ChimueloGPT",
@@ -23,7 +30,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Chimuelo" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body>
+      <body className={inter.variable}>
         {children}
         <script
           dangerouslySetInnerHTML={{
