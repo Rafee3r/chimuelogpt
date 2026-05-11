@@ -138,6 +138,8 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef<boolean>(false);
   const isTouching = useRef<boolean>(false);
+  const isProgrammaticScroll = useRef<boolean>(false);
+  const touchEndTime = useRef<number>(0);
   const prevViewMode = useRef<"chat" | "university">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
@@ -323,24 +325,33 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // Smart auto-scroll: instant so no lingering animation interferes with touch
+  // v2.0 — Programmatic scroll helper: marks the scroll as ours so handleScroll ignores it
+  const scrollToBottom = useCallback(() => {
+    if (!messagesEndRef.current) return;
+    isProgrammaticScroll.current = true;
+    messagesEndRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+    // Two rAFs: 1st waits past the synchronous scroll event from scrollIntoView,
+    // 2nd covers any secondary layout-induced scroll the same frame.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { isProgrammaticScroll.current = false; });
+    });
+  }, []);
+
+  // Smart auto-scroll
   useEffect(() => {
-    if (!userScrolledUp.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-    }
-  }, [displayMessages, isThinking]);
+    if (!userScrolledUp.current) scrollToBottom();
+  }, [displayMessages, isThinking, scrollToBottom]);
 
   // Scroll intent detection
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
 
-    // Wheel = desktop scroll up
+    // Wheel up = explicit user intent to scroll up
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY < 0) userScrolledUp.current = true;
     };
 
-    // Touch: set isTouching so scroll events can't reset userScrolledUp mid-gesture
     let touchStartY = 0;
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY = e.touches[0].clientY;
@@ -349,13 +360,20 @@ export default function Home() {
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches[0].clientY > touchStartY + 8) userScrolledUp.current = true;
     };
-    const handleTouchEnd = () => { isTouching.current = false; };
+    const handleTouchEnd = () => {
+      isTouching.current = false;
+      touchEndTime.current = Date.now();
+    };
 
-    // Scroll: only re-enable auto-scroll when user reaches the bottom AND isn't touching
+    // Only re-enable auto-scroll when user manually lands AT the bottom — and only
+    // for HUMAN scroll events (not our programmatic scrolls, not iOS momentum).
     const handleScroll = () => {
+      if (isProgrammaticScroll.current) return;
       if (isTouching.current) return;
+      // iOS momentum can fire scroll events for ~300ms after touchend.
+      if (Date.now() - touchEndTime.current < 350) return;
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      if (distFromBottom < 60) userScrolledUp.current = false;
+      if (distFromBottom < 8) userScrolledUp.current = false;
     };
 
     el.addEventListener('wheel', handleWheel, { passive: true });
@@ -375,8 +393,8 @@ export default function Home() {
   // Reset scroll lock when switching chats
   useEffect(() => {
     userScrolledUp.current = false;
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
-  }, [currentChatId]);
+    setTimeout(() => scrollToBottom(), 50);
+  }, [currentChatId, scrollToBottom]);
 
   useEffect(() => {
     if (textareaRef.current) {
