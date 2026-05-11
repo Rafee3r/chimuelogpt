@@ -64,6 +64,9 @@ export default function Home() {
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium");
   const [persona, setPersona] = useState<"default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional">("default");
   const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
+  const [enterToSend, setEnterToSend] = useState<boolean>(true);
+  const [bubbleStyle, setBubbleStyle] = useState<"bubbles" | "flat">("bubbles");
+  const [messageDensity, setMessageDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
 
@@ -75,7 +78,6 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef<boolean>(false);
-  const isAutoScrolling = useRef<boolean>(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -106,6 +108,15 @@ export default function Home() {
 
     const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
     if (savedModel) setModel(savedModel);
+
+    const savedEnterToSend = localStorage.getItem("chimuelo_enterToSend");
+    if (savedEnterToSend !== null) setEnterToSend(savedEnterToSend === "true");
+
+    const savedBubbleStyle = localStorage.getItem("chimuelo_bubbleStyle") as "bubbles" | "flat";
+    if (savedBubbleStyle) setBubbleStyle(savedBubbleStyle);
+
+    const savedDensity = localStorage.getItem("chimuelo_density") as "compact" | "comfortable" | "spacious";
+    if (savedDensity) setMessageDensity(savedDensity);
 
     const savedSubjects = localStorage.getItem("chimuelo_subjects");
     if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
@@ -165,23 +176,41 @@ export default function Home() {
   // Smart auto-scroll: only follow bottom if user hasn't scrolled up
   useEffect(() => {
     if (!userScrolledUp.current) {
-      isAutoScrolling.current = true;
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setTimeout(() => { isAutoScrolling.current = false; }, 400);
     }
   }, [displayMessages, isThinking]);
 
-  // Attach onScroll listener to detect user scrolling up
+  // Detect user scroll intent via wheel/touch (never fired by programmatic scrolling)
+  // Reset lock via scroll event only when user returns to the bottom
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
-    const handleScroll = () => {
-      if (isAutoScrolling.current) return;
-      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      userScrolledUp.current = distFromBottom > 150;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) userScrolledUp.current = true;
     };
+
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => { touchStartY = e.touches[0].clientY; };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches[0].clientY > touchStartY + 10) userScrolledUp.current = true;
+    };
+
+    const handleScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distFromBottom < 60) userScrolledUp.current = false;
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: true });
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: true });
     el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Reset scroll lock when switching chats
@@ -585,7 +614,7 @@ export default function Home() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && enterToSend) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -901,7 +930,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div ref={chatScrollRef} className="chat-area" style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+        <div ref={chatScrollRef} className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
@@ -958,7 +987,7 @@ export default function Home() {
                 ) : subjects.length === 0 ? (
                   /* ── ESTADO VACÍO: Invitar a crear ── */
                   <div className="subject-empty-state">
-                    <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎒</div>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎒</div>
                     <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700 }}>Aún no tienes materias guardadas</h3>
                     <p style={{ margin: '0 0 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '320px', textAlign: 'center', lineHeight: 1.5 }}>
                       Agrega un ramo y Chimuelo recordará tus apuntes, el formato del profe y lo que necesitas para cada clase.
@@ -1461,6 +1490,62 @@ export default function Home() {
                     <option value="profesional">Profesional (Corporativo, de usted)</option>
                   </select>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
+                </div>
+              </div>
+
+              {/* Comportamiento Card */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Comportamiento</h3>
+
+                <div className="settings-group">
+                  <label className="settings-label">Tecla Enter</label>
+                  <div className="settings-toggle-row">
+                    <button
+                      className={`settings-toggle-btn ${enterToSend ? 'active' : ''}`}
+                      onClick={() => { setEnterToSend(true); localStorage.setItem('chimuelo_enterToSend', 'true'); }}
+                    >⏎ Enviar mensaje</button>
+                    <button
+                      className={`settings-toggle-btn ${!enterToSend ? 'active' : ''}`}
+                      onClick={() => { setEnterToSend(false); localStorage.setItem('chimuelo_enterToSend', 'false'); }}
+                    >↵ Nueva línea</button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {enterToSend ? 'Shift+Enter para nueva línea.' : 'Enter agrega línea. Usa el botón enviar o Shift+Enter para enviar.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Estilo de chat Card */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Estilo del Chat</h3>
+
+                <div className="settings-group">
+                  <label className="settings-label">Burbujas</label>
+                  <div className="settings-toggle-row">
+                    <button
+                      className={`settings-toggle-btn ${bubbleStyle === 'bubbles' ? 'active' : ''}`}
+                      onClick={() => { setBubbleStyle('bubbles'); localStorage.setItem('chimuelo_bubbleStyle', 'bubbles'); }}
+                    >💬 Clásico</button>
+                    <button
+                      className={`settings-toggle-btn ${bubbleStyle === 'flat' ? 'active' : ''}`}
+                      onClick={() => { setBubbleStyle('flat'); localStorage.setItem('chimuelo_bubbleStyle', 'flat'); }}
+                    >▬ Plano</button>
+                  </div>
+                </div>
+
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Densidad de mensajes</label>
+                  <div className="settings-toggle-row">
+                    {(['compact', 'comfortable', 'spacious'] as const).map(d => (
+                      <button
+                        key={d}
+                        className={`settings-toggle-btn ${messageDensity === d ? 'active' : ''}`}
+                        onClick={() => { setMessageDensity(d); localStorage.setItem('chimuelo_density', d); }}
+                      >
+                        {d === 'compact' ? '▣ Compacto' : d === 'comfortable' ? '▤ Normal' : '▥ Amplio'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
