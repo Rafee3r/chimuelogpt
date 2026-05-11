@@ -1624,7 +1624,7 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        {viewMode !== "university" && (
+        {viewMode === "chat" && (
           <div className="v2-input-area">
             <div className="v2-model-selector">
               <button 
