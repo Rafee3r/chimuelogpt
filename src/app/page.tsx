@@ -140,6 +140,7 @@ export default function Home() {
   const isTouching = useRef<boolean>(false);
   const isProgrammaticScroll = useRef<boolean>(false);
   const touchEndTime = useRef<number>(0);
+  const pendingScrollRaf = useRef<number | null>(null);
   const prevViewMode = useRef<"chat" | "university">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
@@ -325,15 +326,19 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // v2.0 — Programmatic scroll helper: marks the scroll as ours so handleScroll ignores it
+  // v2.0 — Programmatic scroll helper: coalesces multiple calls per frame
+  // and marks the scroll as ours so handleScroll ignores it. Critical during
+  // token streaming where naive scrolling = visible "creep down" animation.
   const scrollToBottom = useCallback(() => {
-    if (!messagesEndRef.current) return;
-    isProgrammaticScroll.current = true;
-    messagesEndRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-    // Two rAFs: 1st waits past the synchronous scroll event from scrollIntoView,
-    // 2nd covers any secondary layout-induced scroll the same frame.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { isProgrammaticScroll.current = false; });
+    if (pendingScrollRaf.current != null) return; // already queued for this frame
+    pendingScrollRaf.current = requestAnimationFrame(() => {
+      pendingScrollRaf.current = null;
+      if (!messagesEndRef.current) return;
+      isProgrammaticScroll.current = true;
+      messagesEndRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { isProgrammaticScroll.current = false; });
+      });
     });
   }, []);
 

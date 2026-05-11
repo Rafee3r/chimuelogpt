@@ -670,9 +670,19 @@ a {
   flex-direction: column;
   padding-top: 1rem;
   padding-bottom: 120px;
-  scroll-behavior: smooth;
+  /* CRITICAL: 'auto' (not smooth) — smooth animates every scrollIntoView during
+     token streaming, creating a visible "creep down" effect. */
+  scroll-behavior: auto;
   gap: 12px;
   overscroll-behavior: contain;
+  /* CRITICAL: disable browser scroll anchoring. We manage scroll position
+     ourselves; the browser's auto-correction fights our lock and tugs the
+     user down each time content grows. */
+  overflow-anchor: none;
+}
+
+.chat-area * {
+  overflow-anchor: none;
 }
 
 .message {
