@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
@@ -46,8 +46,7 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "university">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "university" | "settings">("chat");
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedUniTask, setSelectedUniTask] = useState<"essay" | "science" | "synthesis" | "socratic" | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -83,6 +82,19 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef<boolean>(false);
   const isTouching = useRef<boolean>(false);
+  const prevViewMode = useRef<"chat" | "university">("chat");
+
+  const groupChatsByDate = (chats: Chat[]) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+    return {
+      hoy:    chats.filter(c => c.updatedAt >= today.getTime()),
+      ayer:   chats.filter(c => c.updatedAt >= yesterday.getTime() && c.updatedAt < today.getTime()),
+      semana: chats.filter(c => c.updatedAt >= weekAgo.getTime() && c.updatedAt < yesterday.getTime()),
+      antes:  chats.filter(c => c.updatedAt < weekAgo.getTime()),
+    };
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -682,7 +694,7 @@ export default function Home() {
       localStorage.removeItem("chimuelo_current_chat");
       localStorage.removeItem("chimuelo_subjects");
       localStorage.removeItem("chimuelo_active_subject");
-      setSettingsOpen(false);
+      setViewMode('chat');
     }
   };
 
@@ -864,38 +876,84 @@ export default function Home() {
       )}
 
       <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
-        <div className="sidebar-header">
-          <button className="new-chat-btn" onClick={() => handleSwitchChat(null)}>
-            <SquarePen size={18} style={{ flexShrink: 0 }} />
-            <span>Nueva conversación</span>
+        {/* Brand header */}
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-left">
+            <Cat size={20} className="sidebar-brand-icon" />
+            <span className="sidebar-brand-title">ChimueloGPT</span>
+          </div>
+          <span className="sidebar-model-badge">
+            {model === 'deepseek-v4-flash' ? '⚡ Rápido' : '🧠 Profundo'}
+          </span>
+        </div>
+
+        {/* Primary actions */}
+        <div className="sidebar-actions">
+          <button className="sidebar-primary-btn" onClick={() => { handleSwitchChat(null); setSidebarOpen(false); }}>
+            <SquarePen size={16} />
+            <span>Nuevo chat</span>
           </button>
-          <button className="new-chat-btn uni-sidebar-btn" onClick={() => { setViewMode("university"); setSidebarOpen(false); }}>
-            <GraduationCap size={18} style={{ flexShrink: 0 }} />
+          <button className="sidebar-uni-btn" onClick={() => { prevViewMode.current = 'chat'; setViewMode("university"); setSidebarOpen(false); }}>
+            <GraduationCap size={16} />
             <span>Modo Universitario</span>
           </button>
         </div>
 
-        <div className="sidebar-section-title">Conversaciones</div>
+        {/* Chat list grouped by date */}
         <div className="sidebar-chat-list">
-          {chats.map(chat => (
-            <button
-              key={chat.id}
-              className={`sidebar-item ${currentChatId === chat.id ? 'active' : ''}`}
-              onClick={() => handleSwitchChat(chat.id)}
-            >
-              <MessageSquare size={16} style={{ flexShrink: 0 }} />
-              <span>{chat.title}</span>
-            </button>
-          ))}
+          {chats.length === 0 ? (
+            <div className="sidebar-empty-state">
+              <MessageSquare size={28} />
+              <p>Aún no hay conversaciones.</p>
+              <small>Toca "Nuevo chat" para empezar.</small>
+            </div>
+          ) : (() => {
+            const groups = groupChatsByDate(chats);
+            const renderGroup = (label: string, items: Chat[]) => items.length === 0 ? null : (
+              <div key={label}>
+                <div className="sidebar-group-label">{label}</div>
+                {items.map(chat => (
+                  <button
+                    key={chat.id}
+                    className={`sidebar-item ${currentChatId === chat.id ? 'active' : ''}`}
+                    onClick={() => { handleSwitchChat(chat.id); setSidebarOpen(false); }}
+                  >
+                    <MessageSquare size={14} style={{ flexShrink: 0 }} />
+                    <span>{chat.title}</span>
+                  </button>
+                ))}
+              </div>
+            );
+            return (
+              <>
+                {renderGroup('Hoy', groups.hoy)}
+                {renderGroup('Ayer', groups.ayer)}
+                {renderGroup('Esta semana', groups.semana)}
+                {renderGroup('Antes', groups.antes)}
+              </>
+            );
+          })()}
         </div>
+
+        {/* Footer */}
         <div className="sidebar-footer">
-          <button onClick={() => setPwaModalOpen(true)} className="sidebar-item">
-            <Smartphone size={16} style={{ flexShrink: 0 }} />
-            <span>Agrégame a tu Celu</span>
+          <button
+            className="sidebar-memory-status"
+            onClick={() => { prevViewMode.current = viewMode as "chat" | "university"; setViewMode('settings'); setSidebarOpen(false); }}
+          >
+            <Brain size={14} />
+            <span>{memoryEnabled ? `${userMemory.length} recuerdos guardados` : 'Memoria pausada'}</span>
           </button>
-          <button onClick={() => setSettingsOpen(true)} className="sidebar-item">
+          <button
+            className="sidebar-item"
+            onClick={() => { prevViewMode.current = viewMode as "chat" | "university"; setViewMode('settings'); setSidebarOpen(false); }}
+          >
             <Settings size={16} style={{ flexShrink: 0 }} />
             <span>Configuración</span>
+          </button>
+          <button onClick={() => setPwaModalOpen(true)} className="sidebar-item">
+            <Smartphone size={16} style={{ flexShrink: 0 }} />
+            <span>Instalar como app</span>
           </button>
         </div>
       </div>
@@ -1001,7 +1059,145 @@ export default function Home() {
           </button>
         </div>
 
-        <div ref={chatScrollRef} className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+        {viewMode === "settings" && (
+          <div className="settings-page">
+            <div className="settings-page-header">
+              <button className="settings-back-btn" onClick={() => setViewMode(prevViewMode.current)}>
+                <ChevronLeft size={20} /> Volver
+              </button>
+              <h1 className="settings-page-title">Configuración</h1>
+            </div>
+            <div className="settings-page-body">
+
+              {/* Apariencia */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Apariencia</h3>
+                <div className="settings-group">
+                  <label className="settings-label">Tema Visual</label>
+                  <div className="theme-selector" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {[
+                      { id: 'system', name: 'Sistema', color: 'linear-gradient(135deg, #f0f0f0 50%, #1a1a1a 50%)' },
+                      { id: 'light', name: 'Claro', color: '#f8fafc' },
+                      { id: 'dark', name: 'Oscuro', color: '#0f172a' },
+                      { id: 'pink', name: 'Rosa', color: '#fdf2f8' },
+                      { id: 'orange', name: 'Naranja', color: '#fff7ed' },
+                      { id: 'oled', name: 'OLED', color: '#000000' },
+                      { id: 'snow', name: 'Nieve', color: '#ffffff' },
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        className={`theme-circle ${theme === t.id ? 'active' : ''}`}
+                        title={t.name}
+                        onClick={() => setTheme(t.id as any)}
+                        style={{
+                          width: '36px', height: '36px', borderRadius: '50%', background: t.color,
+                          border: theme === t.id ? '3px solid #3b82f6' : '1px solid var(--border-color)',
+                          cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Tamaño de Texto del Chat</label>
+                  <select className="settings-select" value={fontSize} onChange={(e) => setFontSize(e.target.value as any)}>
+                    <option value="small">Pequeño</option>
+                    <option value="medium">Mediano (Normal)</option>
+                    <option value="large">Grande</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Personalidad */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Cerebro de Chimuelo</h3>
+                <div className="settings-group">
+                  <label className="settings-label">Personalidad de la IA</label>
+                  <select className="settings-select" value={persona} onChange={(e) => setPersona(e.target.value as any)}>
+                    <option value="default">Normal (Amigable y útil)</option>
+                    <option value="amable">Amable (Muy cálido y paciente)</option>
+                    <option value="chistoso">Chistoso (Humor y sarcasmo)</option>
+                    <option value="cursi">Cursi (Amoroso, muchos emojis 🥰)</option>
+                    <option value="directo">Directo al grano (Respuestas cortas)</option>
+                    <option value="serio">Serio (Formal, analítico)</option>
+                    <option value="profesional">Profesional (Corporativo, de usted)</option>
+                  </select>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
+                </div>
+              </div>
+
+              {/* Estilo del Chat */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">Estilo del Chat</h3>
+                <div className="settings-group">
+                  <label className="settings-label">Burbujas</label>
+                  <div className="settings-toggle-row">
+                    <button className={`settings-toggle-btn ${bubbleStyle === 'bubbles' ? 'active' : ''}`} onClick={() => { setBubbleStyle('bubbles'); localStorage.setItem('chimuelo_bubbleStyle', 'bubbles'); }}>💬 Clásico</button>
+                    <button className={`settings-toggle-btn ${bubbleStyle === 'flat' ? 'active' : ''}`} onClick={() => { setBubbleStyle('flat'); localStorage.setItem('chimuelo_bubbleStyle', 'flat'); }}>▬ Plano</button>
+                  </div>
+                </div>
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Densidad de mensajes</label>
+                  <div className="settings-toggle-row">
+                    {(['compact', 'comfortable', 'spacious'] as const).map(d => (
+                      <button key={d} className={`settings-toggle-btn ${messageDensity === d ? 'active' : ''}`} onClick={() => { setMessageDensity(d); localStorage.setItem('chimuelo_density', d); }}>
+                        {d === 'compact' ? '▣ Compacto' : d === 'comfortable' ? '▤ Normal' : '▥ Amplio'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Memoria */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">🧠 Memoria Persistente</h3>
+                <div className="settings-group">
+                  <div className="settings-toggle-row" style={{ marginBottom: '12px' }}>
+                    <button className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}>✅ Activa</button>
+                    <button className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}>⏸ Pausada</button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                    Chimuelo extrae datos de tus chats para recordarte entre conversaciones.
+                  </p>
+                  {userMemory.length === 0 ? (
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      Aún no hay recuerdos. Aparecerán aquí tras tus primeras conversaciones.
+                    </p>
+                  ) : (
+                    <div className="memory-entries-list">
+                      {userMemory.map(m => (
+                        <div key={m.id} className="memory-entry">
+                          <span className="memory-entry-text">{m.content}</span>
+                          <button className="memory-entry-delete" title="Olvidar esto" onClick={() => { const updated = userMemory.filter(x => x.id !== m.id); setUserMemory(updated); localStorage.setItem('chimuelo_memory', JSON.stringify(updated)); }}><X size={12} /></button>
+                        </div>
+                      ))}
+                      <button style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => { setUserMemory([]); localStorage.removeItem('chimuelo_memory'); }}>Borrar toda la memoria</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Cuenta y Datos */}
+              <div className="settings-card danger">
+                <h3 className="settings-card-title">Cuenta y Datos</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button onClick={() => setPwaModalOpen(true)} className="settings-action-btn">
+                    <Smartphone size={16} /> Instalar como App
+                  </button>
+                  <button onClick={clearAllHistory} className="settings-action-btn">
+                    <Trash2 size={16} /> Borrar todos los chats
+                  </button>
+                  <button onClick={() => { localStorage.removeItem("chimuelo_auth"); window.location.reload(); }} className="settings-action-btn logout">
+                    <LogOut size={16} /> Cerrar sesión
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        <div ref={chatScrollRef} className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
             <div className="university-dashboard">
               <div className="university-header">
@@ -1498,198 +1694,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {settingsOpen && (
-        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
-          <div className="modal-content settings-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ marginBottom: '1rem' }}>
-              <h2 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>Ajustes de Chimuelo</h2>
-              <button onClick={() => setSettingsOpen(false)} className="modal-close">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="settings-scroll-area" style={{ maxHeight: 'calc(90vh - 100px)', overflowY: 'auto', paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              
-              {/* Apariencia Card */}
-              <div className="settings-card">
-                <h3 className="settings-card-title">Apariencia</h3>
-                
-                <div className="settings-group">
-                  <label className="settings-label">Tema Visual</label>
-                  <div className="theme-selector" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
-                    {[
-                      { id: 'system', name: 'Sistema', color: 'linear-gradient(135deg, #f0f0f0 50%, #1a1a1a 50%)' },
-                      { id: 'light', name: 'Claro', color: '#f8fafc' },
-                      { id: 'dark', name: 'Oscuro', color: '#0f172a' },
-                      { id: 'pink', name: 'Rosa', color: '#fdf2f8' },
-                      { id: 'orange', name: 'Naranja', color: '#fff7ed' },
-                      { id: 'oled', name: 'OLED', color: '#000000' },
-                      { id: 'snow', name: 'Nieve', color: '#ffffff' },
-                    ].map(t => (
-                      <button 
-                        key={t.id}
-                        className={`theme-circle ${theme === t.id ? 'active' : ''}`}
-                        title={t.name}
-                        onClick={() => setTheme(t.id as any)}
-                        style={{ 
-                          width: '36px', height: '36px', borderRadius: '50%', background: t.color,
-                          border: theme === t.id ? '3px solid #3b82f6' : '1px solid var(--border-color)',
-                          cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="settings-group" style={{ marginTop: '1rem' }}>
-                  <label className="settings-label">Tamaño de Texto del Chat</label>
-                  <select 
-                    className="settings-select"
-                    value={fontSize}
-                    onChange={(e) => setFontSize(e.target.value as any)}
-                  >
-                    <option value="small">Pequeño</option>
-                    <option value="medium">Mediano (Normal)</option>
-                    <option value="large">Grande</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Personalidad Card */}
-              <div className="settings-card">
-                <h3 className="settings-card-title">Cerebro de Chimuelo</h3>
-                
-                <div className="settings-group">
-                  <label className="settings-label">Personalidad de la IA</label>
-                  <select 
-                    className="settings-select"
-                    value={persona}
-                    onChange={(e) => setPersona(e.target.value as any)}
-                  >
-                    <option value="default">Normal (Amigable y útil)</option>
-                    <option value="amable">Amable (Muy cálido y paciente)</option>
-                    <option value="chistoso">Chistoso (Humor y sarcasmo)</option>
-                    <option value="cursi">Cursi (Amoroso, muchos emojis 🥰)</option>
-                    <option value="directo">Directo al grano (Respuestas cortas)</option>
-                    <option value="serio">Serio (Formal, analítico)</option>
-                    <option value="profesional">Profesional (Corporativo, de usted)</option>
-                  </select>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
-                </div>
-              </div>
-
-              {/* Estilo de chat Card */}
-              <div className="settings-card">
-                <h3 className="settings-card-title">Estilo del Chat</h3>
-
-                <div className="settings-group">
-                  <label className="settings-label">Burbujas</label>
-                  <div className="settings-toggle-row">
-                    <button
-                      className={`settings-toggle-btn ${bubbleStyle === 'bubbles' ? 'active' : ''}`}
-                      onClick={() => { setBubbleStyle('bubbles'); localStorage.setItem('chimuelo_bubbleStyle', 'bubbles'); }}
-                    >💬 Clásico</button>
-                    <button
-                      className={`settings-toggle-btn ${bubbleStyle === 'flat' ? 'active' : ''}`}
-                      onClick={() => { setBubbleStyle('flat'); localStorage.setItem('chimuelo_bubbleStyle', 'flat'); }}
-                    >▬ Plano</button>
-                  </div>
-                </div>
-
-                <div className="settings-group" style={{ marginTop: '1rem' }}>
-                  <label className="settings-label">Densidad de mensajes</label>
-                  <div className="settings-toggle-row">
-                    {(['compact', 'comfortable', 'spacious'] as const).map(d => (
-                      <button
-                        key={d}
-                        className={`settings-toggle-btn ${messageDensity === d ? 'active' : ''}`}
-                        onClick={() => { setMessageDensity(d); localStorage.setItem('chimuelo_density', d); }}
-                      >
-                        {d === 'compact' ? '▣ Compacto' : d === 'comfortable' ? '▤ Normal' : '▥ Amplio'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Memoria Card */}
-              <div className="settings-card">
-                <h3 className="settings-card-title">🧠 Memoria Persistente</h3>
-
-                <div className="settings-group">
-                  <div className="settings-toggle-row" style={{ marginBottom: '12px' }}>
-                    <button
-                      className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`}
-                      onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}
-                    >✅ Activa</button>
-                    <button
-                      className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`}
-                      onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}
-                    >⏸ Pausada</button>
-                  </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                    Chimuelo extrae datos de tus chats para recordarte entre conversaciones.
-                  </p>
-
-                  {userMemory.length === 0 ? (
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                      Aún no hay recuerdos. Aparecerán aquí tras tus primeras conversaciones.
-                    </p>
-                  ) : (
-                    <div className="memory-entries-list">
-                      {userMemory.map(m => (
-                        <div key={m.id} className="memory-entry">
-                          <span className="memory-entry-text">{m.content}</span>
-                          <button
-                            className="memory-entry-delete"
-                            title="Olvidar esto"
-                            onClick={() => {
-                              const updated = userMemory.filter(x => x.id !== m.id);
-                              setUserMemory(updated);
-                              localStorage.setItem('chimuelo_memory', JSON.stringify(updated));
-                            }}
-                          ><X size={12} /></button>
-                        </div>
-                      ))}
-                      <button
-                        style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                        onClick={() => { setUserMemory([]); localStorage.removeItem('chimuelo_memory'); }}
-                      >Borrar toda la memoria</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Peligro Card */}
-              <div className="settings-card danger">
-                <h3 className="settings-card-title">Cuenta y Datos</h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button onClick={() => setPwaModalOpen(true)} className="settings-action-btn">
-                    <Smartphone size={16} /> Instalar como App
-                  </button>
-                  
-                  <button onClick={clearAllHistory} className="settings-action-btn">
-                    <Trash2 size={16} /> Borrar todos los chats
-                  </button>
-                  
-                  <button 
-                    onClick={() => {
-                      localStorage.removeItem("chimuelo_auth");
-                      window.location.reload();
-                    }} 
-                    className="settings-action-btn logout"
-                  >
-                    <LogOut size={16} /> Cerrar sesión
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* PWA Instructions Modal */}
       {pwaModalOpen && (
