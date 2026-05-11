@@ -135,8 +135,24 @@ export default function Home() {
     const savedDensity = localStorage.getItem("chimuelo_density") as "compact" | "comfortable" | "spacious";
     if (savedDensity) setMessageDensity(savedDensity);
 
-    const savedMemory = localStorage.getItem("chimuelo_memory");
-    if (savedMemory) setUserMemory(JSON.parse(savedMemory));
+    try {
+      const savedMemory = localStorage.getItem("chimuelo_memory");
+      if (savedMemory) {
+        const parsed = JSON.parse(savedMemory);
+        if (Array.isArray(parsed)) {
+          // Migrate old string[] format to {id, content, createdAt}[]
+          const normalized = parsed.map((m: any, i: number) =>
+            typeof m === 'string'
+              ? { id: `m_${i}`, content: m, createdAt: Date.now() }
+              : m
+          ).filter((m: any) => m && typeof m.content === 'string');
+          setUserMemory(normalized);
+          localStorage.setItem("chimuelo_memory", JSON.stringify(normalized));
+        }
+      }
+    } catch {
+      localStorage.removeItem("chimuelo_memory");
+    }
 
     const savedMemoryEnabled = localStorage.getItem("chimuelo_memoryEnabled");
     if (savedMemoryEnabled !== null) setMemoryEnabled(savedMemoryEnabled === "true");
@@ -1015,7 +1031,7 @@ export default function Home() {
       )}
 
       <div className="main-content">
-        <div className="mobile-header">
+        <div className="mobile-header" style={{ display: viewMode === 'settings' ? 'none' : undefined }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn">
             <Menu size={24} />
           </button>
