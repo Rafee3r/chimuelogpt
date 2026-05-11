@@ -73,6 +73,15 @@ export default function Home() {
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
 
+  type SmartPill = { icon: string; label: string; message: string };
+  const defaultPills: SmartPill[] = [
+    { icon: '🎨', label: 'Crear Imagen', message: 'Genera una imagen de un paisaje cyberpunk en formato ultra realista' },
+    { icon: '✉️', label: 'Redactar Correo', message: 'Escribe un correo formal para solicitar una reunión con un cliente' },
+    { icon: '🧠', label: 'Explicar Concepto', message: 'Explícame de forma sencilla cómo funciona la gravedad cuántica' },
+    { icon: '💻', label: 'Revisar Código', message: 'Revisa este código y dime cómo optimizarlo' },
+  ];
+  const [smartPills, setSmartPills] = useState<SmartPill[]>(defaultPills);
+
   // Manual messages state (replaces useChat)
   const [displayMessages, setDisplayMessages] = useState<BaseMessage[]>([]);
 
@@ -193,6 +202,29 @@ export default function Home() {
       }
     };
     checkVersion();
+
+    // Background suggestions — once per session
+    if (!sessionStorage.getItem('chimuelo_suggestions_fetched')) {
+      sessionStorage.setItem('chimuelo_suggestions_fetched', '1');
+      setTimeout(() => {
+        try {
+          const savedChats = localStorage.getItem('chimuelo_chats');
+          const chats: Chat[] = savedChats ? JSON.parse(savedChats) : [];
+          const recentChats = chats.slice(-6).map((c: Chat) => c.title).filter(Boolean);
+          const savedMem = localStorage.getItem('chimuelo_memory');
+          const mem = savedMem ? JSON.parse(savedMem) : [];
+          const memoryFacts = Array.isArray(mem) ? mem.map((m: any) => (typeof m === 'string' ? m : m.content)).filter(Boolean) : [];
+          const savedPersona = localStorage.getItem('chimuelo_persona') || 'default';
+          fetch('/api/suggestions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recentChats, memoryFacts, hour: new Date().getHours(), persona: savedPersona }),
+          }).then(r => r.json()).then(({ suggestions }) => {
+            if (suggestions?.length === 4) setSmartPills(suggestions);
+          }).catch(() => {});
+        } catch {}
+      }, 2000);
+    }
   }, []);
 
   useEffect(() => {
@@ -819,7 +851,7 @@ export default function Home() {
 
           <div className="auth-field-v2">
             <input
-              type="password"
+              type="text"
               className="auth-input-v2"
               placeholder="Clave familiar..."
               value={passwordInput}
@@ -1369,22 +1401,12 @@ export default function Home() {
                 {getGreeting()}, ¿en qué te ayudo hoy?
               </h2>
               <div className="smart-pills-container">
-                <button className="smart-pill" onClick={() => handleSendMessage("Genera una imagen de un paisaje cyberpunk en formato ultra realista")}>
-                  <span className="pill-icon">🎨</span>
-                  <span className="pill-text">Crear Imagen</span>
-                </button>
-                <button className="smart-pill" onClick={() => handleSendMessage("Escribe un correo formal para solicitar una reunión con un cliente")}>
-                  <span className="pill-icon">✉️</span>
-                  <span className="pill-text">Redactar Correo</span>
-                </button>
-                <button className="smart-pill" onClick={() => handleSendMessage("Explícame de forma sencilla cómo funciona la gravedad cuántica")}>
-                  <span className="pill-icon">🧠</span>
-                  <span className="pill-text">Explicar Concepto</span>
-                </button>
-                <button className="smart-pill" onClick={() => handleSendMessage("Revisa este código y dime cómo optimizarlo")}>
-                  <span className="pill-icon">💻</span>
-                  <span className="pill-text">Revisar Código</span>
-                </button>
+                {smartPills.map((pill, i) => (
+                  <button key={i} className="smart-pill" onClick={() => handleSendMessage(pill.message)}>
+                    <span className="pill-icon">{pill.icon}</span>
+                    <span className="pill-text">{pill.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
