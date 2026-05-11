@@ -145,6 +145,12 @@
   padding: 0;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
@@ -153,6 +159,9 @@ body {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 button {
@@ -390,6 +399,7 @@ a {
   height: 100dvh;
   overflow: hidden;
   position: relative;
+  overscroll-behavior: none;
 }
 
 .sidebar {
@@ -564,6 +574,7 @@ a {
   padding-bottom: 120px;
   scroll-behavior: smooth;
   gap: 12px;
+  overscroll-behavior: contain;
 }
 
 .message {
