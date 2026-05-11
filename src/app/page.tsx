@@ -82,6 +82,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef<boolean>(false);
+  const isTouching = useRef<boolean>(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -183,30 +184,37 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // Smart auto-scroll: only follow bottom if user hasn't scrolled up
+  // Smart auto-scroll: instant so no lingering animation interferes with touch
   useEffect(() => {
     if (!userScrolledUp.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
     }
   }, [displayMessages, isThinking]);
 
-  // Detect user scroll intent via wheel/touch (never fired by programmatic scrolling)
-  // Reset lock via scroll event only when user returns to the bottom
+  // Scroll intent detection
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
 
+    // Wheel = desktop scroll up
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY < 0) userScrolledUp.current = true;
     };
 
+    // Touch: set isTouching so scroll events can't reset userScrolledUp mid-gesture
     let touchStartY = 0;
-    const handleTouchStart = (e: TouchEvent) => { touchStartY = e.touches[0].clientY; };
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches[0].clientY > touchStartY + 10) userScrolledUp.current = true;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+      isTouching.current = true;
     };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches[0].clientY > touchStartY + 8) userScrolledUp.current = true;
+    };
+    const handleTouchEnd = () => { isTouching.current = false; };
 
+    // Scroll: only re-enable auto-scroll when user reaches the bottom AND isn't touching
     const handleScroll = () => {
+      if (isTouching.current) return;
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       if (distFromBottom < 60) userScrolledUp.current = false;
     };
@@ -214,11 +222,13 @@ export default function Home() {
     el.addEventListener('wheel', handleWheel, { passive: true });
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
     el.addEventListener('touchmove', handleTouchMove, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       el.removeEventListener('wheel', handleWheel);
       el.removeEventListener('touchstart', handleTouchStart);
       el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
       el.removeEventListener('scroll', handleScroll);
     };
   }, []);
@@ -1409,13 +1419,13 @@ export default function Home() {
                 className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
                 onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); }}
               >
-                ⚡ Respuestas Rápidas
+                ⚡ Rápido
               </button>
               <button 
                 className={`v2-model-btn ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
                 onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
               >
-                🧠 Pensamiento Profundo
+                🧠 Profundo
               </button>
             </div>
 
