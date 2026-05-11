@@ -34,7 +34,8 @@ type Subject = {
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState("");
-  const [authError, setAuthError] = useState(false);
+  const [authError, setAuthError] = useState<"wrong" | "old" | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -276,12 +277,15 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput.toLowerCase() === "chimuelo") {
+    const val = passwordInput.toLowerCase().trim();
+    if (val === "chimuelo26") {
       setIsAuthenticated(true);
       localStorage.setItem("chimuelo_auth", "true");
-      setAuthError(false);
+      setAuthError(null);
+    } else if (val === "chimuelo") {
+      setAuthError("old");
     } else {
-      setAuthError(true);
+      setAuthError("wrong");
     }
   };
 
@@ -806,34 +810,44 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div className="auth-container">
-        <form onSubmit={handleLogin} className="auth-box-modern">
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <Cat size={48} color="var(--text-primary)" strokeWidth={1.5} />
+        <form onSubmit={handleLogin} className="auth-box-v2">
+          <div className="auth-icon-wrap">
+            <Cat size={36} strokeWidth={1.5} />
           </div>
-          <h1 className="auth-title-modern">ChimueloGPT</h1>
-          <p style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.95rem', fontWeight: 500, textAlign: 'center' }}>
-            Un gato que te regala 20 mil pesos de valor mensual por un churu.
-          </p>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>Ingresa la clave familiar para entrar</p>
-          
-          <div className="auth-input-wrapper">
-            <input
-              type="text"
-              className="auth-input-modern"
-              placeholder="Contraseña..."
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              autoFocus
-            />
-            <button type="submit" className="auth-btn-modern">→</button>
-          </div>
-          
-          {authError && <p className="auth-error" style={{ marginTop: '1rem' }}>Contraseña incorrecta.</p>}
+          <h1 className="auth-title-v2">ChimueloGPT</h1>
+          <p className="auth-subtitle-v2">Un gato que te regala 20 mil pesos de valor mensual por un churu.</p>
+          <p className="auth-hint-v2">Ingresa la clave familiar para entrar</p>
 
-          <div style={{ marginTop: '2.5rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            <p style={{ marginBottom: '0.25rem' }}>Una aplicación creada por Rafael Sotomayor.</p>
-            <p style={{ opacity: 0.7 }}>Tranquilo, él no puede ver tus chats. Se guardan en tu teléfono.</p>
+          <div className="auth-field-v2">
+            <input
+              type={showPassword ? "text" : "password"}
+              className="auth-input-v2"
+              placeholder="Clave familiar..."
+              value={passwordInput}
+              onChange={(e) => { setPasswordInput(e.target.value); setAuthError(null); }}
+              autoFocus
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="auth-eye-btn"
+              onClick={() => setShowPassword(p => !p)}
+              tabIndex={-1}
+            >
+              {showPassword ? <X size={16} /> : <span style={{ fontSize: '1rem' }}>👁</span>}
+            </button>
           </div>
+
+          {authError === "wrong" && (
+            <p className="auth-error-v2">Clave incorrecta. Pídele la clave a Rafa.</p>
+          )}
+          {authError === "old" && (
+            <p className="auth-error-v2 auth-error-old">La clave cambió. Pídele la nueva a Rafa 😄</p>
+          )}
+
+          <button type="submit" className="auth-submit-v2">Entrar</button>
+
+          <p className="auth-footer-v2">Una app de Rafael Sotomayor · Tus chats solo se guardan en tu teléfono.</p>
         </form>
       </div>
     );
