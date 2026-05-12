@@ -257,6 +257,69 @@ export default function Home() {
     });
   }, []);
 
+  const handleDeleteChat = useCallback((id: string) => {
+    if (!window.confirm('¿Eliminar esta conversación? Esta acción no se puede deshacer.')) return;
+    setChats(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
+    if (currentChatId === id) {
+      setCurrentChatId(null);
+      setDisplayMessages([]);
+      localStorage.removeItem("chimuelo_current_chat");
+    }
+  }, [currentChatId]);
+
+  const handleRenameChat = useCallback((id: string) => {
+    const chat = chats.find(c => c.id === id);
+    if (!chat) return;
+    const next = window.prompt('Nuevo nombre del chat:', chat.title);
+    if (!next || !next.trim() || next.trim() === chat.title) return;
+    setChats(prev => {
+      const updated = prev.map(c =>
+        c.id === id ? { ...c, title: next.trim() } : c
+      );
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
+  }, [chats]);
+
+  /* Chat context menu (right-click on PC, long-press on mobile) */
+  const [chatMenu, setChatMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef<boolean>(false);
+
+  const openChatMenu = useCallback((chatId: string, x: number, y: number) => {
+    // Clamp to viewport (menu is ~180px wide × ~150px tall)
+    const menuW = 200, menuH = 160;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.min(x, vw - menuW - 8);
+    const top  = Math.min(y, vh - menuH - 8);
+    setChatMenu({ chatId, x: Math.max(8, left), y: Math.max(8, top) });
+  }, []);
+
+  const startLongPress = useCallback((chatId: string, e: React.TouchEvent) => {
+    longPressFired.current = false;
+    const touch = e.touches[0];
+    const { clientX, clientY } = touch;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      if ('vibrate' in navigator) {
+        try { (navigator as any).vibrate(40); } catch {}
+      }
+      openChatMenu(chatId, clientX, clientY);
+    }, 480);
+  }, [openChatMenu]);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Buenos días";
@@ -1003,6 +1066,7 @@ export default function Home() {
     const onKey = (e: KeyboardEvent) => {
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (e.key === 'Escape') {
+        if (chatMenu) { setChatMenu(null); e.preventDefault(); return; }
         if (paletteOpen) { setPaletteOpen(false); e.preventDefault(); return; }
         if (sidebarOpen) { setSidebarOpen(false); return; }
       }
@@ -1030,7 +1094,7 @@ export default function Home() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [paletteOpen, sidebarOpen, viewMode]);
+  }, [paletteOpen, sidebarOpen, viewMode, chatMenu]);
 
   const ImageRenderer = ({ node, ...props }: any) => {
     return (
@@ -1291,7 +1355,16 @@ export default function Home() {
                       <div
                         key={chat.id}
                         className={`sb-row sb-row-chat ${currentChatId === chat.id ? 'active' : ''}`}
-                        onClick={() => { handleSwitchChat(chat.id); setSidebarOpen(false); }}
+                        onClick={() => {
+                          if (longPressFired.current) { longPressFired.current = false; return; }
+                          handleSwitchChat(chat.id);
+                          setSidebarOpen(false);
+                        }}
+                        onContextMenu={(e) => { e.preventDefault(); openChatMenu(chat.id, e.clientX, e.clientY); }}
+                        onTouchStart={(e) => startLongPress(chat.id, e)}
+                        onTouchEnd={cancelLongPress}
+                        onTouchMove={cancelLongPress}
+                        onTouchCancel={cancelLongPress}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -1299,13 +1372,21 @@ export default function Home() {
                         }}
                       >
                         <span>{chat.title}</span>
+                        {chat.pinned && (
+                          <Star size={11} fill="currentColor" className="sb-pin-indicator" aria-label="Fijado" />
+                        )}
                         <button
-                          className={`sb-pin ${chat.pinned ? 'pinned' : ''}`}
-                          onClick={(e) => togglePinChat(chat.id, e)}
-                          aria-label={chat.pinned ? 'Desfijar' : 'Fijar'}
-                          title={chat.pinned ? 'Desfijar' : 'Fijar'}
+                          className="sb-row-menu-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            openChatMenu(chat.id, r.right, r.bottom);
+                          }}
+                          aria-label="Opciones del chat"
+                          title="Opciones"
+                          type="button"
                         >
-                          <Star size={13} fill={chat.pinned ? 'currentColor' : 'none'} />
+                          <MoreVertical size={14} />
                         </button>
                       </div>
                     ))}
@@ -1343,6 +1424,32 @@ export default function Home() {
           </button>
         </div>
       </aside>
+
+      {/* ── Chat context menu (right-click / long-press) ── */}
+      {chatMenu && (() => {
+        const chat = chats.find(c => c.id === chatMenu.chatId);
+        if (!chat) return null;
+        return (
+          <>
+            <div className="sb-menu-backdrop" onClick={() => setChatMenu(null)} onContextMenu={(e) => { e.preventDefault(); setChatMenu(null); }} />
+            <div className="sb-menu" style={{ left: chatMenu.x, top: chatMenu.y }}>
+              <button onClick={() => { togglePinChat(chat.id); setChatMenu(null); }}>
+                <Star size={14} fill={chat.pinned ? 'currentColor' : 'none'} />
+                <span>{chat.pinned ? 'Desfijar' : 'Fijar arriba'}</span>
+              </button>
+              <button onClick={() => { handleRenameChat(chat.id); setChatMenu(null); }}>
+                <SquarePen size={14} />
+                <span>Renombrar</span>
+              </button>
+              <div className="sb-menu-sep" />
+              <button className="danger" onClick={() => { handleDeleteChat(chat.id); setChatMenu(null); }}>
+                <Trash2 size={14} />
+                <span>Eliminar</span>
+              </button>
+            </div>
+          </>
+        );
+      })()}
 
       {configModalOpen && selectedUniTask && (
         <div className="uni-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfigModalOpen(false); }}>

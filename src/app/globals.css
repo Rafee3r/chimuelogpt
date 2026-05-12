@@ -3237,7 +3237,6 @@ a {
   color: var(--bg-primary);
   font-weight: 600;
 }
-.sb-row.active .sb-pin { color: var(--bg-primary); opacity: 1; }
 .sb-row-primary { color: var(--text-primary); font-weight: 500; }
 
 .sb-scroll {
@@ -3269,17 +3268,85 @@ a {
   opacity: 0.85;
 }
 
-.sb-row-chat { position: relative; }
-.sb-pin {
+.sb-row-chat {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Indicador pequeño cuando un chat está fijado (siempre visible) */
+.sb-pin-indicator {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+.sb-row.active .sb-pin-indicator { color: var(--bg-primary); opacity: 1; }
+
+/* Botón de 3 puntos: visible solo en hover, solo en dispositivos con cursor */
+.sb-row-menu-btn {
   background: none; border: none; padding: 4px;
   color: var(--text-secondary); opacity: 0;
   border-radius: 6px; cursor: pointer;
   transition: opacity 0.15s, background 0.15s;
   display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  pointer-events: none;
 }
-.sb-row-chat:hover .sb-pin,
-.sb-pin.pinned { opacity: 1; }
-.sb-pin:hover { background: var(--border-color); color: var(--text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .sb-row-menu-btn { pointer-events: auto; }
+  .sb-row-chat:hover .sb-row-menu-btn { opacity: 1; }
+  .sb-row-menu-btn:hover { background: var(--border-color); color: var(--text-primary); }
+  .sb-row.active .sb-row-menu-btn { color: var(--bg-primary); }
+  .sb-row.active .sb-row-menu-btn:hover { background: rgba(0,0,0,0.15); color: var(--bg-primary); }
+}
+/* En mobile/táctil: ocultar el botón completamente (long-press es la affordance) */
+@media (hover: none), (pointer: coarse) {
+  .sb-row-menu-btn { display: none; }
+}
+
+/* ── Popover del context menu ── */
+.sb-menu-backdrop {
+  position: fixed; inset: 0;
+  z-index: 80;
+  background: transparent;
+}
+.sb-menu {
+  position: fixed;
+  z-index: 81;
+  min-width: 180px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.32), 0 4px 10px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column;
+  gap: 2px;
+  animation: sb-menu-in 0.12s ease-out;
+}
+@keyframes sb-menu-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.sb-menu button {
+  display: flex; align-items: center; gap: 10px;
+  background: none; border: none;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.sb-menu button:hover { background: var(--sidebar-hover); }
+.sb-menu button.danger { color: #ef4444; }
+.sb-menu button.danger:hover { background: rgba(239,68,68,0.12); }
+.sb-menu-sep {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 6px;
+}
 
 .sb-empty {
   padding: 24px 16px;
