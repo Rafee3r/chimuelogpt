@@ -320,11 +320,69 @@ export default function Home() {
     }
   }, []);
 
+  /* Extrae nombre del usuario desde la memoria persistente (best-effort) */
+  const getUserName = useCallback((): string | null => {
+    for (const m of userMemory) {
+      const match = m.content.match(/(?:se llama|llamado|nombre es|nombre[:]\s*)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i);
+      if (match && match[1]) return match[1];
+    }
+    return null;
+  }, [userMemory]);
+
+  /* 30 variaciones de saludo (Claude/Gemini-style) divididos por hora del día */
+  const greetingPool = useMemo(() => {
+    const morning = [
+      (n: string) => `Buenos días${n}. ¿Qué planeas hoy?`,
+      (n: string) => `Buen día${n}. ¿Por dónde empezamos?`,
+      (n: string) => `Hola${n}. Listo para arrancar el día`,
+      (n: string) => `Buenos días${n}, ¿qué necesitas?`,
+      (n: string) => `Buenas mañanas${n}, ¿en qué piensas?`,
+      (n: string) => `Buen día${n}, ¿qué hay en la agenda?`,
+      (n: string) => `Buenos días${n}. ¿Café listo? Manos a la obra`,
+      (n: string) => `Hola${n}, ¿cómo amaneciste?`,
+      (n: string) => `Buenos días${n}, ¿qué resolvemos primero?`,
+      (n: string) => `${n ? n.replace(', ', '') + ', b' : 'B'}uen día. ¿Qué hacemos?`,
+    ];
+    const afternoon = [
+      (n: string) => `Buenas tardes${n}. ¿En qué te ayudo?`,
+      (n: string) => `Hola${n}, ¿cómo va la tarde?`,
+      (n: string) => `Buenas${n}, ¿qué necesitas?`,
+      (n: string) => `Hola${n}. ¿Dónde lo dejamos?`,
+      (n: string) => `Buenas tardes${n}, ¿en qué piensas hoy?`,
+      (n: string) => `¿Qué tal${n}? Cuéntame en qué te ayudo`,
+      (n: string) => `Hola${n}, ¿algo entre manos?`,
+      (n: string) => `Buenas tardes${n}, listo para lo que sigue`,
+      (n: string) => `Tarde productiva${n}, ¿empezamos?`,
+      (n: string) => `Hola${n}, ¿qué se cocina?`,
+    ];
+    const night = [
+      (n: string) => `Buenas noches${n}. ¿En qué te ayudo?`,
+      (n: string) => `Hola${n}, ¿cómo terminó tu día?`,
+      (n: string) => `Buenas noches${n}, ¿qué necesitas?`,
+      (n: string) => `Hola${n}, ¿algo antes de descansar?`,
+      (n: string) => `Buenas${n}, ¿en qué andas?`,
+      (n: string) => `Última hora del día${n}, ¿qué hacemos?`,
+      (n: string) => `Hola${n}. Aquí estamos otra vez`,
+      (n: string) => `Buenas noches${n}, ¿qué resuelvo?`,
+      (n: string) => `¿Quemando aceite de medianoche${n}?`,
+      (n: string) => `Buenas noches${n}. Cuéntame`,
+    ];
+    return { morning, afternoon, night };
+  }, []);
+
+  /* Índice aleatorio que se elige una sola vez por sesión */
+  const [greetingIdx] = useState(() => Math.floor(Math.random() * 10));
+
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Buenos días";
-    if (hour < 19) return "Buenas tardes";
-    return "Buenas noches";
+    const name = getUserName();
+    const suffix = name ? `, ${name}` : '';
+    const pool =
+      hour < 12 ? greetingPool.morning :
+      hour < 19 ? greetingPool.afternoon :
+      greetingPool.night;
+    const fn = pool[greetingIdx % pool.length];
+    return fn(suffix);
   };
 
   useEffect(() => {
@@ -418,29 +476,53 @@ export default function Home() {
     };
     checkVersion();
 
-    // Background suggestions — once per session
-    if (!sessionStorage.getItem('chimuelo_suggestions_fetched')) {
-      sessionStorage.setItem('chimuelo_suggestions_fetched', '1');
-      setTimeout(() => {
-        try {
-          const savedChats = localStorage.getItem('chimuelo_chats');
-          const chats: Chat[] = savedChats ? JSON.parse(savedChats) : [];
-          const recentChats = chats.slice(-6).map((c: Chat) => c.title).filter(Boolean);
-          const savedMem = localStorage.getItem('chimuelo_memory');
-          const mem = savedMem ? JSON.parse(savedMem) : [];
-          const memoryFacts = Array.isArray(mem) ? mem.map((m: any) => (typeof m === 'string' ? m : m.content)).filter(Boolean) : [];
-          const savedPersona = localStorage.getItem('chimuelo_persona') || 'default';
-          fetch('/api/suggestions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ recentChats, memoryFacts, hour: new Date().getHours(), persona: savedPersona }),
-          }).then(r => r.json()).then(({ suggestions }) => {
-            if (suggestions?.length === 4) setSmartPills(suggestions);
-          }).catch(() => {});
-        } catch {}
-      }, 2000);
-    }
   }, []);
+
+  /* Fetch personalized smart pills — refresca cada vez que se vuelve al welcome
+     screen pero con cache de 5 min para no abusar de la API */
+  const fetchSmartPills = useCallback(() => {
+    try {
+      const lastFetch = parseInt(sessionStorage.getItem('chimuelo_pills_ts') || '0', 10);
+      const ageMs = Date.now() - lastFetch;
+      const cached = sessionStorage.getItem('chimuelo_pills_data');
+      if (ageMs < 5 * 60 * 1000 && cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length === 4) {
+            setSmartPills(parsed);
+            return;
+          }
+        } catch {}
+      }
+      const savedChats = localStorage.getItem('chimuelo_chats');
+      const chats: Chat[] = savedChats ? JSON.parse(savedChats) : [];
+      const recentChats = chats.slice(0, 6).map((c: Chat) => c.title).filter(Boolean);
+      const savedMem = localStorage.getItem('chimuelo_memory');
+      const mem = savedMem ? JSON.parse(savedMem) : [];
+      const memoryFacts = Array.isArray(mem) ? mem.map((m: any) => (typeof m === 'string' ? m : m.content)).filter(Boolean) : [];
+      const savedPersona = localStorage.getItem('chimuelo_persona') || 'default';
+      fetch('/api/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recentChats, memoryFacts, hour: new Date().getHours(), persona: savedPersona }),
+      }).then(r => r.json()).then(({ suggestions }) => {
+        if (suggestions?.length === 4) {
+          setSmartPills(suggestions);
+          sessionStorage.setItem('chimuelo_pills_ts', Date.now().toString());
+          sessionStorage.setItem('chimuelo_pills_data', JSON.stringify(suggestions));
+        }
+      }).catch(() => {});
+    } catch {}
+  }, []);
+
+  /* Refetch pills al entrar al welcome screen (sin chat activo o chat vacío) */
+  useEffect(() => {
+    const isWelcomeScreen = displayMessages.length === 0 && viewMode === 'chat';
+    if (isWelcomeScreen) {
+      const t = setTimeout(fetchSmartPills, 300);
+      return () => clearTimeout(t);
+    }
+  }, [displayMessages.length, viewMode, fetchSmartPills]);
 
   useEffect(() => {
     if (theme === "system") {
@@ -1866,7 +1948,7 @@ export default function Home() {
                 </div>
               </div>
               <h2 className="greeting-text-gradient">
-                {getGreeting()}, ¿en qué te ayudo hoy?
+                {getGreeting()}
               </h2>
               <div className="smart-pills-container">
                 {smartPills.map((pill, i) => (
