@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -148,6 +148,8 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
   const queueChatsToLS = useCallback((chats: Chat[]) => {
@@ -177,6 +179,57 @@ export default function Home() {
       abortControllerRef.current = null;
     }
   }, []);
+
+  /* Voice input — Web Speech API */
+  const toggleVoiceInput = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Tu navegador no soporta entrada de voz. Usa Chrome o Safari.');
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
+
+    let finalTranscript = '';
+
+    recognition.onstart = () => setIsRecording(true);
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalTranscript += t;
+        else interim = t;
+      }
+      setInputMessage(finalTranscript + interim);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+      // Auto-resize textarea after voice fill
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.start();
+  }, [isRecording]);
 
   const groupChatsByDate = (chats: Chat[]) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -413,6 +466,9 @@ export default function Home() {
     setDisplayMessages([]);
     setSidebarOpen(false);
     setViewMode("chat");
+    // Nuevo chat siempre empieza en modelo rápido
+    setModel('deepseek-v4-flash');
+    localStorage.setItem('chimuelo_model', 'deepseek-v4-flash');
   };
 
   const compressImage = (base64Str: string): Promise<string> => {
@@ -1390,8 +1446,8 @@ export default function Home() {
                 <div className="settings-group">
                   <label className="settings-label">Burbujas</label>
                   <div className="settings-toggle-row">
-                    <button className={`settings-toggle-btn ${bubbleStyle === 'bubbles' ? 'active' : ''}`} onClick={() => { setBubbleStyle('bubbles'); localStorage.setItem('chimuelo_bubbleStyle', 'bubbles'); }}>💬 Clásico</button>
-                    <button className={`settings-toggle-btn ${bubbleStyle === 'flat' ? 'active' : ''}`} onClick={() => { setBubbleStyle('flat'); localStorage.setItem('chimuelo_bubbleStyle', 'flat'); }}>▬ Plano</button>
+                    <button className={`settings-toggle-btn ${bubbleStyle === 'bubbles' ? 'active' : ''}`} onClick={() => { setBubbleStyle('bubbles'); localStorage.setItem('chimuelo_bubbleStyle', 'bubbles'); }}>Clásico</button>
+                    <button className={`settings-toggle-btn ${bubbleStyle === 'flat' ? 'active' : ''}`} onClick={() => { setBubbleStyle('flat'); localStorage.setItem('chimuelo_bubbleStyle', 'flat'); }}>Plano</button>
                   </div>
                 </div>
                 <div className="settings-group" style={{ marginTop: '1rem' }}>
@@ -1399,7 +1455,7 @@ export default function Home() {
                   <div className="settings-toggle-row">
                     {(['compact', 'comfortable', 'spacious'] as const).map(d => (
                       <button key={d} className={`settings-toggle-btn ${messageDensity === d ? 'active' : ''}`} onClick={() => { setMessageDensity(d); localStorage.setItem('chimuelo_density', d); }}>
-                        {d === 'compact' ? '▣ Compacto' : d === 'comfortable' ? '▤ Normal' : '▥ Amplio'}
+                        {d === 'compact' ? 'Compacto' : d === 'comfortable' ? 'Normal' : 'Amplio'}
                       </button>
                     ))}
                   </div>
@@ -1411,8 +1467,8 @@ export default function Home() {
                 <h3 className="settings-card-title">🧠 Memoria Persistente</h3>
                 <div className="settings-group">
                   <div className="settings-toggle-row" style={{ marginBottom: '12px' }}>
-                    <button className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}>✅ Activa</button>
-                    <button className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}>⏸ Pausada</button>
+                    <button className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}>Activa</button>
+                    <button className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}>Pausada</button>
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
                     Chimuelo extrae datos de tus chats para recordarte entre conversaciones.
@@ -1874,17 +1930,17 @@ export default function Home() {
         {viewMode === "chat" && (
           <div className="v2-input-area">
             <div className="v2-model-selector">
-              <button 
+              <button
                 className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
                 onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); }}
               >
-                ⚡ Rápido
+                Rápido
               </button>
-              <button 
+              <button
                 className={`v2-model-btn ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
                 onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
               >
-                🧠 Profundo
+                Profundo
               </button>
             </div>
 
@@ -1924,7 +1980,18 @@ export default function Home() {
                   onKeyDown={handleKeyDown}
                   rows={1}
                 />
-                
+
+                {!isThinking && (
+                  <button
+                    className={`v2-mic-btn ${isRecording ? 'recording' : ''}`}
+                    onClick={toggleVoiceInput}
+                    title={isRecording ? 'Detener grabación' : 'Mensaje de voz'}
+                    type="button"
+                  >
+                    {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
+                  </button>
+                )}
+
                 {isThinking ? (
                   <button
                     className="v2-send-btn stop active"

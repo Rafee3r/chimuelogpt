@@ -1622,8 +1622,8 @@ a {
 }
 
 .v2-model-btn.active {
-  background: var(--active-bg);
-  color: var(--active-text);
+  background: var(--text-primary);
+  color: var(--bg-primary);
   font-weight: 700;
   box-shadow: none;
 }
@@ -2510,10 +2510,15 @@ a {
 }
 
 .settings-toggle-btn.active {
-  background: linear-gradient(135deg, rgba(161,140,209,0.25) 0%, rgba(79,172,254,0.15) 100%);
-  border-color: #a18cd1;
-  color: var(--text-primary);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-primary);
   font-weight: 700;
+}
+
+.settings-toggle-btn:hover:not(.active) {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 /* ── Flat bubble style ── */
@@ -2909,6 +2914,35 @@ a {
 @keyframes pulse-stop {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
   50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+/* ── Voice mic button ── */
+.v2-mic-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+  flex-shrink: 0;
+  margin-bottom: 3px;
+}
+.v2-mic-btn:hover {
+  color: var(--text-primary);
+  background: var(--sidebar-hover);
+}
+.v2-mic-btn.recording {
+  color: #ef4444;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
 }
 
 /* ── Code block with copy button ── */
