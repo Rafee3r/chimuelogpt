@@ -12,8 +12,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // Map internal model names to official DeepSeek API model names
-    const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
+    // Use model names directly - deepseek-v4-pro or deepseek-v4-flash
+    const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado para una familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio. Tus respuestas deben ser formales, al grano, sin usar emojis ni lenguaje coloquial. Responde SIEMPRE en Español.";
