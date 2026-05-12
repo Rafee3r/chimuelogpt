@@ -1171,8 +1171,11 @@ export default function Home() {
     return (
       <div className="auth-container">
         <form onSubmit={handleLogin} className="auth-box-v2">
-          <div className="auth-icon-wrap">
-            <Cat size={36} strokeWidth={1.5} />
+          <div className="v2-orb-container auth-orb">
+            <div className="glowing-orb"></div>
+            <div className="glowing-orb-core">
+              <Cat size={32} strokeWidth={1.6} />
+            </div>
           </div>
           <h1 className="auth-title-v2">ChimueloGPT</h1>
           <p className="auth-subtitle-v2">Un gato que te regala 20 mil pesos de valor mensual por un churu.</p>
@@ -1858,7 +1861,9 @@ export default function Home() {
             <div className="v2-empty-state">
               <div className="v2-orb-container">
                 <div className="glowing-orb"></div>
-                <div className="glowing-orb-core"></div>
+                <div className="glowing-orb-core">
+                  <Cat size={30} strokeWidth={1.6} />
+                </div>
               </div>
               <h2 className="greeting-text-gradient">
                 {getGreeting()}, ¿en qué te ayudo hoy?
