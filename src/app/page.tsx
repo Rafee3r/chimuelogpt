@@ -64,6 +64,7 @@ type Chat = {
   updatedAt: number;
   systemPrompt?: string;
   subjectId?: string;
+  pinned?: boolean;
 };
 
 type Subject = {
@@ -235,13 +236,26 @@ export default function Home() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
     const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+    const unpinned = chats.filter(c => !c.pinned);
     return {
-      hoy:    chats.filter(c => c.updatedAt >= today.getTime()),
-      ayer:   chats.filter(c => c.updatedAt >= yesterday.getTime() && c.updatedAt < today.getTime()),
-      semana: chats.filter(c => c.updatedAt >= weekAgo.getTime() && c.updatedAt < yesterday.getTime()),
-      antes:  chats.filter(c => c.updatedAt < weekAgo.getTime()),
+      pinned: chats.filter(c => c.pinned),
+      hoy:    unpinned.filter(c => c.updatedAt >= today.getTime()),
+      ayer:   unpinned.filter(c => c.updatedAt >= yesterday.getTime() && c.updatedAt < today.getTime()),
+      semana: unpinned.filter(c => c.updatedAt >= weekAgo.getTime() && c.updatedAt < yesterday.getTime()),
+      antes:  unpinned.filter(c => c.updatedAt < weekAgo.getTime()),
     };
   };
+
+  const togglePinChat = useCallback((id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setChats(prev => {
+      const updated = prev.map(c =>
+        c.id === id ? { ...c, pinned: !c.pinned } : c
+      );
+      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -1171,106 +1185,164 @@ export default function Home() {
         />
       )}
 
-      <div className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
-        {/* Primary actions */}
-        <div className="sidebar-actions">
-          <button className="sidebar-primary-btn" onClick={() => { handleSwitchChat(null); setSidebarOpen(false); }}>
-            <SquarePen size={16} />
-            <span>Nuevo chat</span>
-          </button>
-          <button className="sidebar-uni-btn" onClick={() => { prevViewMode.current = 'chat'; setViewMode("university"); setSidebarOpen(false); }}>
-            <GraduationCap size={16} />
-            <span>Modo Universitario</span>
-          </button>
+      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
+
+        {/* ── SEARCH ── */}
+        <div className="sb-search">
+          <Search size={14} className="sb-search-icon" />
+          <input
+            type="text"
+            placeholder="Buscar chats..."
+            value={sidebarSearch}
+            onChange={(e) => setSidebarSearch(e.target.value)}
+            aria-label="Buscar conversaciones"
+          />
+          {sidebarSearch && (
+            <button className="sb-search-clear" onClick={() => setSidebarSearch('')} aria-label="Limpiar búsqueda">
+              <X size={12} />
+            </button>
+          )}
         </div>
 
-        {/* v2.0 — Chat search */}
-        {chats.length > 0 && (
-          <div className="sidebar-search-wrap">
-            <Search size={14} className="sidebar-search-icon" />
-            <input
-              type="text"
-              className="sidebar-search-input"
-              placeholder="Buscar chats..."
-              value={sidebarSearch}
-              onChange={(e) => setSidebarSearch(e.target.value)}
-            />
-            {sidebarSearch && (
-              <button className="sidebar-search-clear" onClick={() => setSidebarSearch('')} title="Limpiar">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        )}
+        {/* ── PRIMARY ACTION ── */}
+        <button
+          className="sb-row sb-row-primary"
+          onClick={() => { createNewChat(); setSidebarOpen(false); }}
+        >
+          <SquarePen size={16} />
+          <span>Nuevo chat</span>
+        </button>
 
-        {/* Chat list grouped by date */}
-        <div className="sidebar-chat-list">
-          {chats.length === 0 ? (
-            <div className="sidebar-empty-state">
-              <MessageSquare size={28} />
-              <p>Aún no hay conversaciones.</p>
-              <small>Toca "Nuevo chat" para empezar.</small>
-            </div>
-          ) : (() => {
+        {/* ── SCROLL: Materias + Chats ── */}
+        <div className="sb-scroll">
+
+          {/* MATERIAS (Subjects = Notebooks) */}
+          {(() => {
             const q = sidebarSearch.trim().toLowerCase();
-            const filtered = q
-              ? chats.filter(c =>
-                  (c.title || '').toLowerCase().includes(q) ||
-                  c.messages.some(m => (m.content || '').toLowerCase().includes(q))
-                )
-              : chats;
-            if (q && filtered.length === 0) {
-              return <div className="sidebar-empty-state"><p>Sin coincidencias</p><small>Prueba otra palabra</small></div>;
-            }
-            const groups = groupChatsByDate(filtered);
-            const renderGroup = (label: string, items: Chat[]) => items.length === 0 ? null : (
-              <div key={label}>
-                <div className="sidebar-group-label">{label}</div>
-                {items.map(chat => (
+            const filteredSubjects = q
+              ? subjects.filter(s => s.name.toLowerCase().includes(q))
+              : subjects;
+            if (filteredSubjects.length === 0) return null;
+            return (
+              <div className="sb-section">
+                <div className="sb-section-label">Materias</div>
+                {filteredSubjects.map(s => (
                   <button
-                    key={chat.id}
-                    className={`sidebar-item ${currentChatId === chat.id ? 'active' : ''}`}
-                    onClick={() => { handleSwitchChat(chat.id); setSidebarOpen(false); }}
+                    key={s.id}
+                    className={`sb-row ${activeSubjectId === s.id && viewMode === 'university' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveSubjectId(s.id);
+                      localStorage.setItem('chimuelo_active_subject', s.id);
+                      prevViewMode.current = 'chat';
+                      setViewMode('university');
+                      setSidebarOpen(false);
+                    }}
                   >
-                    <MessageSquare size={14} style={{ flexShrink: 0 }} />
-                    <span>{chat.title}</span>
+                    <Book size={15} />
+                    <span>{s.name}</span>
                   </button>
                 ))}
               </div>
             );
-            return (
-              <>
-                {renderGroup('Hoy', groups.hoy)}
-                {renderGroup('Ayer', groups.ayer)}
-                {renderGroup('Esta semana', groups.semana)}
-                {renderGroup('Antes', groups.antes)}
-              </>
-            );
           })()}
+
+          {/* MODO UNIVERSITARIO (entrada sin subject seleccionado) */}
+          <div className="sb-section">
+            {subjects.length === 0 && <div className="sb-section-label">Modos</div>}
+            <button
+              className={`sb-row ${viewMode === 'university' && !activeSubjectId ? 'active' : ''}`}
+              onClick={() => { prevViewMode.current = 'chat'; setViewMode('university'); setSidebarOpen(false); }}
+            >
+              <GraduationCap size={15} />
+              <span>Modo Universitario</span>
+            </button>
+          </div>
+
+          {/* CHATS */}
+          <div className="sb-section sb-section-chats">
+            <div className="sb-section-label">Chats</div>
+            {(() => {
+              const q = sidebarSearch.trim().toLowerCase();
+              const filtered = q
+                ? chats.filter(c =>
+                    (c.title || '').toLowerCase().includes(q) ||
+                    c.messages.some(m => (m.content || '').toLowerCase().includes(q))
+                  )
+                : chats;
+
+              if (chats.length === 0) {
+                return (
+                  <div className="sb-empty">
+                    <p>Aún no hay conversaciones</p>
+                    <small>Toca "Nuevo chat" para empezar</small>
+                  </div>
+                );
+              }
+              if (filtered.length === 0) {
+                return <div className="sb-empty"><p>Sin coincidencias</p></div>;
+              }
+
+              const g = groupChatsByDate(filtered);
+              const renderGroup = (label: string | null, items: Chat[]) =>
+                items.length === 0 ? null : (
+                  <div key={label ?? 'pinned'}>
+                    {label && <div className="sb-group-label">{label}</div>}
+                    {items.map(chat => (
+                      <div
+                        key={chat.id}
+                        className={`sb-row sb-row-chat ${currentChatId === chat.id ? 'active' : ''}`}
+                        onClick={() => { handleSwitchChat(chat.id); setSidebarOpen(false); }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { handleSwitchChat(chat.id); setSidebarOpen(false); }
+                        }}
+                      >
+                        <span>{chat.title}</span>
+                        <button
+                          className={`sb-pin ${chat.pinned ? 'pinned' : ''}`}
+                          onClick={(e) => togglePinChat(chat.id, e)}
+                          aria-label={chat.pinned ? 'Desfijar' : 'Fijar'}
+                          title={chat.pinned ? 'Desfijar' : 'Fijar'}
+                        >
+                          <Star size={13} fill={chat.pinned ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+
+              return (
+                <>
+                  {renderGroup(null, g.pinned)}
+                  {renderGroup('Hoy', g.hoy)}
+                  {renderGroup('Ayer', g.ayer)}
+                  {renderGroup('Esta semana', g.semana)}
+                  {renderGroup('Antes', g.antes)}
+                </>
+              );
+            })()}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="sidebar-footer">
+        {/* ── FOOTER ── */}
+        <div className="sb-footer">
           <button
-            className="sidebar-memory-status"
-            onClick={() => { prevViewMode.current = viewMode as "chat" | "university"; setViewMode('settings'); setSidebarOpen(false); }}
+            className="sb-row"
+            onClick={() => {
+              prevViewMode.current = viewMode as "chat" | "university";
+              setViewMode('settings');
+              setSidebarOpen(false);
+            }}
           >
-            <Brain size={14} />
-            <span>{memoryEnabled ? `${userMemory.length} recuerdos guardados` : 'Memoria pausada'}</span>
-          </button>
-          <button
-            className="sidebar-item"
-            onClick={() => { prevViewMode.current = viewMode as "chat" | "university"; setViewMode('settings'); setSidebarOpen(false); }}
-          >
-            <Settings size={16} style={{ flexShrink: 0 }} />
-            <span>Configuración</span>
-          </button>
-          <button onClick={() => setPwaModalOpen(true)} className="sidebar-item">
-            <Smartphone size={16} style={{ flexShrink: 0 }} />
-            <span>Instalar como app</span>
+            <Settings size={15} />
+            <span>Ajustes</span>
+            {memoryEnabled && userMemory.length > 0 && (
+              <span className="sb-badge">{userMemory.length}</span>
+            )}
           </button>
         </div>
-      </div>
+      </aside>
 
       {configModalOpen && selectedUniTask && (
         <div className="uni-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfigModalOpen(false); }}>
@@ -1368,9 +1440,13 @@ export default function Home() {
             <span>ChimueloGPT</span>
           </div>
 
-          <button onClick={() => createNewChat()} className="icon-btn">
-            <Plus size={24} />
-          </button>
+          {!(currentChatId && displayMessages.length === 0) ? (
+            <button onClick={() => createNewChat()} className="icon-btn" title="Nuevo chat">
+              <Plus size={24} />
+            </button>
+          ) : (
+            <span style={{ width: 40, display: 'inline-block' }} aria-hidden="true" />
+          )}
         </div>
 
         {viewMode === "settings" && (
@@ -1965,13 +2041,11 @@ export default function Home() {
               <input type="file" accept="*/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
-                {displayMessages.length > 0 && (
-                  <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
-                    <div className="v2-attach-icon-wrapper">
-                      <Plus size={20} />
-                    </div>
-                  </button>
-                )}
+                <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
+                  <div className="v2-attach-icon-wrapper">
+                    <Plus size={20} />
+                  </div>
+                </button>
                 
                 <textarea
                   ref={textareaRef}

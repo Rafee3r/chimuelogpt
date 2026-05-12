@@ -3172,3 +3172,136 @@ a {
   .palette-footer { gap: 10px; }
   .palette-footer span { font-size: 0.65rem; }
 }
+
+/* =========================================================================
+   Sidebar v2 — Gemini-inspired structural redesign
+   ========================================================================= */
+.sidebar {
+  --sb-row-px: 14px;
+  --sb-row-py: 8px;
+  --sb-gap: 2px;
+  --sb-radius: 10px;
+}
+
+.sb-search {
+  position: relative;
+  margin: 12px 12px 4px;
+}
+.sb-search input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 9px 32px 9px 32px;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sb-search input::placeholder { color: var(--text-secondary); }
+.sb-search input:focus { border-color: var(--text-secondary); }
+.sb-search-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text-secondary); pointer-events: none;
+}
+.sb-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--border-color); border: none; border-radius: 50%;
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); cursor: pointer;
+}
+
+.sb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 16px);
+  margin: var(--sb-gap) 8px;
+  padding: var(--sb-row-py) var(--sb-row-px);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  text-align: left;
+  border-radius: var(--sb-radius);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.sb-row > span {
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sb-row:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+.sb-row.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  font-weight: 600;
+}
+.sb-row.active .sb-pin { color: var(--bg-primary); opacity: 1; }
+.sb-row-primary { color: var(--text-primary); font-weight: 500; }
+
+.sb-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+
+.sb-section { padding: 8px 0 4px; }
+.sb-section-chats { flex: 1; display: flex; flex-direction: column; }
+
+.sb-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  padding: 6px 16px;
+}
+
+.sb-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 16px 2px;
+  opacity: 0.85;
+}
+
+.sb-row-chat { position: relative; }
+.sb-pin {
+  background: none; border: none; padding: 4px;
+  color: var(--text-secondary); opacity: 0;
+  border-radius: 6px; cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.sb-row-chat:hover .sb-pin,
+.sb-pin.pinned { opacity: 1; }
+.sb-pin:hover { background: var(--border-color); color: var(--text-primary); }
+
+.sb-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.sb-empty p { margin: 0 0 4px; font-size: 0.85rem; }
+.sb-empty small { font-size: 0.75rem; opacity: 0.7; }
+
+.sb-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 8px 0;
+}
+.sb-badge {
+  flex: 0 0 auto;
+  background: var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+.sb-row.active .sb-badge { background: var(--bg-primary); color: var(--text-primary); }
