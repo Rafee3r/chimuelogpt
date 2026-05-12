@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
 import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -136,12 +136,14 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  // Scroll architecture v3 — single source of truth: the actual scrollTop.
-  // We distinguish "our" scrolls from user scrolls by comparing scrollTop
-  // to the value we last set. No flags, no timing races.
-  const userIntent = useRef<'follow' | 'stay'>('follow');
-  const expectedScrollTop = useRef<number>(0);
-  const pendingScrollRaf = useRef<number | null>(null);
+  // Scroll architecture v4 — prevMaxScrollTop + useLayoutEffect.
+  // The DOM is the single source of truth. Before each render, we know the
+  // scroll container's max scrollTop. After the render (in useLayoutEffect),
+  // we compare the user's CURRENT scrollTop against the previous max.
+  // If they were at the old bottom → stick. If they scrolled up → leave alone.
+  // No flags, no event handlers needed for the auto-scroll decision.
+  const prevMaxScrollTop = useRef<number>(0);
+  const forceScrollNext = useRef<boolean>(true);
   const prevViewMode = useRef<"chat" | "university">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
@@ -327,87 +329,51 @@ export default function Home() {
     localStorage.setItem("chimuelo_persona", persona);
   }, [persona]);
 
-  // ──────────── Scroll architecture v3 ────────────
+  // ──────────── Scroll architecture v4 ────────────
   //
-  // PROBLEM with flag-based approaches: flags get set at one moment, checked at
-  // another. The window between is enough for the user to start a trackpad gesture
-  // that the system misses. Result: phantom scroll-downs during streaming.
+  // Why v3 failed: rAF-based scrolling has a race against user input events.
+  // When a chunk arrives, useEffect schedules an rAF. Inside the rAF we check
+  // userIntent. But if the user trackpadded in the SAME frame, their wheel
+  // event might not be processed yet when the rAF fires — userIntent is stale.
   //
-  // SOLUTION: distinguish user scrolls from ours by comparing the observed
-  // scrollTop with the value we expect it to be (because we set it). If they
-  // match, it's our scroll. If they differ, it's the user. No timing required.
-  //
-  // Single source of truth: `userIntent` ('follow' = auto-scroll, 'stay' = lock).
-  // Updated ONLY by user scrolls. Programmatic scrolls don't touch it.
+  // v4 reads the truth directly from the DOM in useLayoutEffect (synchronous,
+  // pre-paint). By the time useLayoutEffect runs, the user's scroll position
+  // already reflects whatever wheel/touch/scrollbar input happened before this
+  // render committed. We compare scrollTop to the PREVIOUS render's max
+  // scrollTop. If user was at (or near) the old bottom, stick to new bottom.
+  // If they scrolled up, leave them alone.
 
-  const scrollToBottomNow = useCallback(() => {
-    const el = chatScrollRef.current;
-    if (!el) return;
-    if (userIntent.current !== 'follow') return;
-    const target = el.scrollHeight - el.clientHeight;
-    expectedScrollTop.current = target;
-    el.scrollTop = target;
-  }, []);
-
-  // Schedule a scroll on next frame. Re-checks userIntent inside the rAF
-  // so a gesture between scheduling and execution properly cancels the scroll.
-  const scheduleScroll = useCallback(() => {
-    if (pendingScrollRaf.current != null) return;
-    pendingScrollRaf.current = requestAnimationFrame(() => {
-      pendingScrollRaf.current = null;
-      scrollToBottomNow();
-    });
-  }, [scrollToBottomNow]);
-
-  // Auto-scroll on every message/thinking change
-  useEffect(() => {
-    scheduleScroll();
-  }, [displayMessages, isThinking, scheduleScroll]);
-
-  // Scroll observer — the ONLY place that updates userIntent
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
 
-    const handleScroll = () => {
-      const top = el.scrollTop;
-      const expected = expectedScrollTop.current;
+    const currentMax = el.scrollHeight - el.clientHeight;
 
-      // 2px tolerance absorbs subpixel rounding from programmatic scrolls.
-      if (Math.abs(top - expected) < 2) {
-        expectedScrollTop.current = top;
-        return;
-      }
+    // forceScrollNext is set on chat switch and on send — explicit user actions
+    // that ALWAYS warrant scrolling to bottom regardless of prior position.
+    if (forceScrollNext.current) {
+      el.scrollTop = currentMax;
+      forceScrollNext.current = false;
+      prevMaxScrollTop.current = currentMax;
+      return;
+    }
 
-      // User-driven scroll. Direction matters more than absolute position:
-      // ANY upward movement → stay (respect their intent immediately).
-      // Downward movement that lands AT the bottom (<5px) → resume follow.
-      // The previous version had a 50px window that swallowed small trackpad
-      // gestures: if the user nudged up 30px from the bottom, distFromBottom=30
-      // was still <50, so intent stayed at 'follow' and the next chunk yanked
-      // them back down. That was the actual bug behind 4 failed attempts.
-      const delta = top - expected;
-      expectedScrollTop.current = top;
+    // Was the user at the bottom of the PREVIOUS render's content?
+    // Use a tiny 4px tolerance for subpixel jitter.
+    const wasAtBottom = el.scrollTop >= prevMaxScrollTop.current - 4;
 
-      if (delta < 0) {
-        // User scrolled UP — any amount, any device.
-        userIntent.current = 'stay';
-      } else {
-        // User scrolled DOWN. Only resume auto-scroll if they reached the bottom.
-        const distFromBottom = el.scrollHeight - top - el.clientHeight;
-        if (distFromBottom < 5) userIntent.current = 'follow';
-      }
-    };
+    if (wasAtBottom) {
+      el.scrollTop = currentMax;
+    }
+    // else: user scrolled up. Don't touch scrollTop. They keep reading.
 
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
+    prevMaxScrollTop.current = currentMax;
+  }, [displayMessages, isThinking]);
 
-  // Reset to follow-mode when switching chats
+  // Reset to force-scroll when switching chats
   useEffect(() => {
-    userIntent.current = 'follow';
-    setTimeout(() => scrollToBottomNow(), 50);
-  }, [currentChatId, scrollToBottomNow]);
+    forceScrollNext.current = true;
+  }, [currentChatId]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -650,7 +616,7 @@ export default function Home() {
 
     setInputMessage("");
     setAttachedImage(null);
-    userIntent.current = 'follow'; // user just sent — they want to follow
+    forceScrollNext.current = true; // user just sent — guarantee scroll to bottom
     setIsThinking(true);
 
     // Add user message to display immediately
