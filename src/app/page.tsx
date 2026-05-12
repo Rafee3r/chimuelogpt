@@ -559,6 +559,37 @@ export default function Home() {
     if (!msgToSend.trim() && !attachedImage) return;
 
     const messageText = msgToSend.trim();
+
+    // Helper: fire-and-forget memory extraction
+    const tryExtractMemory = (msgText: string, content: string) => {
+      if (!memoryEnabled || !msgText || !content) return;
+      fetch('/api/memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: msgText,
+          assistantMessage: content,
+          existingMemories: userMemory.map(m => m.content),
+        }),
+      }).then(r => r.json()).then(({ facts }) => {
+        if (facts?.length > 0) {
+          setUserMemory(prev => {
+            const newEntries = facts.map((f: string) => ({
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              content: f,
+              createdAt: Date.now(),
+            }));
+            const updated = [...prev, ...newEntries];
+            localStorage.setItem("chimuelo_memory", JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }).catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Memory] Error extrayendo hechos:', err);
+        }
+      });
+    };
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
     
@@ -764,37 +795,16 @@ export default function Home() {
       });
 
       // Extract persistent memory facts (fire-and-forget)
-      if (memoryEnabled && messageText && cleanContent) {
-        fetch('/api/memory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userMessage: messageText,
-            assistantMessage: cleanContent,
-            existingMemories: userMemory.map(m => m.content),
-          }),
-        }).then(r => r.json()).then(({ facts }) => {
-          if (facts?.length > 0) {
-            setUserMemory(prev => {
-              const newEntries = facts.map((content: string) => ({
-                id: Date.now().toString() + Math.random().toString(36).slice(2),
-                content,
-                createdAt: Date.now(),
-              }));
-              const updated = [...prev, ...newEntries];
-              localStorage.setItem("chimuelo_memory", JSON.stringify(updated));
-              return updated;
-            });
-          }
-        }).catch(() => {});
-      }
+      tryExtractMemory(messageText, cleanContent);
 
     } catch (e: any) {
       // v2.0 — user-triggered stop: persist whatever streamed so far, no error UI
       if (e?.name === 'AbortError' || controller.signal.aborted) {
+        let partialContent = '';
         setDisplayMessages(prev => {
           const last = prev[prev.length - 1];
           if (last && last.role === 'assistant' && last.content) {
+            partialContent = last.content;
             // Save the partial assistant reply
             const partial: BaseMessage = { ...last, content: last.content + ' ⏹' };
             const updatedDisplay = [...prev.slice(0, -1), partial];
@@ -811,6 +821,8 @@ export default function Home() {
           }
           return prev;
         });
+        // Extract memory from whatever was generated before the stop
+        if (partialContent) tryExtractMemory(messageText, partialContent);
       } else {
         console.error("Stream error:", e);
         const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
