@@ -1965,11 +1965,13 @@ export default function Home() {
               <input type="file" accept="*/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
-                <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
-                  <div className="v2-attach-icon-wrapper">
-                    <Plus size={20} />
-                  </div>
-                </button>
+                {displayMessages.length > 0 && (
+                  <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
+                    <div className="v2-attach-icon-wrapper">
+                      <Plus size={20} />
+                    </div>
+                  </button>
+                )}
                 
                 <textarea
                   ref={textareaRef}
