@@ -1565,6 +1565,232 @@ a {
 }
 
 /* =========================================================================
+   Music Generation Loading Animation
+   ========================================================================= */
+.music-gen-loading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(135deg, #12012b 0%, #0a0a1f 100%);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 18px;
+  padding: 18px 22px;
+  margin: 10px 0;
+  max-width: 380px;
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.12);
+}
+
+.music-loading-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.music-loading-bar {
+  width: 4px;
+  border-radius: 3px;
+  background: linear-gradient(to top, #7c3aed, #c084fc);
+  animation: music-bar-bounce 1s ease-in-out infinite;
+}
+
+@keyframes music-bar-bounce {
+  0%, 100% { height: 6px;  opacity: 0.5; }
+  50%       { height: 32px; opacity: 1;   }
+}
+
+.music-loading-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.music-loading-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.music-loading-sub {
+  color: rgba(139, 92, 246, 0.75);
+  font-size: 0.73rem;
+  font-weight: 400;
+}
+
+/* =========================================================================
+   Gemini-style Music Player Card
+   ========================================================================= */
+.music-player-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #1a0533 0%, #0d0d26 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 20px;
+  padding: 14px 16px;
+  margin: 10px 0;
+  max-width: 440px;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.15);
+  overflow: hidden;
+}
+
+/* subtle shimmer on idle */
+.music-player-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Waveform album art */
+.music-player-art {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4c1d95, #1e1b4b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.music-waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+}
+
+.music-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(192, 132, 252, 0.5);
+  height: 4px;
+  transition: height 0.1s;
+}
+
+.music-waveform.playing .music-bar {
+  animation: music-wv-play 0.8s ease-in-out infinite alternate;
+  background: linear-gradient(to top, #7c3aed, #e879f9);
+}
+
+@keyframes music-wv-play {
+  from { height: 4px;  opacity: 0.6; }
+  to   { height: 28px; opacity: 1;   }
+}
+
+/* Body */
+.music-player-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.music-player-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-player-sub {
+  font-size: 0.7rem;
+  color: rgba(139, 92, 246, 0.8);
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+
+/* Controls row */
+.music-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #7c3aed;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.1s;
+}
+.music-play-btn:hover { background: #6d28d9; transform: scale(1.08); }
+.music-play-btn:active { transform: scale(0.95); }
+
+.music-progress-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+}
+
+.music-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #c084fc);
+  border-radius: 2px;
+  transition: width 0.25s linear;
+  position: relative;
+}
+
+.music-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c084fc;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+}
+
+.music-time {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-time-sep { margin: 0 2px; opacity: 0.4; }
+
+/* Download button */
+.music-dl-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(192, 132, 252, 0.8);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.music-dl-btn:hover { background: rgba(124, 58, 237, 0.35); color: #c084fc; }
+
+/* =========================================================================
    V2 Empty State - Premium AI Aesthetic
    ========================================================================= */
 .v2-empty-state {

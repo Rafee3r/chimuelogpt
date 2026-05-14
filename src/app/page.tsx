@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -942,6 +942,10 @@ export default function Home() {
         if (streamContent.includes('<generate_image')) {
           streamContent = streamContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '__IMG_LOADING__').trim();
         }
+        // Hide generate_music tags during streaming
+        if (streamContent.includes('<generate_music')) {
+          streamContent = streamContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/i, '__MUSIC_LOADING__').trim();
+        }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
         setDisplayMessages(prev => {
           const existing = prev.findIndex(m => m.id === assistantId);
@@ -988,6 +992,30 @@ export default function Home() {
             }
           } catch {
             cleanContent = cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '\n\n*(Error de red al generar imagen)*\n\n');
+          }
+        }
+      }
+
+      // Post-process: intercept music generation tags
+      if (cleanContent.includes('<generate_music')) {
+        const musicMatch = cleanContent.match(/<generate_music(?:[^>]*)>([\s\S]*?)(?:<\/generate_music>|$)/i);
+        if (musicMatch && musicMatch[1]) {
+          const musicPrompt = musicMatch[1].trim();
+          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '__MUSIC_LOADING__') } : m));
+          try {
+            const musicRes = await fetch('/api/music', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: musicPrompt })
+            });
+            if (musicRes.ok) {
+              const musicData = await musicRes.json();
+              cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, `__MUSIC_PLAYER:${musicData.url}::${encodeURIComponent(musicPrompt)}__`);
+            } else {
+              cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error al generar música)*\n\n');
+            }
+          } catch {
+            cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error de red al generar música)*\n\n');
           }
         }
       }
@@ -1111,7 +1139,7 @@ export default function Home() {
       { id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } },
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
       { id: 'a_model_fast', icon: Zap, label: 'Modelo: ⚡ Rápido', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
-      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Profundo', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
+      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Pro', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
       { id: 'a_theme_light', icon: Palette, label: 'Tema: Claro', run: () => setTheme('light') },
       { id: 'a_theme_dark', icon: Palette, label: 'Tema: Oscuro', run: () => setTheme('dark') },
       { id: 'a_theme_oled', icon: Palette, label: 'Tema: OLED', run: () => setTheme('oled') },
@@ -1247,6 +1275,64 @@ export default function Home() {
             <div className="flashcard-text">{a}</div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const MusicPlayer = ({ url, prompt }: { url: string; prompt?: string }) => {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [playing, setPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+
+    const toggle = () => {
+      if (!audioRef.current) return;
+      if (playing) { audioRef.current.pause(); setPlaying(false); }
+      else { audioRef.current.play(); setPlaying(true); }
+    };
+    const handleTimeUpdate = () => {
+      if (!audioRef.current) return;
+      const cur = audioRef.current.currentTime;
+      const dur = audioRef.current.duration || 0;
+      setCurrentTime(cur);
+      setProgress(dur ? (cur / dur) * 100 : 0);
+    };
+    const handleLoaded = () => { if (audioRef.current) setDuration(audioRef.current.duration); };
+    const handleEnded = () => setPlaying(false);
+    const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!audioRef.current) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
+    };
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
+    return (
+      <div className="music-player-card">
+        <audio ref={audioRef} src={url} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoaded} onEnded={handleEnded} />
+        <div className="music-player-art">
+          <div className={`music-waveform ${playing ? 'playing' : ''}`}>
+            {[...Array(14)].map((_, i) => (
+              <div key={i} className="music-bar" style={{ animationDelay: `${(i * 0.08).toFixed(2)}s` }} />
+            ))}
+          </div>
+        </div>
+        <div className="music-player-body">
+          <div className="music-player-title">{prompt ? prompt.slice(0, 38) + (prompt.length > 38 ? '…' : '') : 'Música generada'}</div>
+          <div className="music-player-sub">IA generada · Chimuelo</div>
+          <div className="music-player-controls">
+            <button className="music-play-btn" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}>
+              {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+            </button>
+            <div className="music-progress-track" onClick={handleSeek}>
+              <div className="music-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="music-time">{fmt(currentTime)}<span className="music-time-sep">/</span>{fmt(duration)}</span>
+          </div>
+        </div>
+        <a href={url} download="chimuelo-musica.mp3" className="music-dl-btn" title="Descargar">
+          <Download size={15} />
+        </a>
       </div>
     );
   };
@@ -2083,6 +2169,15 @@ export default function Home() {
                         ? currentBody.split('__IMG_LOADING__')
                         : [currentBody, ''];
 
+                      const hasMusicLoading = currentBody.includes('__MUSIC_LOADING__');
+                      const musicPlayerMatch = currentBody.match(/__MUSIC_PLAYER:(https?:\/\/[^:]+)::([^_]*)__/);
+                      const hasMusicPlayer = !!musicPlayerMatch;
+                      const musicPlayerUrl = musicPlayerMatch?.[1] || '';
+                      const musicPlayerPrompt = musicPlayerMatch ? decodeURIComponent(musicPlayerMatch[2]) : '';
+                      const bodyWithoutMusic = hasMusicPlayer
+                        ? currentBody.replace(/__MUSIC_PLAYER:[^_]*__/, '').trim()
+                        : currentBody;
+
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
@@ -2101,6 +2196,33 @@ export default function Home() {
                                 {bodyAfter?.trim() && (
                                   <MemoizedMarkdown content={bodyAfter} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                                 )}
+                              </>
+                            ) : hasMusicLoading ? (
+                              <>
+                                {currentBody.split('__MUSIC_LOADING__')[0].trim() && (
+                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[0]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                )}
+                                <div className="music-gen-loading">
+                                  <div className="music-loading-bars">
+                                    {[...Array(8)].map((_, i) => (
+                                      <div key={i} className="music-loading-bar" style={{ animationDelay: `${(i * 0.1).toFixed(1)}s` }} />
+                                    ))}
+                                  </div>
+                                  <div className="music-loading-info">
+                                    <span className="music-loading-title">Componiendo tu música...</span>
+                                    <span className="music-loading-sub">Puede tomar hasta 30 segundos</span>
+                                  </div>
+                                </div>
+                                {currentBody.split('__MUSIC_LOADING__')[1]?.trim() && (
+                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[1]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                )}
+                              </>
+                            ) : hasMusicPlayer ? (
+                              <>
+                                {bodyWithoutMusic && (
+                                  <MemoizedMarkdown content={bodyWithoutMusic} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                )}
+                                <MusicPlayer url={musicPlayerUrl} prompt={musicPlayerPrompt} />
                               </>
                             ) : (
                               <MemoizedMarkdown
@@ -2241,7 +2363,7 @@ export default function Home() {
                 className={`v2-model-btn ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
                 onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
               >
-                Profundo
+                Pro
               </button>
             </div>
 

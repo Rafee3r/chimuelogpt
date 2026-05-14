@@ -27,6 +27,7 @@ export async function POST(req: Request) {
 
     const systemPrompt = `${personaPrompt}${customInstructionsPrompt}
 REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, escribe un mensaje conversacional MUY BREVE de acuerdo a tu personalidad (ej. "¡Aquí tienes tu imagen!", "Quedó genial, mira:"), seguido INMEDIATAMENTE por esta etiqueta XML que contenga una descripción muy detallada en INGLÉS de la imagen solicitada (no incluyas nada más después de la etiqueta): <generate_image>detailed english description of the image goes here</generate_image>
+REGLA PARA MÚSICA: Si el usuario pide crear, componer o generar una canción o música, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu canción! 🎵", "Componiendo ahora:"), seguido INMEDIATAMENTE por esta etiqueta con una descripción del estilo musical en INGLÉS (géneros, instrumentos, estado de ánimo, tempo). NO incluyas nada más después de la etiqueta: <generate_music>genre, instruments, mood, tempo in english here</generate_music>
 REGLA PARA DOCUMENTOS Y ARTEFACTOS: Si el usuario pide redactar un ensayo, crear una invitación, un documento, una plantilla o descargar un PDF, DEBES programar una interfaz visual hermosa. Para ello, responde ÚNICAMENTE con este formato, sin añadir ninguna otra palabra de conversación:
 <artifact>
   <artifact_title>Título Corto del Documento</artifact_title>
