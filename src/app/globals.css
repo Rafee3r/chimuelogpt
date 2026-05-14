@@ -1466,7 +1466,106 @@ a {
 }
 
 /* =========================================================================
-   V2 Empty State - Premium AI Aesthetic 
+   Apple Intelligence — Image Generation Loading Animation
+   ========================================================================= */
+.img-gen-loading {
+  width: 320px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  margin: 10px 0;
+  flex-shrink: 0;
+}
+
+/* Flowing rainbow background (blurred) */
+.img-gen-loading-bg {
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(
+    from 0deg,
+    #c084fc,
+    #818cf8,
+    #22d3ee,
+    #4ade80,
+    #facc15,
+    #fb923c,
+    #f472b6,
+    #c084fc
+  );
+  background-size: 200% 200%;
+  animation: apple-intel-spin 4s linear infinite;
+  filter: blur(28px);
+  opacity: 0.85;
+}
+
+@keyframes apple-intel-spin {
+  0%   { transform: rotate(0deg)   scale(1.1); }
+  50%  { transform: rotate(180deg) scale(1.25); }
+  100% { transform: rotate(360deg) scale(1.1); }
+}
+
+/* Dark frosted-glass surface */
+.img-gen-loading-surface {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Shimmer sweep overlay */
+.img-gen-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: apple-shimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes apple-shimmer {
+  0%   { background-position: -250% center; }
+  100% { background-position: 250% center; }
+}
+
+/* Pulsing icon in center */
+.img-gen-loading-icon {
+  font-size: 2rem;
+  animation: apple-pulse 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.5));
+  z-index: 1;
+}
+
+@keyframes apple-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.75; }
+  50%       { transform: scale(1.18); opacity: 1;    }
+}
+
+/* Label text below icon */
+.img-gen-loading-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+/* =========================================================================
+   V2 Empty State - Premium AI Aesthetic
    ========================================================================= */
 .v2-empty-state {
   display: flex;

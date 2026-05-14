@@ -940,7 +940,7 @@ export default function Home() {
         let streamContent = fullText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
         // Hide generate_image tags during streaming
         if (streamContent.includes('<generate_image')) {
-          streamContent = streamContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen...').trim();
+          streamContent = streamContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '__IMG_LOADING__').trim();
         }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
         setDisplayMessages(prev => {
@@ -968,7 +968,7 @@ export default function Home() {
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           // Update UI to show generating state
-          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '🎨 Generando tu imagen...') } : m));
+          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '__IMG_LOADING__') } : m));
           try {
             // If user attached an image AND it's not a dramatic text2img structural change, use img2img
             const imgBody: any = { prompt: imagePrompt };
@@ -2048,7 +2048,7 @@ export default function Home() {
                       }
                       
                       if (hasImageTag) {
-                        currentBody = currentBody.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '🎨 Generando tu imagen... por favor espera.').trim();
+                        currentBody = currentBody.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/i, '__IMG_LOADING__').trim();
                       }
 
                       if (hasNewArtifact) {
@@ -2078,14 +2078,37 @@ export default function Home() {
                       const isReady = !isThinking || !isLastMsg;
                       const showActions = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete);
                       
+                      const hasImgLoading = currentBody.includes('__IMG_LOADING__');
+                      const [bodyBefore, bodyAfter] = hasImgLoading
+                        ? currentBody.split('__IMG_LOADING__')
+                        : [currentBody, ''];
+
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
-                            <MemoizedMarkdown
-                              content={currentBody}
-                              imgRenderer={ImageRenderer}
-                              codeRenderer={CodeBlock}
-                            />
+                            {hasImgLoading ? (
+                              <>
+                                {bodyBefore.trim() && (
+                                  <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                )}
+                                <div className="img-gen-loading">
+                                  <div className="img-gen-loading-bg" />
+                                  <div className="img-gen-loading-surface">
+                                    <div className="img-gen-loading-icon">🎨</div>
+                                    <span className="img-gen-loading-text">Generando imagen...</span>
+                                  </div>
+                                </div>
+                                {bodyAfter?.trim() && (
+                                  <MemoizedMarkdown content={bodyAfter} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                )}
+                              </>
+                            ) : (
+                              <MemoizedMarkdown
+                                content={currentBody}
+                                imgRenderer={ImageRenderer}
+                                codeRenderer={CodeBlock}
+                              />
+                            )}
                             {msg.role === 'assistant' && activeChat?.subjectId && (
                                <div className="apa-export-bar" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
                                   <button className="download-btn" onClick={() => exportToAPA(currentBody)}>

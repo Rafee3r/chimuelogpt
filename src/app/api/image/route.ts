@@ -2,6 +2,32 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
 
+// Upload a base64 data URL to FAL storage and return an HTTP URL
+async function uploadToFalStorage(imageBase64: string, falKey: string): Promise<string> {
+  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  const mimeType = imageBase64.match(/data:([^;]+);/)?.[1] || 'image/jpeg';
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  const uploadRes = await fetch('https://storage.fal.ai/v1/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${falKey}`,
+      'Content-Type': mimeType,
+    },
+    body: buffer,
+  });
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text();
+    throw new Error(`FAL storage upload failed (${uploadRes.status}): ${err}`);
+  }
+
+  const uploadData = await uploadRes.json();
+  const url = uploadData.url || uploadData.cdn_url;
+  if (!url) throw new Error('FAL storage upload returned no URL');
+  return url;
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt, imageBase64 } = await req.json();
@@ -15,7 +41,15 @@ export async function POST(req: Request) {
     }
 
     if (imageBase64) {
-      // IMG2IMG: Pass the data URL directly to FLUX img2img
+      // IMG2IMG: Upload to FAL storage first (fal.ai requires an HTTP URL, not base64)
+      let imageUrl: string;
+      try {
+        imageUrl = await uploadToFalStorage(imageBase64, falKey);
+      } catch (uploadErr: any) {
+        console.error('FAL storage upload error:', uploadErr);
+        return NextResponse.json({ error: `Error al subir imagen: ${uploadErr.message}` }, { status: 500 });
+      }
+
       const falResponse = await fetch("https://fal.run/fal-ai/flux/dev/image-to-image", {
         method: "POST",
         headers: {
@@ -23,7 +57,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          image_url: imageBase64,
+          image_url: imageUrl,
           prompt: prompt,
           strength: 0.85,
           num_inference_steps: 28,
