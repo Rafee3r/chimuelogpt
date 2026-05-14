@@ -5,94 +5,81 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const { prompt, imageBase64 } = await req.json();
-    const apiKey = process.env.OPENAI_API_KEY;
+    const falKey = process.env.FAL_KEY;
 
-    if (!apiKey) {
+    if (!falKey) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY no está configurada en el entorno." },
+        { error: "La clave de Fal.ai (FAL_KEY) no está configurada." },
         { status: 500 }
       );
     }
 
     if (imageBase64) {
-      // EDIT MODE — imagen de referencia + prompt de transformación
-      const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-      const mimeMatch = imageBase64.match(/data:([^;]+);/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-
-      const buffer = Buffer.from(base64Data, 'base64');
-      const blob = new Blob([buffer], { type: mimeType });
-
-      const form = new FormData();
-      form.append('model', 'gpt-image-2');
-      form.append('image', blob, 'reference.png');
-      form.append('prompt', prompt);
-      form.append('n', '1');
-      form.append('size', 'auto');
-      form.append('quality', 'auto');
-      form.append('response_format', 'b64_json');
-
-      const res = await fetch('https://api.openai.com/v1/images/edits', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        body: form,
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        console.error('OpenAI image edit error:', res.status, err);
-        return NextResponse.json(
-          { error: `Error al editar imagen (${res.status})` },
-          { status: 500 }
-        );
-      }
-
-      const data = await res.json();
-      const b64 = data.data?.[0]?.b64_json;
-      if (!b64) {
-        return NextResponse.json({ error: 'Sin imagen en la respuesta de edición' }, { status: 500 });
-      }
-      return NextResponse.json({ url: `data:image/png;base64,${b64}` });
-
-    } else {
-      // GENERATE MODE — texto a imagen
-      const res = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
+      // IMG2IMG: Pass the data URL directly to FLUX img2img
+      const falResponse = await fetch("https://fal.run/fal-ai/flux/dev/image-to-image", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          "Authorization": `Key ${falKey}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: 'gpt-image-2',
-          prompt,
-          n: 1,
-          size: 'auto',
-          quality: 'auto',
-          response_format: 'b64_json',
-        }),
+          image_url: imageBase64,
+          prompt: prompt,
+          strength: 0.85,
+          num_inference_steps: 28,
+          guidance_scale: 3.5
+        })
       });
 
-      if (!res.ok) {
-        const err = await res.text();
-        console.error('OpenAI image generation error:', res.status, err);
+      if (!falResponse.ok) {
+        const falError = await falResponse.text();
+        console.error("Fal.ai img2img Error:", falResponse.status, falError);
         return NextResponse.json(
-          { error: `Error al generar imagen (${res.status})` },
+          { error: `Error img2img: ${falError}` },
           { status: 500 }
         );
       }
 
-      const data = await res.json();
-      const b64 = data.data?.[0]?.b64_json;
-      if (!b64) {
-        return NextResponse.json({ error: 'Sin imagen en la respuesta de generación' }, { status: 500 });
+      const falData = await falResponse.json();
+      const resultUrl = falData.images?.[0]?.url;
+
+      if (!resultUrl) {
+        return NextResponse.json({ error: "No se generó imagen" }, { status: 500 });
       }
-      return NextResponse.json({ url: `data:image/png;base64,${b64}` });
+
+      return NextResponse.json({ url: resultUrl });
+
+    } else {
+      // TEXT-TO-IMAGE
+      const falResponse = await fetch("https://fal.run/fal-ai/flux-pro/v1.1", {
+        method: "POST",
+        headers: {
+          "Authorization": `Key ${falKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          image_size: "landscape_4_3"
+        })
+      });
+
+      if (!falResponse.ok) {
+        const falError = await falResponse.text();
+        console.error("Fal.ai text2img Error:", falError);
+        return NextResponse.json(
+          { error: "Error al generar la imagen." },
+          { status: 500 }
+        );
+      }
+
+      const falData = await falResponse.json();
+      return NextResponse.json({ url: falData.images[0].url });
     }
 
   } catch (error: any) {
-    console.error('Image API Error:', error);
+    console.error("Image API Error:", error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }
