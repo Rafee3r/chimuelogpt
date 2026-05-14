@@ -53,6 +53,7 @@ type BaseMessage = {
   role: "user" | "assistant";
   content: string;
   imagePlaceholder?: string;
+  imageData?: string;
   reasoning?: string;
   model?: string;
 };
@@ -842,7 +843,8 @@ export default function Home() {
       id: userMsgId, 
       role: "user", 
       content: messageText,
-      ...(imageName ? { imagePlaceholder: imageName } : {})
+      ...(imageName ? { imagePlaceholder: imageName } : {}),
+      ...(imagePayload && attachedImage?.type?.startsWith('image/') ? { imageData: attachedImage.base64 } : {})
     };
 
     setChats(prev => {
@@ -1976,10 +1978,16 @@ export default function Home() {
                   )}
                   <div className="message-text">
                     {msg.imagePlaceholder && (
-                      <div className="attachment-placeholder">
-                        <FileImage size={16} />
-                        <span>{msg.imagePlaceholder}</span>
-                      </div>
+                      msg.imageData ? (
+                        <div className="attachment-image-preview">
+                          <img src={msg.imageData} alt={msg.imagePlaceholder} className="msg-ref-img" />
+                        </div>
+                      ) : (
+                        <div className="attachment-placeholder">
+                          <FileImage size={16} />
+                          <span>{msg.imagePlaceholder}</span>
+                        </div>
+                      )
                     )}
                     
                     {role === 'assistant' && reasoning && (() => {

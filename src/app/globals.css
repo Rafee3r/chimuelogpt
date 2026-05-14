@@ -1452,6 +1452,19 @@ a {
   }
 }
 
+/* Reference image preview in user messages */
+.attachment-image-preview {
+  margin-bottom: 6px;
+}
+.msg-ref-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  display: block;
+}
+
 /* =========================================================================
    V2 Empty State - Premium AI Aesthetic 
    ========================================================================= */
