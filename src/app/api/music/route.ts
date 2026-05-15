@@ -1,51 +1,81 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 120; // music generation can take up to ~60s
+export const maxDuration = 120;
+
+const MODEL = 'fal-ai/minimax-music/v2';
+
+async function poll(statusUrl: string, falKey: string, maxMs = 100_000): Promise<any> {
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 3000));
+    const res = await fetch(statusUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+    if (!res.ok) continue;
+    const data = await res.json();
+    if (data.status === 'COMPLETED') return data;
+    if (data.status === 'FAILED') throw new Error(`FAL job failed: ${JSON.stringify(data)}`);
+  }
+  throw new Error('Music generation timed out after 100s');
+}
+
+function extractAudioUrl(data: any): string | null {
+  return (
+    data?.output?.audio?.url ||
+    data?.output?.audio_file?.url ||
+    data?.output?.audio_url ||
+    data?.audio?.url ||
+    data?.audio_file?.url ||
+    data?.audio_url ||
+    data?.url ||
+    (Array.isArray(data?.output?.audio) ? data.output.audio[0]?.url : undefined) ||
+    null
+  );
+}
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
     const falKey = process.env.FAL_KEY;
 
-    if (!falKey) {
-      return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
-    }
+    if (!falKey) return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
+    if (!prompt) return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
 
-    if (!prompt || typeof prompt !== 'string') {
-      return NextResponse.json({ error: 'Se requiere un prompt de música.' }, { status: 400 });
-    }
-
-    const falResponse = await fetch('https://fal.run/fal-ai/minimax-music/v2', {
+    // Submit to FAL queue (handles long-running models)
+    const submitRes = await fetch(`https://queue.fal.run/${MODEL}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Key ${falKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: prompt.slice(0, 500),
-        lyrics_prompt: '',
+        // minimax-music/v2 requires lyrics_prompt; use [instrumental] if none provided
+        lyrics_prompt: '[verse]\n[instrumental]',
       }),
     });
 
-    if (!falResponse.ok) {
-      const err = await falResponse.text();
-      console.error('FAL music error:', falResponse.status, err);
-      return NextResponse.json({ error: `Error al generar música (${falResponse.status})` }, { status: 500 });
+    if (!submitRes.ok) {
+      const err = await submitRes.text();
+      console.error('FAL music submit error:', submitRes.status, err);
+      return NextResponse.json({ error: `FAL error ${submitRes.status}: ${err}` }, { status: 500 });
     }
 
-    const data = await falResponse.json();
+    const queued = await submitRes.json();
+    console.log('FAL music queued:', JSON.stringify(queued));
 
-    // Handle multiple possible response shapes from FAL
-    const audioUrl =
-      data?.audio?.url ||
-      data?.audio_file?.url ||
-      data?.audio_url ||
-      data?.url ||
-      (Array.isArray(data?.audio) ? data.audio[0]?.url : undefined);
+    // If synchronous response already has audio, return it
+    const directUrl = extractAudioUrl(queued);
+    if (directUrl) return NextResponse.json({ url: directUrl });
 
+    // Otherwise poll the status URL
+    const statusUrl = queued.status_url || queued.response_url;
+    if (!statusUrl) {
+      console.error('FAL music: no status_url in response', JSON.stringify(queued));
+      return NextResponse.json({ error: 'No se pudo obtener el estado de la tarea.' }, { status: 500 });
+    }
+
+    const completed = await poll(statusUrl, falKey);
+    console.log('FAL music completed:', JSON.stringify(completed).slice(0, 300));
+
+    const audioUrl = extractAudioUrl(completed);
     if (!audioUrl) {
-      console.error('FAL music: unexpected response shape', JSON.stringify(data));
-      return NextResponse.json({ error: 'No se recibió audio en la respuesta.' }, { status: 500 });
+      return NextResponse.json({ error: 'No se encontró URL de audio en la respuesta.' }, { status: 500 });
     }
 
     return NextResponse.json({ url: audioUrl });
