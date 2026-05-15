@@ -3765,8 +3765,16 @@ a {
 }
 
 .uni-v2-header { text-align: center; }
-.uni-v2-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
-.uni-v2-sub { font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px; }
+.uni-v2-title {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(to right, var(--text-primary), #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fadeUpStagger 0.5s ease both;
+}
+.uni-v2-sub { font-size: 0.9rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
 
 /* ── Subject pills row ── */
 .uni-v2-subjects { width: 100%; }
@@ -3780,20 +3788,27 @@ a {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
+  padding: 8px 18px;
+  border-radius: 30px;
   border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: var(--input-bg);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: 0.87rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.uni-v2-pill:hover { border-color: var(--accent-color); }
+.uni-v2-pill:hover {
+  border-color: #a18cd1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
+}
 .uni-v2-pill.active {
   background: var(--accent-color);
   color: #fff;
   border-color: var(--accent-color);
+  transform: none;
+  box-shadow: 0 4px 14px -4px rgba(16,163,127,0.4);
 }
 
 .uni-v2-pill-wrap { display: flex; align-items: center; gap: 2px; }
@@ -3837,16 +3852,22 @@ a {
 
 .uni-v2-pill-new {
   display: flex; align-items: center; gap: 5px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px dashed var(--border-color);
-  background: none;
+  padding: 8px 16px;
+  border-radius: 30px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.uni-v2-pill-new:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.uni-v2-pill-new:hover {
+  border-color: #a18cd1;
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
+}
 
 /* ── Notes textarea ── */
 .uni-v2-notes { width: 100%; display: flex; flex-direction: column; gap: 6px; }
@@ -3937,16 +3958,89 @@ a {
 .uni-v2-tpl-btn {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 30px;
   border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: var(--input-bg);
   color: var(--text-primary);
-  font-size: 0.83rem;
+  font-size: 0.87rem;
+  font-weight: 500;
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   line-height: 1.3;
 }
-.uni-v2-tpl-btn:hover { border-color: var(--accent-color); background: var(--active-bg); color: var(--active-text); }
+.uni-v2-tpl-btn:hover {
+  border-color: #a18cd1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
+}
+
+/* ── Dark/OLED overrides for Académico elements ── */
+[data-theme="dark"] .uni-v2-pill,
+[data-theme="oled"] .uni-v2-pill,
+[data-theme="dark"] .uni-v2-pill-new,
+[data-theme="oled"] .uni-v2-pill-new,
+[data-theme="dark"] .uni-v2-tpl-btn,
+[data-theme="oled"] .uni-v2-tpl-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+[data-theme="dark"] .uni-v2-pill:hover,
+[data-theme="oled"] .uni-v2-pill:hover,
+[data-theme="dark"] .uni-v2-pill-new:hover,
+[data-theme="oled"] .uni-v2-pill-new:hover,
+[data-theme="dark"] .uni-v2-tpl-btn:hover,
+[data-theme="oled"] .uni-v2-tpl-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .uni-v2-input-box,
+[data-theme="oled"] .uni-v2-input-box {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+[data-theme="dark"] .uni-v2-input-box:focus-within,
+[data-theme="oled"] .uni-v2-input-box:focus-within {
+  border-color: var(--accent-color);
+}
+[data-theme="dark"] .uni-v2-notes-textarea,
+[data-theme="oled"] .uni-v2-notes-textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* System dark (no explicit data-theme set) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .uni-v2-pill,
+  :root:not([data-theme]) .uni-v2-pill-new,
+  :root:not([data-theme]) .uni-v2-tpl-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  :root:not([data-theme]) .uni-v2-pill:hover,
+  :root:not([data-theme]) .uni-v2-pill-new:hover,
+  :root:not([data-theme]) .uni-v2-tpl-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+  }
+  :root:not([data-theme]) .uni-v2-input-box {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  :root:not([data-theme]) .uni-v2-notes-textarea {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
