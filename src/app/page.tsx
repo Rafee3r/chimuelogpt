@@ -2435,9 +2435,6 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="disclaimer">
-              Chimuelo puede cometer errores. Considera verificar la información importante.
-            </div>
           </div>
         )}
       </div>

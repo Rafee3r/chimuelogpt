@@ -4,29 +4,13 @@ export const maxDuration = 120;
 
 const MODEL = 'fal-ai/minimax-music/v2';
 
-async function poll(statusUrl: string, falKey: string, maxMs = 100_000): Promise<any> {
-  const deadline = Date.now() + maxMs;
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 3000));
-    const res = await fetch(statusUrl, { headers: { 'Authorization': `Key ${falKey}` } });
-    if (!res.ok) continue;
-    const data = await res.json();
-    if (data.status === 'COMPLETED') return data;
-    if (data.status === 'FAILED') throw new Error(`FAL job failed: ${JSON.stringify(data)}`);
-  }
-  throw new Error('Music generation timed out after 100s');
-}
-
 function extractAudioUrl(data: any): string | null {
   return (
-    data?.output?.audio?.url ||
-    data?.output?.audio_file?.url ||
-    data?.output?.audio_url ||
     data?.audio?.url ||
     data?.audio_file?.url ||
     data?.audio_url ||
     data?.url ||
-    (Array.isArray(data?.output?.audio) ? data.output.audio[0]?.url : undefined) ||
+    (Array.isArray(data?.audio) ? data.audio[0]?.url : undefined) ||
     null
   );
 }
@@ -39,13 +23,12 @@ export async function POST(req: Request) {
     if (!falKey) return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
     if (!prompt) return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
 
-    // Submit to FAL queue (handles long-running models)
+    // 1. Submit job to FAL queue
     const submitRes = await fetch(`https://queue.fal.run/${MODEL}`, {
       method: 'POST',
       headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: prompt.slice(0, 500),
-        // minimax-music/v2 requires lyrics_prompt; use [instrumental] if none provided
         lyrics_prompt: '[verse]\n[instrumental]',
       }),
     });
@@ -53,32 +36,61 @@ export async function POST(req: Request) {
     if (!submitRes.ok) {
       const err = await submitRes.text();
       console.error('FAL music submit error:', submitRes.status, err);
-      return NextResponse.json({ error: `FAL error ${submitRes.status}: ${err}` }, { status: 500 });
+      return NextResponse.json({ error: `FAL submit error ${submitRes.status}: ${err}` }, { status: 500 });
     }
 
     const queued = await submitRes.json();
     console.log('FAL music queued:', JSON.stringify(queued));
 
-    // If synchronous response already has audio, return it
+    // If sync response already has audio (unlikely but possible), return it
     const directUrl = extractAudioUrl(queued);
     if (directUrl) return NextResponse.json({ url: directUrl });
 
-    // Otherwise poll the status URL
-    const statusUrl = queued.status_url || queued.response_url;
-    if (!statusUrl) {
-      console.error('FAL music: no status_url in response', JSON.stringify(queued));
-      return NextResponse.json({ error: 'No se pudo obtener el estado de la tarea.' }, { status: 500 });
+    const statusUrl: string = queued.status_url;
+    const responseUrl: string = queued.response_url;
+
+    if (!statusUrl || !responseUrl) {
+      console.error('FAL music: missing status_url/response_url', JSON.stringify(queued));
+      return NextResponse.json({ error: 'FAL no devolvió URLs de seguimiento.' }, { status: 500 });
     }
 
-    const completed = await poll(statusUrl, falKey);
-    console.log('FAL music completed:', JSON.stringify(completed).slice(0, 300));
+    // 2. Poll status_url until COMPLETED
+    const deadline = Date.now() + 100_000;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 3000));
 
-    const audioUrl = extractAudioUrl(completed);
-    if (!audioUrl) {
-      return NextResponse.json({ error: 'No se encontró URL de audio en la respuesta.' }, { status: 500 });
+      const statusRes = await fetch(statusUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+      if (!statusRes.ok) continue;
+
+      const status = await statusRes.json();
+      console.log('FAL music status:', status.status);
+
+      if (status.status === 'FAILED') {
+        return NextResponse.json({ error: `Generación fallida: ${JSON.stringify(status)}` }, { status: 500 });
+      }
+
+      if (status.status === 'COMPLETED') {
+        // 3. GET response_url to retrieve actual audio output
+        const resultRes = await fetch(responseUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+        if (!resultRes.ok) {
+          const err = await resultRes.text();
+          return NextResponse.json({ error: `FAL result fetch error ${resultRes.status}: ${err}` }, { status: 500 });
+        }
+
+        const result = await resultRes.json();
+        console.log('FAL music result:', JSON.stringify(result).slice(0, 300));
+
+        const audioUrl = extractAudioUrl(result);
+        if (!audioUrl) {
+          return NextResponse.json({ error: `Sin URL de audio en respuesta: ${JSON.stringify(result).slice(0, 200)}` }, { status: 500 });
+        }
+
+        return NextResponse.json({ url: audioUrl });
+      }
     }
 
-    return NextResponse.json({ url: audioUrl });
+    return NextResponse.json({ error: 'Tiempo de espera agotado (100s).' }, { status: 500 });
+
   } catch (error: any) {
     console.error('Music API Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
