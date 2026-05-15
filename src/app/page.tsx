@@ -90,13 +90,13 @@ export default function Home() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"chat" | "university" | "settings">("chat");
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedUniTask, setSelectedUniTask] = useState<"essay" | "science" | "synthesis" | "socratic" | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
-  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
-  const [newSubjectName, setNewSubjectName] = useState("");
-  const [newSubjectMemory, setNewSubjectMemory] = useState("");
+  const [uniInput, setUniInput] = useState('');
+  const [uniAttachment, setUniAttachment] = useState<{base64: string, name: string, type?: string} | null>(null);
+  const [subjectMenu, setSubjectMenu] = useState<{id: string, x: number, y: number} | null>(null);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [inlineSubjectName, setInlineSubjectName] = useState('');
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -152,6 +152,8 @@ export default function Home() {
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const uniTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSystemHint = useRef('');
 
   /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
   const queueChatsToLS = useCallback((chats: Chat[]) => {
@@ -687,20 +689,19 @@ export default function Home() {
   };
 
   const handleCreateSubject = () => {
-    if (!newSubjectName.trim()) return;
+    if (!inlineSubjectName.trim()) return;
     const newSubject: Subject = {
       id: Date.now().toString(),
-      name: newSubjectName,
-      baseMemory: newSubjectMemory
+      name: inlineSubjectName.trim(),
+      baseMemory: ''
     };
     const updated = [...subjects, newSubject];
     setSubjects(updated);
     localStorage.setItem("chimuelo_subjects", JSON.stringify(updated));
     setActiveSubjectId(newSubject.id);
     localStorage.setItem("chimuelo_active_subject", newSubject.id);
-    setNewSubjectName("");
-    setNewSubjectMemory("");
-    setIsCreatingSubject(false);
+    setAddingSubject(false);
+    setInlineSubjectName('');
   };
 
   const handleDeleteSubject = (id: string) => {
@@ -713,50 +714,49 @@ export default function Home() {
     }
   };
 
-  const openConfigModal = (type: "essay" | "science" | "synthesis" | "socratic") => {
-    setSelectedUniTask(type);
-    setConfigModalOpen(true);
+  const UNI_TEMPLATES = [
+    { key: 'essay',      icon: '✍️', label: 'Corregir texto',
+      starter: 'Revisa este texto y mejora ortografía, gramática y argumentación. Explica QUÉ cambiaste y POR QUÉ:\n\n',
+      systemHint: 'Eres editor académico nivel PhD. Si el texto sigue un formato específico (APA, MLA, etc.), respétalo; si no, sugiérelo. Corrige y explica.' },
+    { key: 'solve',      icon: '🧮', label: 'Resolver ejercicio',
+      starter: 'Resuelve este ejercicio paso a paso, explicando el razonamiento:\n\n',
+      systemHint: 'Eres tutor de ciencias didáctico. Desglosa cada paso, usa fórmulas claras, explica las leyes detrás.' },
+    { key: 'summarize',  icon: '📚', label: 'Resumir texto',
+      starter: 'Resume este texto con los puntos clave para estudiar rápido:\n\n',
+      systemHint: 'Eres analista de textos académicos. Extrae tesis central, argumentos y conclusiones. Salida en markdown estructurado.' },
+    { key: 'examine',    icon: '🧠', label: 'Tomarme examen',
+      starter: 'Hazme un examen oral progresivo sobre: ',
+      systemHint: 'Eres profesor socrático. NO des respuestas. Haz preguntas crecientes en dificultad. Corrige amablemente.' },
+    { key: 'explain',    icon: '💡', label: 'Explicar concepto',
+      starter: 'Explícame de forma clara y con ejemplos: ',
+      systemHint: 'Explica conceptos académicos con analogías concretas y ejemplos progresivos. Verifica entendimiento al final.' },
+    { key: 'flashcards', icon: '📝', label: 'Hacer flashcards',
+      starter: 'Genera flashcards (pregunta → respuesta) para memorizar:\n\n',
+      systemHint: 'Genera 8-15 flashcards en formato "P: ... / R: ...". Cubre conceptos clave, fórmulas, fechas, definiciones.' },
+  ];
+
+  const applyTemplate = (tpl: typeof UNI_TEMPLATES[0]) => {
+    setUniInput(prev => tpl.starter + (prev || ''));
+    pendingSystemHint.current = tpl.systemHint;
+    setTimeout(() => uniTextareaRef.current?.focus(), 0);
   };
 
-  const launchUniversityTask = (subType: string) => {
-    let systemPrompt = "";
-    let firstMessage = "";
-    let title = "";
-
-    if (selectedUniTask === "essay") {
-      title = "Editor: " + subType;
-      systemPrompt = `Eres un Editor Académico experto nivel PhD. Tu objetivo es revisar textos bajo el formato ${subType}. Corrige ortografía, gramática, y estructura argumentativa. Explica QUÉ cambiaste y POR QUÉ lo cambiaste para que el estudiante aprenda. NO escribas el ensayo desde cero.`;
-      firstMessage = `¡Hola! He activado el Revisor de Ensayos para formato **${subType}**. Por favor, pega aquí el texto o párrafo que quieres que revise.`;
-    } else if (selectedUniTask === "science") {
-      title = "Tutor: " + subType;
-      systemPrompt = `Eres un Tutor de Ciencias especializado en ${subType} de la Universidad de Harvard. Tu enfoque es didáctico. NO des solo la respuesta final. DEBES desglosar el razonamiento en pasos lógicos, usar fórmulas claras, explicar las leyes subyacentes y asegurarte de que el estudiante comprenda el mecanismo de resolución.`;
-      firstMessage = `¡Hola! Soy tu Tutor de **${subType}**. Sube una foto del problema o escríbelo aquí, y lo resolveremos paso a paso.`;
-    } else if (selectedUniTask === "synthesis") {
-      title = "Analista: " + subType;
-      systemPrompt = `Eres un Investigador Académico experto en Análisis Crítico. Tu objetivo es ayudar al usuario a sintetizar textos complejos. Extrae la tesis central, los argumentos principales y las conclusiones. Si el usuario pide ${subType}, asegúrate de que el formato de salida se enfoque en eso (ej. Markdown estructurado).`;
-      firstMessage = `¡Hola! Listo para realizar una **${subType}**. Sube fotos de tus apuntes o pega el texto.`;
-    } else if (selectedUniTask === "socratic") {
-      title = "Socrático: " + subType;
-      systemPrompt = `Eres un Profesor Socrático experto. Tu objetivo es preparar al estudiante para un examen ${subType}. NO des respuestas directas. Pide al estudiante que defina el tema de estudio, y luego hazle preguntas progresivamente más difíciles. Corrige amablemente si se equivoca, y llévalo a deducir las respuestas por sí mismo.`;
-      firstMessage = `¡Hola! Vamos a prepararte para tu examen **${subType}**. ¿Qué tema específico vas a estudiar hoy?`;
-    }
-
+  const sendFromUniDashboard = () => {
+    const text = uniInput.trim();
+    if (!text && !uniAttachment) return;
+    const subject = subjects.find(s => s.id === activeSubjectId);
+    let sysPrompt = '';
+    if (subject?.baseMemory) sysPrompt += `[CONTEXTO DE LA MATERIA: ${subject.name}]\n${subject.baseMemory}\n\n`;
+    if (pendingSystemHint.current) sysPrompt += pendingSystemHint.current;
     const newChatId = Date.now().toString();
     const newChat: Chat = {
       id: newChatId,
-      title: title,
-      messages: [
-        {
-          id: Date.now().toString() + "_sys",
-          role: "assistant",
-          content: firstMessage
-        }
-      ],
+      title: text.slice(0, 40) || 'Chat académico',
+      messages: [],
       updatedAt: Date.now(),
-      systemPrompt: systemPrompt,
-      subjectId: activeSubjectId || undefined
+      systemPrompt: sysPrompt || undefined,
+      subjectId: activeSubjectId || undefined,
     };
-    
     setChats(prev => {
       const updated = [newChat, ...prev];
       localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
@@ -764,10 +764,33 @@ export default function Home() {
     });
     setCurrentChatId(newChatId);
     localStorage.setItem("chimuelo_current_chat", newChatId);
-    setDisplayMessages(newChat.messages);
-    setViewMode("chat");
+    setDisplayMessages([]);
+    if (uniAttachment) setAttachedImage(uniAttachment);
+    setViewMode('chat');
     setSidebarOpen(false);
-    setConfigModalOpen(false);
+    setUniInput('');
+    setUniAttachment(null);
+    pendingSystemHint.current = '';
+    setTimeout(() => handleSendMessage(text), 50);
+  };
+
+  const openSubjectMenu = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = Math.min(rect.left, window.innerWidth - 170);
+    setSubjectMenu({ id, x, y: rect.bottom + 4 });
+  };
+
+  const handleRenameSubject = (id: string) => {
+    const s = subjects.find(sub => sub.id === id);
+    if (!s) return;
+    const name = window.prompt('Nuevo nombre:', s.name);
+    if (name?.trim()) {
+      const updated = subjects.map(sub => sub.id === id ? { ...sub, name: name.trim() } : sub);
+      setSubjects(updated);
+      localStorage.setItem("chimuelo_subjects", JSON.stringify(updated));
+    }
+    setSubjectMenu(null);
   };
 
   const handleSendMessage = async (customMessage?: string) => {
@@ -1624,73 +1647,6 @@ export default function Home() {
         );
       })()}
 
-      {configModalOpen && selectedUniTask && (
-        <div className="uni-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfigModalOpen(false); }}>
-          <div className="uni-modal-content">
-            <div className="uni-modal-header">
-              <div className="uni-modal-title">
-                {selectedUniTask === "essay" ? "✍️ ¿Cómo quieres que lo revise?" : 
-                 selectedUniTask === "science" ? "🧠 ¿Qué tipo de ejercicio es?" : 
-                 selectedUniTask === "synthesis" ? "📚 ¿Cómo quieres el resumen?" : "🎯 ¿Qué tipo de práctica quieres?"}
-              </div>
-              <button className="icon-btn" onClick={() => setConfigModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            {selectedUniTask === "essay" && (
-              <>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato APA (Estricto)")}>
-                  <span>📋 Con formato APA <small style={{color:'var(--text-secondary)',fontWeight:400}}>(el más pedido en universidades)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Formato MLA")}>
-                  <span>📖 Con formato MLA <small style={{color:'var(--text-secondary)',fontWeight:400}}>(común en letras e historia)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Revisión de Ortografía General")}>
-                  <span>✏️ Solo revisar ortografía y redacción</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-              </>
-            )}
-            
-            {selectedUniTask === "science" && (
-              <>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Matemáticas y Cálculo")}>
-                  <span>➕ Matemáticas y Cálculo</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Física General")}>
-                  <span>⚡ Física General</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Química Orgánica")}>
-                  <span>🧪 Química</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-              </>
-            )}
-
-            {selectedUniTask === "synthesis" && (
-              <>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Síntesis Rápida (Bullet points)")}>
-                  <span>⚡ Resumen corto con los puntos clave</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Análisis Crítico Profundo")}>
-                  <span>🔍 Análisis completo y detallado</span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-              </>
-            )}
-
-            {selectedUniTask === "socratic" && (
-              <>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Examen Oral (Muy Estricto)")}>
-                  <span>😐 Modo difícil <small style={{color:'var(--text-secondary)',fontWeight:400}}>(profe muy estricto, sin pistas)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-                <button className="uni-option-btn" onClick={() => launchUniversityTask("Cuestionario Escrito (Amable)")}>
-                  <span>😊 Modo fácil <small style={{color:'var(--text-secondary)',fontWeight:400}}>(para practicar sin presión)</small></span> <ChevronDown size={16} style={{transform: "rotate(-90deg)"}}/>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="main-content">
         <div className="mobile-header" style={{ display: viewMode === 'settings' ? 'none' : undefined }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn">
@@ -1869,161 +1825,158 @@ export default function Home() {
 
         <div ref={chatScrollRef} className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
-            <div className="university-dashboard">
-              <div className="university-header">
-                <h1>Cerebro Académico</h1>
-                <p>Tu propio lugar de estudio. Añade tus materias y la IA recordará tus apuntes.</p>
+            /* ── CEREBRO ACADÉMICO v2 — chat-first ── */
+            <div className="uni-v2-shell">
+              <div className="uni-v2-header">
+                <div className="uni-v2-title">Cerebro Académico</div>
+                <div className="uni-v2-sub">Elige tu materia, escribe lo que necesitas y empieza al instante.</div>
               </div>
-              
-              <div className="subject-section" style={{ width: '100%', maxWidth: '850px', marginBottom: '2rem', animation: 'fadeUpStagger 0.4s ease both' }}>
 
-                {isCreatingSubject ? (
-                  /* ── CREAR MATERIA: Formulario guiado ── */
-                  <div className="subject-form-card compact">
-                    <div className="subject-form-header">
-                      <div style={{ fontSize: '1.5rem' }}>📚</div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Añadir un Ramo</h3>
-                      </div>
+              {/* ── MATERIAS ── */}
+              <div className="uni-v2-subjects">
+                <div className="uni-v2-pills">
+                  <button
+                    className={`uni-v2-pill ${!activeSubjectId ? 'active' : ''}`}
+                    onClick={() => { setActiveSubjectId(null); localStorage.removeItem('chimuelo_active_subject'); setSubjectMenu(null); }}
+                  >
+                    🌐 General
+                  </button>
+                  {subjects.map(s => (
+                    <div key={s.id} className="uni-v2-pill-wrap">
+                      <button
+                        className={`uni-v2-pill ${activeSubjectId === s.id ? 'active' : ''}`}
+                        onClick={() => { setActiveSubjectId(s.id); localStorage.setItem('chimuelo_active_subject', s.id); setSubjectMenu(null); }}
+                      >
+                        📖 {s.name}
+                      </button>
+                      <button className="uni-v2-pill-menu" onClick={(e) => openSubjectMenu(s.id, e)} title="Opciones">
+                        <MoreVertical size={13} />
+                      </button>
                     </div>
-
-                    <div className="subject-form-field">
+                  ))}
+                  {addingSubject ? (
+                    <div className="uni-v2-add-inline">
                       <input
-                        type="text"
-                        placeholder="Nombre de la materia (Ej: Cálculo 2)"
-                        value={newSubjectName}
-                        onChange={(e) => setNewSubjectName(e.target.value)}
-                        className="subject-field-input"
+                        className="uni-v2-add-input"
+                        placeholder="Nombre del ramo…"
+                        value={inlineSubjectName}
+                        onChange={e => setInlineSubjectName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleCreateSubject(); if (e.key === 'Escape') { setAddingSubject(false); setInlineSubjectName(''); } }}
                         autoFocus
                       />
+                      <button className="uni-v2-add-confirm" onClick={handleCreateSubject} disabled={!inlineSubjectName.trim()}>✓</button>
+                      <button className="uni-v2-add-cancel" onClick={() => { setAddingSubject(false); setInlineSubjectName(''); }}>✕</button>
                     </div>
-
-                    <details className="subject-advanced-opt">
-                      <summary>Añadir apuntes o reglas extra ▾</summary>
-                      <div className="subject-form-field" style={{ marginTop: '8px' }}>
-                        <textarea
-                          placeholder={"Cosas que Chimuelo debe recordar:\n- El profe pide todo en APA\n- No usar Wikipedia"}
-                          value={newSubjectMemory}
-                          onChange={(e) => setNewSubjectMemory(e.target.value)}
-                          className="subject-field-textarea"
-                          style={{ minHeight: '80px' }}
-                        />
-                      </div>
-                    </details>
-
-                    <div className="subject-form-actions" style={{ paddingTop: '8px' }}>
-                      <button className="subject-cancel-btn" onClick={() => { setIsCreatingSubject(false); setNewSubjectName(''); setNewSubjectMemory(''); }}>
-                        Cancelar
-                      </button>
-                      <button className="subject-save-btn" onClick={handleCreateSubject} disabled={!newSubjectName.trim()}>
-                        ✓ Guardar
-                      </button>
-                    </div>
-                  </div>
-
-                ) : subjects.length === 0 ? (
-                  /* ── ESTADO VACÍO: Guía de primeros pasos ── */
-                  <div className="subject-empty-state">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%', maxWidth: '440px', marginBottom: '1.25rem' }}>
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>¿Cómo funciona?</p>
-                      {[
-                        { n: '1', icon: '📚', title: 'Agrega un ramo', desc: 'Escribe el nombre (ej: Cálculo 2) y pega tus apuntes o el programa del curso.' },
-                        { n: '2', icon: '☝️', title: 'Selecciónalo aquí arriba', desc: 'Chimuelo cargará ese contexto antes de responder — sin que tengas que explicar nada.' },
-                        { n: '3', icon: '🎯', title: 'Elige una tarea abajo', desc: 'Corregir ensayo, resolver ejercicios, resumir papers… lo que necesites para esa materia.' },
-                      ].map(s => (
-                        <div key={s.n} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left' }}>
-                          <div style={{ fontSize: '1.3rem', flexShrink: 0, lineHeight: 1 }}>{s.icon}</div>
-                          <div>
-                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{s.title} </span>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{s.desc}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button className="subject-add-first-btn" onClick={() => setIsCreatingSubject(true)}>
-                      <Plus size={18} /> Agregar mi primer ramo
+                  ) : (
+                    <button className="uni-v2-pill-new" onClick={() => setAddingSubject(true)} title="Agregar materia">
+                      <Plus size={14} /> Ramo
                     </button>
-                  </div>
-
-                ) : (
-                  /* ── LISTA DE MATERIAS ── */
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {activeSubjectId ? '📖 Ramo activo — Chimuelo usará tus apuntes:' : '👆 Elige un ramo o trabaja en modo General:'}
-                      </p>
-                      <button className="subject-add-more-btn" onClick={() => setIsCreatingSubject(true)}>
-                        <Plus size={14} /> Añadir
-                      </button>
-                    </div>
-                    <div className="subject-chips-list">
-                      <button
-                        className={`subject-chip ${!activeSubjectId ? 'active' : ''}`}
-                        onClick={() => { setActiveSubjectId(null); localStorage.removeItem('chimuelo_active_subject'); }}
-                      >
-                        <span>🌐</span> General
-                      </button>
-                      {subjects.map(s => (
-                        <div key={s.id} className="subject-chip-wrapper">
-                          <button
-                            className={`subject-chip ${activeSubjectId === s.id ? 'active' : ''}`}
-                            onClick={() => { setActiveSubjectId(s.id); localStorage.setItem('chimuelo_active_subject', s.id); }}
-                          >
-                            <span>📖</span> {s.name}
-                          </button>
-                          {activeSubjectId === s.id && (
-                            <button
-                              className="subject-chip-delete"
-                              onClick={() => handleDeleteSubject(s.id)}
-                              title="Eliminar materia"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    {activeSubjectId ? (
-                      <div style={{ marginTop: '0.75rem', padding: '10px 14px', borderRadius: '10px', background: 'rgba(161,140,209,0.12)', border: '1px solid rgba(161,140,209,0.3)', fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                        🎯 <strong>¡Listo!</strong> Chimuelo ya tiene cargados los apuntes de <strong>{subjects.find(s => s.id === activeSubjectId)?.name}</strong>. Ahora elige una tarea abajo y empezará con todo el contexto de tu ramo.
-                      </div>
-                    ) : (
-                      <p style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        💡 Selecciona un ramo para que Chimuelo use tus apuntes automáticamente, o usa <strong>General</strong> para cualquier consulta sin contexto de materia.
-                      </p>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              <div className="university-grid">
-                <div className="university-card essay" onClick={() => openConfigModal("essay")}>
-                  <div className="uni-card-header">
-                    <div className="uni-card-icon-wrapper">✍️</div>
-                    <div className="uni-card-title">Corregir Trabajos y Ensayos</div>
+              {/* ── SUBJECT CONTEXT MENU ── */}
+              {subjectMenu && (
+                <>
+                  <div className="sb-menu-backdrop" onClick={() => setSubjectMenu(null)} />
+                  <div className="sb-menu" style={{ left: subjectMenu.x, top: subjectMenu.y }}>
+                    <button onClick={() => handleRenameSubject(subjectMenu.id)}>
+                      <SquarePen size={14} /><span>Renombrar</span>
+                    </button>
+                    <div className="sb-menu-sep" />
+                    <button className="danger" onClick={() => { handleDeleteSubject(subjectMenu.id); setSubjectMenu(null); }}>
+                      <Trash2 size={14} /><span>Eliminar</span>
+                    </button>
                   </div>
-                  <div className="uni-card-desc">Sube tu texto y la IA arreglará la ortografía, mejorará tus argumentos y le pondrá un tono más formal y académico.</div>
+                </>
+              )}
+
+              {/* ── NOTES FOR ACTIVE SUBJECT ── */}
+              {activeSubjectId && (() => {
+                const sub = subjects.find(s => s.id === activeSubjectId);
+                if (!sub) return null;
+                return (
+                  <div className="uni-v2-notes">
+                    <label className="uni-v2-notes-label">📝 Apuntes de {sub.name} <small>(Chimuelo los usará en cada respuesta)</small></label>
+                    <textarea
+                      className="uni-v2-notes-textarea"
+                      placeholder="Pega el programa, reglas del profe, fórmulas clave…"
+                      value={sub.baseMemory}
+                      onChange={e => {
+                        const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: e.target.value } : s);
+                        setSubjects(updated);
+                      }}
+                      onBlur={() => {
+                        localStorage.setItem('chimuelo_subjects', JSON.stringify(subjects));
+                      }}
+                      rows={3}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* ── INPUT BOX ── */}
+              <div className="uni-v2-input-box">
+                {uniAttachment && (
+                  <div className="image-preview-container">
+                    <div className="image-preview-item">
+                      {uniAttachment.type?.startsWith('image/') ? (
+                        <img src={uniAttachment.base64} alt="Preview" className="image-preview-img" />
+                      ) : (
+                        <div style={{ padding: '8px', fontSize: '0.7rem', textAlign: 'center', wordBreak: 'break-all', color: 'var(--text-primary)' }}>
+                          📄 {uniAttachment.name.length > 10 ? uniAttachment.name.substring(0, 10) + '...' : uniAttachment.name}
+                        </div>
+                      )}
+                      <button className="image-preview-remove" onClick={() => setUniAttachment(null)}><XCircle size={16} fill="white" color="#333" /></button>
+                    </div>
+                  </div>
+                )}
+                <textarea
+                  ref={uniTextareaRef}
+                  className="uni-v2-textarea"
+                  placeholder="¿Qué necesitas estudiar o resolver hoy?"
+                  value={uniInput}
+                  onChange={e => setUniInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendFromUniDashboard(); } }}
+                  rows={3}
+                />
+                <div className="uni-v2-toolbar">
+                  <button className="uni-v2-tool-btn" title="Adjuntar archivo" onClick={() => {
+                    const inp = document.createElement('input');
+                    inp.type = 'file'; inp.accept = '*/*';
+                    inp.onchange = async (ev: any) => {
+                      const file = ev.target.files?.[0]; if (!file) return;
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        let b64 = reader.result as string;
+                        if (file.type.startsWith('image/')) b64 = await compressImage(b64);
+                        setUniAttachment({ base64: b64, name: file.name, type: file.type });
+                      };
+                      reader.readAsDataURL(file);
+                    };
+                    inp.click();
+                  }}>
+                    <Paperclip size={16} />
+                  </button>
+                  <button
+                    className={`uni-v2-send-btn ${uniInput.trim() || uniAttachment ? 'active' : ''}`}
+                    disabled={!uniInput.trim() && !uniAttachment}
+                    onClick={sendFromUniDashboard}
+                  >
+                    <Send size={16} />
+                  </button>
                 </div>
-                <div className="university-card science" onClick={() => openConfigModal("science")}>
-                  <div className="uni-card-header">
-                    <div className="uni-card-icon-wrapper">🧮</div>
-                    <div className="uni-card-title">Ayudante de Ciencias (Mates, Física)</div>
-                  </div>
-                  <div className="uni-card-desc">Pásale un ejercicio difícil y no solo te dará la respuesta, sino que te explicará el paso a paso como un ayudante buena onda.</div>
-                </div>
-                <div className="university-card synthesis" onClick={() => openConfigModal("synthesis")}>
-                  <div className="uni-card-header">
-                    <div className="uni-card-icon-wrapper">📚</div>
-                    <div className="uni-card-title">Resumir Textos Largos (Papers)</div>
-                  </div>
-                  <div className="uni-card-desc">Pega esa lectura gigante de 50 páginas y te hará un resumen al grano con los puntos clave para estudiar rápido.</div>
-                </div>
-                <div className="university-card socratic" onClick={() => openConfigModal("socratic")}>
-                  <div className="uni-card-header">
-                    <div className="uni-card-icon-wrapper">🧠</div>
-                    <div className="uni-card-title">Simulador de Examen (Ponte a Prueba)</div>
-                  </div>
-                  <div className="uni-card-desc">Dile qué entra en la prueba y la IA te hará preguntas difíciles para ver si de verdad dominas la materia.</div>
+              </div>
+
+              {/* ── TEMPLATES ── */}
+              <div className="uni-v2-templates">
+                <div className="uni-v2-tpl-label">Plantillas rápidas</div>
+                <div className="uni-v2-tpl-grid">
+                  {UNI_TEMPLATES.map(tpl => (
+                    <button key={tpl.key} className="uni-v2-tpl-btn" onClick={() => applyTemplate(tpl)}>
+                      <span>{tpl.icon}</span> {tpl.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
