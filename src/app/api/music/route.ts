@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: prompt.slice(0, 500),
-        lyrics_prompt: '[verse]\n[instrumental]',
+        lyrics_prompt: '[verse]\n[chorus]\nLetra en español.',
       }),
     });
 

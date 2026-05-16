@@ -1952,7 +1952,7 @@ a {
    ========================================================================= */
 
 .v2-input-area {
-  padding: 1rem;
+  padding: 1rem 1rem 1.6rem;
   background: transparent;
   display: flex;
   flex-direction: column;
