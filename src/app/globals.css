@@ -17,6 +17,8 @@
   --active-text: #2563eb;
   --user-bubble-start: #10a37f;
   --user-bubble-end: #0a7a5f;
+  --accent-glow: rgba(16, 163, 127, 0.13);
+  --accent-glow-strong: rgba(16, 163, 127, 0.5);
 
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
@@ -58,6 +60,9 @@
     --code-text: #e2e8f0;
     --user-bubble-start: #10a37f;
     --user-bubble-end: #0a7a5f;
+    --accent-color: #10a37f;
+    --accent-glow: rgba(16, 163, 127, 0.13);
+    --accent-glow-strong: rgba(16, 163, 127, 0.5);
   }
 }
 
@@ -77,6 +82,9 @@
   --active-text: #2563eb;
   --user-bubble-start: #10a37f;
   --user-bubble-end: #0a7a5f;
+  --accent-color: #10a37f;
+  --accent-glow: rgba(16, 163, 127, 0.13);
+  --accent-glow-strong: rgba(16, 163, 127, 0.5);
 }
 
 :root[data-theme="dark"] {
@@ -95,6 +103,9 @@
   --active-text: #60a5fa;
   --user-bubble-start: #10a37f;
   --user-bubble-end: #0a7a5f;
+  --accent-color: #10a37f;
+  --accent-glow: rgba(16, 163, 127, 0.15);
+  --accent-glow-strong: rgba(16, 163, 127, 0.55);
 }
 
 :root[data-theme="pink"] {
@@ -113,6 +124,9 @@
   --active-text: #be185d;
   --user-bubble-start: #ec4899;
   --user-bubble-end: #9d174d;
+  --accent-color: #ec4899;
+  --accent-glow: rgba(236, 72, 153, 0.13);
+  --accent-glow-strong: rgba(236, 72, 153, 0.5);
 }
 
 :root[data-theme="orange"] {
@@ -131,6 +145,9 @@
   --active-text: #c2410c;
   --user-bubble-start: #f97316;
   --user-bubble-end: #9a3412;
+  --accent-color: #f97316;
+  --accent-glow: rgba(249, 115, 22, 0.13);
+  --accent-glow-strong: rgba(249, 115, 22, 0.5);
 }
 
 :root[data-theme="oled"] {
@@ -149,6 +166,9 @@
   --active-text: #60a5fa;
   --user-bubble-start: #10a37f;
   --user-bubble-end: #065f46;
+  --accent-color: #10a37f;
+  --accent-glow: rgba(16, 163, 127, 0.15);
+  --accent-glow-strong: rgba(16, 163, 127, 0.55);
 }
 
 :root[data-theme="snow"] {
@@ -167,6 +187,9 @@
   --active-text: #1d4ed8;
   --user-bubble-start: #3b82f6;
   --user-bubble-end: #1e40af;
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.13);
+  --accent-glow-strong: rgba(59, 130, 246, 0.5);
 }
 
 * {
@@ -419,7 +442,7 @@ a {
 
 .auth-field-v2:focus-within {
   border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .auth-input-v2 {
@@ -907,8 +930,8 @@ a {
 .modern-spinner {
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(16, 163, 127, 0.2);
-  border-top-color: #10a37f;
+  border: 2.5px solid var(--accent-glow);
+  border-top-color: var(--accent-color);
   border-radius: 50%;
   flex-shrink: 0;
   animation: spin 0.9s linear infinite;
@@ -2069,7 +2092,7 @@ a {
 
 .v2-input-container:focus-within {
   border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12), 0 4px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 4px 24px rgba(0,0,0,0.12);
 }
 
 .v2-input-row {
@@ -2146,12 +2169,12 @@ a {
   background: var(--accent-color);
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 14px -4px rgba(16, 163, 127, 0.55);
+  box-shadow: 0 4px 14px -4px var(--accent-glow-strong);
 }
 
 .v2-send-btn.active:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 18px -4px rgba(16, 163, 127, 0.65);
+  box-shadow: 0 6px 18px -4px var(--accent-glow-strong);
 }
 
 /* =========================================================================
@@ -3863,7 +3886,7 @@ a {
   color: #fff;
   border-color: var(--accent-color);
   transform: none;
-  box-shadow: 0 4px 14px -4px rgba(16,163,127,0.4);
+  box-shadow: 0 4px 14px -4px var(--accent-glow-strong);
 }
 
 .uni-v2-pill-wrap { display: flex; align-items: center; gap: 2px; }
