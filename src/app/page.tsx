@@ -154,6 +154,7 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const uniTextareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSystemHint = useRef('');
+  const currentChatIdRef = useRef<string | null>(null);
 
   /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
   const queueChatsToLS = useCallback((chats: Chat[]) => {
@@ -590,6 +591,11 @@ export default function Home() {
     forceScrollNext.current = true;
   }, [currentChatId]);
 
+  // Keep ref in sync so stream handlers can read the live chat ID without stale closures
+  useEffect(() => {
+    currentChatIdRef.current = currentChatId;
+  }, [currentChatId]);
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -612,6 +618,7 @@ export default function Home() {
   };
 
   const createNewChat = () => {
+    stopGeneration();
     const newChat: Chat = {
       id: Date.now().toString(),
       title: "Nuevo Chat",
@@ -970,15 +977,17 @@ export default function Home() {
           streamContent = streamContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/i, '__MUSIC_LOADING__').trim();
         }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
-        setDisplayMessages(prev => {
-          const existing = prev.findIndex(m => m.id === assistantId);
-          if (existing !== -1) {
-            const updated = [...prev];
-            updated[existing] = streamingMsg;
-            return updated;
-          }
-          return [...prev, streamingMsg];
-        });
+        if (currentChatIdRef.current === targetChatId) {
+          setDisplayMessages(prev => {
+            const existing = prev.findIndex(m => m.id === assistantId);
+            if (existing !== -1) {
+              const updated = [...prev];
+              updated[existing] = streamingMsg;
+              return updated;
+            }
+            return [...prev, streamingMsg];
+          });
+        }
       }
 
       // Extract reasoning FIRST to avoid replacing tags inside the think block
@@ -995,7 +1004,9 @@ export default function Home() {
         if (promptMatch && promptMatch[1]) {
           const imagePrompt = promptMatch[1].trim();
           // Update UI to show generating state
-          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '__IMG_LOADING__') } : m));
+          if (currentChatIdRef.current === targetChatId) {
+            setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '__IMG_LOADING__') } : m));
+          }
           try {
             // If user attached an image AND it's not a dramatic text2img structural change, use img2img
             const imgBody: any = { prompt: imagePrompt };
@@ -1024,7 +1035,9 @@ export default function Home() {
         const musicMatch = cleanContent.match(/<generate_music(?:[^>]*)>([\s\S]*?)(?:<\/generate_music>|$)/i);
         if (musicMatch && musicMatch[1]) {
           const musicPrompt = musicMatch[1].trim();
-          setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '__MUSIC_LOADING__') } : m));
+          if (currentChatIdRef.current === targetChatId) {
+            setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '__MUSIC_LOADING__') } : m));
+          }
           try {
             const musicRes = await fetch('/api/music', {
               method: 'POST',
@@ -1047,8 +1060,10 @@ export default function Home() {
       const finalReasoning = model === 'deepseek-v4-pro' ? reasoning : undefined;
       const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning: finalReasoning, model };
 
-      // Update display
-      setDisplayMessages(prev => prev.map(m => m.id === assistantId ? finalAssistantMsg : m));
+      // Update display only if still on the same chat
+      if (currentChatIdRef.current === targetChatId) {
+        setDisplayMessages(prev => prev.map(m => m.id === assistantId ? finalAssistantMsg : m));
+      }
 
       // Save to chats/localStorage
       setChats(prev => {
@@ -1094,7 +1109,9 @@ export default function Home() {
       } else {
         console.error("Stream error:", e);
         const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
-        setDisplayMessages(prev => [...prev, errMsg]);
+        if (currentChatIdRef.current === targetChatId) {
+          setDisplayMessages(prev => [...prev, errMsg]);
+        }
         setChats(prev => {
           const updated = prev.map(chat => {
             if (chat.id === targetChatId) {
@@ -1136,6 +1153,7 @@ export default function Home() {
   };
 
   const handleSwitchChat = (chatId: string | null) => {
+    stopGeneration();
     if (chatId) {
       setCurrentChatId(chatId);
       localStorage.setItem("chimuelo_current_chat", chatId);
