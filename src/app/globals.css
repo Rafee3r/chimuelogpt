@@ -636,11 +636,12 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 1rem;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-weight: 500;
   z-index: 5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 @media (min-width: 768px) {
@@ -673,13 +674,17 @@ a {
   /* CRITICAL: 'auto' (not smooth) — smooth animates every scrollIntoView during
      token streaming, creating a visible "creep down" effect. */
   scroll-behavior: auto;
-  gap: 12px;
+  gap: 16px;
   overscroll-behavior: contain;
   /* CRITICAL: disable browser scroll anchoring. We manage scroll position
      ourselves; the browser's auto-correction fights our lock and tugs the
      user down each time content grows. */
   overflow-anchor: none;
 }
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.chat-area::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
 .chat-area * {
   overflow-anchor: none;
@@ -753,12 +758,19 @@ a {
 
 /* Only the user text has a slight bubble in modern design */
 .message.user .message-text {
-  background-color: var(--input-bg);
+  background: var(--input-bg);
   padding: 12px 16px;
   border-radius: 20px;
   border-bottom-right-radius: 4px;
   max-width: 80%;
 }
+
+.chat-area.style-bubbles .message.user .message-text {
+  background: linear-gradient(135deg, #10a37f 0%, #0a7a5f 100%);
+  color: #fff;
+}
+.chat-area.style-bubbles .message.user .message-text a { color: rgba(255,255,255,0.85); text-decoration: underline; }
+.chat-area.style-bubbles .message.user .message-text code { background: rgba(255,255,255,0.18); color: #fff; }
 
 .message.assistant .message-text {
   padding-top: 2px; /* align with avatar */
@@ -878,12 +890,13 @@ a {
 }
 
 .modern-spinner {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(16, 163, 127, 0.2);
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(16, 163, 127, 0.2);
   border-top-color: #10a37f;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+  animation: spin 0.9s linear infinite;
 }
 
 @keyframes spin {
@@ -1450,6 +1463,16 @@ a {
   .attachment-placeholder {
     background-color: rgba(255,255,255,0.1);
   }
+  :root:not([data-theme]) .v2-input-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  :root:not([data-theme]) .v2-input-container:focus-within {
+    border-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.07);
+  }
 }
 
 /* Reference image preview in user messages */
@@ -1925,6 +1948,19 @@ a {
   box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5);
 }
 
+[data-theme="dark"] .v2-input-container,
+[data-theme="oled"] .v2-input-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+[data-theme="dark"] .v2-input-container:focus-within,
+[data-theme="oled"] .v2-input-container:focus-within {
+  border-color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.07);
+}
+
 .pill-icon {
   font-size: 1.1rem;
 }
@@ -1952,7 +1988,7 @@ a {
    ========================================================================= */
 
 .v2-input-area {
-  padding: 1rem 1rem 1.6rem;
+  padding: 1rem 1rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
   background: transparent;
   display: flex;
   flex-direction: column;
@@ -2018,7 +2054,7 @@ a {
 
 .v2-input-container:focus-within {
   border-color: var(--accent-color);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12), 0 4px 24px rgba(0,0,0,0.12);
 }
 
 .v2-input-row {
@@ -2092,14 +2128,15 @@ a {
 }
 
 .v2-send-btn.active {
-  background: var(--text-primary);
-  color: var(--bg-primary);
+  background: var(--accent-color);
+  color: #fff;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 14px -4px rgba(16, 163, 127, 0.55);
 }
 
 .v2-send-btn.active:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px -4px rgba(16, 163, 127, 0.65);
 }
 
 /* =========================================================================
@@ -2137,8 +2174,8 @@ a {
 }
 
 .segment-btn.active {
-  color: var(--active-text);
-  background: var(--active-bg);
+  background: var(--text-primary);
+  color: var(--bg-primary);
   font-weight: 700;
   box-shadow: none;
 }
@@ -3622,6 +3659,9 @@ a {
   min-height: 0;
   padding-bottom: 8px;
 }
+.sb-scroll::-webkit-scrollbar { width: 3px; }
+.sb-scroll::-webkit-scrollbar-track { background: transparent; }
+.sb-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
 .sb-section { padding: 8px 0 4px; }
 .sb-section-chats { flex: 1; display: flex; flex-direction: column; }
