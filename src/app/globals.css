@@ -610,12 +610,25 @@ a {
   .sidebar {
     position: relative;
     transform: translateX(0);
+    width: 300px;
   }
   .sidebar-mobile-hidden {
     transform: translateX(0);
   }
   .sidebar-backdrop {
     display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .sidebar {
+    width: 340px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .sidebar {
+    width: 380px;
   }
 }
 

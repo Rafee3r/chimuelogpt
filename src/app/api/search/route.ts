@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         api_key: apiKey,
         query: query.slice(0, 400),
-        search_depth: 'advanced',
+        search_depth: 'basic',
         max_results: 7,
         include_answer: true,
         include_raw_content: false,
