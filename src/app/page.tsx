@@ -937,7 +937,7 @@ export default function Home() {
         res = await fetch('/api/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt }),
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model }),
           signal: controller.signal,
         });
       } else {

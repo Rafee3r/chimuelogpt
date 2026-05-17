@@ -1,143 +1,142 @@
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 export async function POST(req: Request) {
   try {
-    const { messages, imageBase64, persona, customInstructions } = await req.json();
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const { messages, imageBase64, persona, customInstructions, model } = await req.json();
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada en Vercel." }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
+    if (!anthropicKey) {
+      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada." }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    if (!deepseekKey) {
+      return new Response(JSON.stringify({ error: "DEEPSEEK_API_KEY no configurada." }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Detect media type and extract raw base64 data
     const mediaTypeMatch = imageBase64?.match(/^data:([^;]+);base64,/);
     const mediaType = mediaTypeMatch ? mediaTypeMatch[1] : 'image/jpeg';
     const base64Data = imageBase64?.split('base64,')[1] || '';
 
-    // Process history to ensure it's clean for Anthropic and roles alternate
-    const processedHistory: any[] = [];
-    const rawMessages = messages
-      .filter((m: any) => m.role && m.content)
-      .map((m: any) => ({ role: m.role, content: String(m.content) }));
+    const lastUserMsg = messages[messages.length - 1]?.content || 'Describe esta imagen.';
 
-    for (const msg of rawMessages) {
-      const last = processedHistory[processedHistory.length - 1];
-      if (last && last.role === msg.role) {
-        last.content += "\n\n" + msg.content;
-      } else {
-        processedHistory.push(msg);
-      }
-    }
+    // ── Step 1: Claude Haiku analyzes the image (non-streaming) ──
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        system: `You are a vision analysis system. You have two jobs depending on the user request:
 
-    // Prepare content parts for the message with vision (always at the end)
-    const lastMsg = processedHistory[processedHistory.length - 1] || { role: 'user', content: 'Describe esta imagen.' };
-    if (processedHistory.length > 0 && lastMsg.role === 'user') {
-      processedHistory.pop(); // Remove it to replace it with vision blocks
-    }
+JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image, respond ONLY with the appropriate XML tag (no other text):
+- Minor edits (hair color, clothing, background, accessories): <generate_image mode="img2img" strength="0.7">Extremely detailed english description of the final image, including all original facial features, body, pose, setting + the requested changes</generate_image>
+- Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
+Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.
 
-    const visionContent: any[] = [];
-    if (base64Data) {
-      visionContent.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: mediaType,
-          data: base64Data
-        }
-      });
-    }
-    visionContent.push({
-      type: 'text',
-      text: lastMsg.content || 'Describe esta imagen.'
+JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask questions about the image, provide a comprehensive factual analysis in English covering: all visible objects, text/labels, people, colors, context, numbers, ingredients, brands, or any relevant details. Be thorough and precise — this analysis will be used by another AI to answer the user.`,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+            { type: 'text', text: lastUserMsg }
+          ]
+        }]
+      })
     });
 
-    const anthropicMessages = [
-      ...processedHistory,
-      { role: 'user', content: visionContent }
-    ];
-
-    let personaPrompt = "Eres ChimueloGPT, un asistente familiar amigable. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'cursi') personaPrompt = "Eres ChimueloGPT, un asistente extremadamente dulce, cursi y cariñoso. Te encanta usar emojis adorables (🥰✨💕). Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'chistoso') personaPrompt = "Eres ChimueloGPT, un asistente con mucho sentido del humor. Tus respuestas deben ser relajadas, sarcásticas a veces, usar lenguaje coloquial divertido. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'directo') personaPrompt = "Eres ChimueloGPT, un asistente pragmático. Evita saludos largos, responde EXACTAMENTE lo que se pregunta, sin relleno. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'amable') personaPrompt = "Eres ChimueloGPT, un asistente cálido y muy cortés. Siempre saludas con entusiasmo y explicas con paciencia. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-    if (persona === 'profesional') personaPrompt = "Eres ChimueloGPT, un corporativo de alto nivel. Tu tono es profesional, estructurado, utilizas un trato respetuoso. Responde SIEMPRE en Español. Puedes ver y analizar imágenes.";
-
-    const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO (DEBES OBEDECER ESTO POR ENCIMA DE TODO):\n${customInstructions}\n` : '';
-
-    const modelsToTry = [
-      'claude-haiku-4-5-20251001',
-      'claude-3-5-sonnet-latest',
-      'claude-3-5-haiku-20241022'
-    ];
-
-    let anthropicRes;
-    let successfulModel = '';
-    let lastError = '';
-
-    for (const modelId of modelsToTry) {
-      console.log("Intentando con el modelo:", modelId);
-      anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: modelId,
-          max_tokens: 4096,
-          system: `${personaPrompt}${customInstructionsPrompt}
-REGLAS PARA MODIFICACIÓN/CREACIÓN DE IMÁGENES:
-Si el usuario pide editar o transformar la foto adjunta, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu imagen editada!", "Mira cómo quedó:"), y luego debes decidir el modo de generación y responder INMEDIATAMENTE con esta etiqueta XML (no agregues texto después de la etiqueta):
-
-1. MODO IMG2IMG (Ediciones menores): Si pide cambiar color de pelo, ropa, agregar lentes, o cambiar el fondo, pero MANTENIENDO la anatomía y estructura humana original:
-<generate_image mode="img2img" strength="0.7">Descripción EN INGLÉS MUY DETALLADA de la imagen final, incluyendo todos los rasgos originales de la persona + las modificaciones</generate_image>
-(NOTA: el atributo "strength" define qué tanto cambia la imagen original de 0.1 a 1.0. Usa 0.35 para preservar textos/interfaces o rostros exactos, 0.6 para ediciones medias, y 0.85 para cambios importantes de estilo o anatomía).
-
-2. MODO TEXT2IMG (Transformaciones drásticas): Si pide convertirse en animal (ej: pony, perro), caricatura, estilo anime, Pixar, 3D, o cambiar de género. Aquí extraerás sus características visuales (ropa, color de pelo, pose) y crearás un prompt desde cero:
-<generate_image mode="text2img">Descripción EN INGLÉS MUY DETALLADA del nuevo personaje (ej: A my little pony character with brown hair and a brown jacket...) en el estilo solicitado</generate_image>
-
-Si el usuario SOLO pide describir o explicar la imagen, responde normalmente en español sin usar la etiqueta.`,
-          messages: anthropicMessages,
-          stream: true
-        })
+    if (!claudeRes.ok) {
+      const err = await claudeRes.text();
+      return new Response(JSON.stringify({ error: `Claude vision error: ${err}` }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
       });
+    }
 
-      if (anthropicRes.ok) {
-        successfulModel = modelId;
-        break; // Éxito, salir del bucle
-      } else {
-        const errText = await anthropicRes.text();
-        lastError = `Claude ${anthropicRes.status}: ${errText}`;
-        console.error("Fallo con", modelId, "->", lastError);
-        // Si no es un error 404 de modelo, no seguimos intentando porque el error es otra cosa (ej. 400 Bad Request)
-        if (anthropicRes.status !== 404) {
-          break;
+    const claudeData = await claudeRes.json();
+    const claudeAnalysis = claudeData.content?.[0]?.text || '';
+
+    // ── If Claude returned an image editing tag, stream it directly ──
+    if (claudeAnalysis.includes('<generate_image')) {
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(claudeAnalysis));
+          controller.close();
         }
-      }
-    }
-
-    if (!anthropicRes || !anthropicRes.ok) {
-      return new Response(JSON.stringify({ error: lastError || "Error desconocido del servidor" }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
+      });
+      return new Response(readable, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
       });
     }
 
-    console.log("Conexión exitosa con el modelo:", successfulModel);
+    // ── Step 2: DeepSeek generates the final response using Claude's analysis ──
+    const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
 
-    // Transform Anthropic SSE stream into plain text stream
+    let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
+    if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español.";
+    if (persona === 'cursi') personaPrompt = "Eres ChimueloGPT, un asistente extremadamente dulce, cursi y cariñoso, creado por Rafael para su familia. Te encanta usar emojis adorables (🥰✨💕). Responde SIEMPRE en Español.";
+    if (persona === 'chistoso') personaPrompt = "Eres ChimueloGPT, un asistente con mucho sentido del humor, creado por Rafael. Tus respuestas deben ser relajadas y sarcásticas a veces. Responde SIEMPRE en Español.";
+    if (persona === 'directo') personaPrompt = "Eres ChimueloGPT, un asistente pragmático creado por Rafael. Evita saludos largos. Responde EXACTAMENTE lo que se pregunta, usando el menor número de palabras posible. Responde SIEMPRE en Español.";
+    if (persona === 'amable') personaPrompt = "Eres ChimueloGPT, un asistente cálido y muy cortés creado por Rafael para su familia. Siempre saludas con entusiasmo y explicas con muchísima paciencia. Responde SIEMPRE en Español.";
+    if (persona === 'profesional') personaPrompt = "Eres ChimueloGPT, un asistente corporativo de alto nivel creado por Rafael. Tu tono es profesional y estructurado. Responde SIEMPRE en Español.";
+
+    const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS (PRIORIDAD MÁXIMA):\n${customInstructions}\n` : '';
+
+    const systemPrompt = `${personaPrompt}${customInstructionsPrompt}
+FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
+- Usa **negritas** para términos clave, nombres, ingredientes y conceptos centrales
+- Usa ### para títulos de secciones cuando hay más de 2 temas distintos
+- Usa listas (- o 1.) para enumerar múltiples elementos del mismo tipo
+- Usa emojis al inicio de secciones como anclas visuales (ej: ✅ ⚠️ 💡 🔴 🟡)
+- Párrafos cortos (máximo 2-3 líneas), evita bloques de texto densos
+- Si hay algo destacado, ponlo en negrita o en su propia sección`;
+
+    // Build DeepSeek messages with Claude's image analysis injected
+    const history = messages
+      .slice(0, -1)
+      .filter((m: any) => (m.role === 'user' || m.role === 'assistant') && m.content)
+      .map((m: any) => ({ role: m.role, content: String(m.content) }));
+
+    const deepseekMessages = [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      {
+        role: 'user',
+        content: `[ANÁLISIS VISUAL DE LA IMAGEN ADJUNTA]\n${claudeAnalysis}\n[FIN DEL ANÁLISIS]\n\n${lastUserMsg}`
+      }
+    ];
+
+    const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`
+      },
+      body: JSON.stringify({ model: actualModel, messages: deepseekMessages, stream: true })
+    });
+
+    if (!deepseekRes.ok) {
+      const err = await deepseekRes.text();
+      return new Response(JSON.stringify({ error: `DeepSeek error: ${err}` }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Transform DeepSeek SSE stream into plain text stream
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        const reader = anthropicRes.body!.getReader();
+        const reader = deepseekRes.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let inReasoning = false;
 
         try {
           while (true) {
@@ -156,34 +155,37 @@ Si el usuario SOLO pide describir o explicar la imagen, responde normalmente en 
 
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-                  controller.enqueue(encoder.encode(parsed.delta.text));
+                const content = parsed.choices?.[0]?.delta?.content;
+                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+
+                if (reasoning) {
+                  if (!inReasoning) { controller.enqueue(encoder.encode('<think>')); inReasoning = true; }
+                  controller.enqueue(encoder.encode(reasoning));
                 }
-              } catch {
-                // skip malformed chunks
-              }
+                if (content) {
+                  if (inReasoning) { controller.enqueue(encoder.encode('</think>')); inReasoning = false; }
+                  controller.enqueue(encoder.encode(content));
+                }
+              } catch { /* skip malformed */ }
             }
           }
         } catch (e) {
-          console.error("Stream error:", e);
+          console.error('Vision stream error:', e);
         } finally {
+          if (inReasoning) controller.enqueue(encoder.encode('</think>'));
           controller.close();
         }
       }
     });
 
     return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-      }
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
     });
 
   } catch (error: any) {
-    console.error("Vision API Error:", error);
-    return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    console.error('Vision API Error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
     });
   }
 }
