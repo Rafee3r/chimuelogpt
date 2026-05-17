@@ -2394,14 +2394,6 @@ export default function Home() {
                         </div>
                       );
                     })()}
-                    {(() => {
-                      const ts = parseInt(msg.id);
-                      return !isNaN(ts) ? (
-                        <span className={`message-timestamp ${role}`}>
-                          {new Date(ts).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      ) : null;
-                    })()}
                   </div>
                 </div>
               </div>
