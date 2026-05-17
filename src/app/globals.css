@@ -2172,21 +2172,6 @@ a {
   box-shadow: none;
 }
 
-.web-search-toggle-pill {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  opacity: 0.45;
-  transition: opacity 0.2s, background 0.2s, color 0.2s;
-}
-
-.web-search-toggle-pill.active {
-  background: var(--accent-color) !important;
-  color: #fff !important;
-  opacity: 1;
-}
-
 /* Message timestamps */
 .message-timestamp {
   display: block;
