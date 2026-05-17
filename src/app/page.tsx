@@ -111,6 +111,7 @@ export default function Home() {
   const [messageDensity, setMessageDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
   const [userMemory, setUserMemory] = useState<{id: string; content: string; createdAt: number}[]>([]);
   const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
+  const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(true);
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
@@ -443,6 +444,9 @@ export default function Home() {
 
     const savedMemoryEnabled = localStorage.getItem("chimuelo_memoryEnabled");
     if (savedMemoryEnabled !== null) setMemoryEnabled(savedMemoryEnabled === "true");
+
+    const savedWebSearch = localStorage.getItem("chimuelo_webSearch");
+    if (savedWebSearch !== null) setWebSearchEnabled(savedWebSearch === "true");
 
     const savedSubjects = localStorage.getItem("chimuelo_subjects");
     if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
@@ -1063,7 +1067,7 @@ export default function Home() {
       }
 
       // Post-process: intercept web search tags
-      if (cleanContent.includes('<search_web>')) {
+      if (webSearchEnabled && cleanContent.includes('<search_web>')) {
         const searchMatch = cleanContent.match(/<search_web>([\s\S]*?)<\/search_web>/i);
         if (searchMatch?.[1]) {
           const searchQuery = searchMatch[1].trim();
@@ -1875,6 +1879,20 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Búsqueda Web */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">🌐 Búsqueda Web</h3>
+                <div className="settings-group">
+                  <div className="settings-toggle-row" style={{ marginBottom: '8px' }}>
+                    <button className={`settings-toggle-btn ${webSearchEnabled ? 'active' : ''}`} onClick={() => { setWebSearchEnabled(true); localStorage.setItem('chimuelo_webSearch', 'true'); }}>Activa</button>
+                    <button className={`settings-toggle-btn ${!webSearchEnabled ? 'active' : ''}`} onClick={() => { setWebSearchEnabled(false); localStorage.setItem('chimuelo_webSearch', 'false'); }}>Desactivada</button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Chimuelo busca en internet automáticamente cuando detecta preguntas sobre noticias, precios o eventos recientes.
+                  </p>
+                </div>
+              </div>
+
               {/* Memoria */}
               <div className="settings-card">
                 <h3 className="settings-card-title">🧠 Memoria Persistente</h3>
@@ -2393,6 +2411,14 @@ export default function Home() {
                         </div>
                       );
                     })()}
+                    {(() => {
+                      const ts = parseInt(msg.id);
+                      return !isNaN(ts) ? (
+                        <span className={`message-timestamp ${role}`}>
+                          {new Date(ts).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               </div>
@@ -2437,6 +2463,14 @@ export default function Home() {
                 onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
               >
                 Pro
+              </button>
+              <button
+                className={`v2-model-btn web-search-toggle-pill ${webSearchEnabled ? 'active' : ''}`}
+                title={webSearchEnabled ? 'Búsqueda web activa — clic para desactivar' : 'Búsqueda web desactivada — clic para activar'}
+                onClick={() => { const next = !webSearchEnabled; setWebSearchEnabled(next); localStorage.setItem('chimuelo_webSearch', String(next)); }}
+              >
+                <Search size={12} />
+                Web
               </button>
             </div>
 
