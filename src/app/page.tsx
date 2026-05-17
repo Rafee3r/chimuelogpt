@@ -115,6 +115,7 @@ export default function Home() {
   const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
+  const [appReady, setAppReady] = useState(false);
 
   type SmartPill = { icon: string; label: string; message: string };
   const defaultPills: SmartPill[] = [
@@ -480,6 +481,7 @@ export default function Home() {
     };
     checkVersion();
 
+    setTimeout(() => setAppReady(true), 1400);
   }, []);
 
   /* Fetch personalized smart pills — refresca cada vez que se vuelve al welcome
@@ -976,6 +978,10 @@ export default function Home() {
         if (streamContent.includes('<generate_music')) {
           streamContent = streamContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/i, '__MUSIC_LOADING__').trim();
         }
+        // Hide search_web tags during streaming
+        if (streamContent.includes('<search_web')) {
+          streamContent = streamContent.replace(/<search_web(?:[^>]*)>[\s\S]*?(?:<\/search_web>|$)/i, '__WEB_SEARCHING__').trim();
+        }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
         if (currentChatIdRef.current === targetChatId) {
           setDisplayMessages(prev => {
@@ -1052,6 +1058,67 @@ export default function Home() {
             }
           } catch {
             cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error de red al generar música)*\n\n');
+          }
+        }
+      }
+
+      // Post-process: intercept web search tags
+      if (cleanContent.includes('<search_web>')) {
+        const searchMatch = cleanContent.match(/<search_web>([\s\S]*?)<\/search_web>/i);
+        if (searchMatch?.[1]) {
+          const searchQuery = searchMatch[1].trim();
+          if (currentChatIdRef.current === targetChatId) {
+            setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_SEARCHING__' } : m));
+          }
+          try {
+            const searchRes = await fetch('/api/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: searchQuery }),
+              signal: controller.signal,
+            });
+            if (searchRes.ok) {
+              const { results = [] } = await searchRes.json();
+              const formattedResults = results.length > 0
+                ? results.map((r: any, i: number) =>
+                    `[${i+1}] **${r.title}**\n${r.url}\n${(r.content || r.snippet || '').slice(0, 400)}`
+                  ).join('\n\n')
+                : 'Sin resultados.';
+              const searchMessages = [
+                ...historyMsgs,
+                { role: 'assistant' as const, content: `[Búsqueda web realizada: "${searchQuery}"]` },
+                { role: 'user' as const, content: `Resultados de búsqueda web:\n\n${formattedResults}\n\nAhora responde la pregunta del usuario usando estos resultados. Cita las URLs como fuentes cuando sea relevante.` }
+              ];
+              const searchApiRes = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: finalSystemPrompt }),
+                signal: controller.signal,
+              });
+              if (searchApiRes.ok) {
+                const searchReader = searchApiRes.body!.getReader();
+                const searchDecoder = new TextDecoder();
+                let searchFull = '';
+                while (true) {
+                  const { done, value } = await searchReader.read();
+                  if (done) break;
+                  searchFull += searchDecoder.decode(value, { stream: true });
+                  const streamPart = searchFull.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
+                  if (currentChatIdRef.current === targetChatId && streamPart) {
+                    setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_BADGE__\n\n' + streamPart } : m));
+                  }
+                }
+                cleanContent = '__WEB_BADGE__\n\n' + searchFull.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+              } else {
+                cleanContent = '*(Error al generar respuesta con resultados de búsqueda)*';
+              }
+            } else {
+              cleanContent = '*(No se pudo completar la búsqueda web)*';
+            }
+          } catch (searchErr: any) {
+            if (searchErr?.name !== 'AbortError') {
+              cleanContent = '*(Error de búsqueda web)*';
+            }
           }
         }
       }
@@ -1377,6 +1444,22 @@ export default function Home() {
       </div>
     );
   };
+
+  if (!appReady) {
+    return (
+      <div className="splash-screen">
+        <div className="splash-content">
+          <div className="v2-orb-container splash-orb">
+            <div className="glowing-orb"></div>
+            <div className="glowing-orb-core">
+              <Cat size={36} strokeWidth={1.5} />
+            </div>
+          </div>
+          <h1 className="splash-title">ChimueloGPT</h1>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -2149,6 +2232,10 @@ export default function Home() {
                         ? currentBody.replace(/__MUSIC_PLAYER:[^_]*__/, '').trim()
                         : currentBody;
 
+                      const hasWebSearching = currentBody.includes('__WEB_SEARCHING__');
+                      const hasWebBadge = currentBody.startsWith('__WEB_BADGE__');
+                      const webBadgeBody = hasWebBadge ? currentBody.replace('__WEB_BADGE__', '').trim() : currentBody;
+
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
@@ -2194,6 +2281,21 @@ export default function Home() {
                                   <MemoizedMarkdown content={bodyWithoutMusic} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                                 )}
                                 <MusicPlayer url={musicPlayerUrl} prompt={musicPlayerPrompt} />
+                              </>
+                            ) : hasWebSearching ? (
+                              <div className="web-search-loading">
+                                <div className="web-search-loading-dots">
+                                  <span /><span /><span />
+                                </div>
+                                <span className="web-search-loading-text">Buscando en internet...</span>
+                              </div>
+                            ) : hasWebBadge ? (
+                              <>
+                                <div className="web-search-badge">
+                                  <Search size={12} />
+                                  <span>Resultado de búsqueda web</span>
+                                </div>
+                                <MemoizedMarkdown content={webBadgeBody} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                               </>
                             ) : (
                               <MemoizedMarkdown

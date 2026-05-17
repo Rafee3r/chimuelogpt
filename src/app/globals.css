@@ -370,6 +370,46 @@ a {
   border: none;
 }
 
+/* Splash Screen */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: splashFadeOut 0.45s ease 1.05s both;
+}
+
+@keyframes splashFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; pointer-events: none; }
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  animation: fadeUpStagger 0.55s ease both;
+}
+
+.splash-orb {
+  animation: fadeUpStagger 0.5s ease both;
+}
+
+.splash-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, var(--text-primary), #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
 /* Auth Screen */
 .auth-container {
   display: flex;
@@ -1677,6 +1717,60 @@ a {
   color: rgba(139, 92, 246, 0.75);
   font-size: 0.73rem;
   font-weight: 400;
+}
+
+/* Web Search Loading + Badge */
+.web-search-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  margin: 8px 0;
+  width: fit-content;
+}
+
+.web-search-loading-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.web-search-loading-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: webDotPulse 1.2s ease-in-out infinite;
+}
+
+.web-search-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.web-search-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes webDotPulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40%            { opacity: 1;    transform: scale(1.1); }
+}
+
+.web-search-loading-text {
+  font-size: 0.87rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.web-search-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 10px;
 }
 
 /* =========================================================================
