@@ -712,34 +712,29 @@ export default function Home() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const originalBase64 = reader.result as string;
-      const finalBase64 = await compressImage(originalBase64);
-      setAttachedImage({ base64: finalBase64, name: file.name, type: file.type });
-    };
-    reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
-  const handleDocFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (docFileInputRef.current) docFileInputRef.current.value = "";
-
-    setDocLoading(true);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al procesar');
-      setAttachedDoc({ text: data.text, name: file.name });
-    } catch (err: any) {
-      alert('No se pudo leer el documento: ' + err.message);
-    } finally {
-      setDocLoading(false);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const finalBase64 = await compressImage(reader.result as string);
+        setAttachedImage({ base64: finalBase64, name: file.name, type: file.type });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setDocLoading(true);
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al procesar');
+        setAttachedDoc({ text: data.text, name: file.name });
+      } catch (err: any) {
+        alert('No se pudo leer el documento: ' + err.message);
+      } finally {
+        setDocLoading(false);
+      }
     }
   };
 
@@ -2581,22 +2576,14 @@ export default function Home() {
                 </div>
               )}
 
-              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-              <input type="file" accept=".pdf,.docx,.txt,.md,.csv" ref={docFileInputRef} style={{ display: 'none' }} onChange={handleDocFileChange} />
+              <input type="file" accept="image/*,.pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
-                <div className="v2-attach-group">
-                  <button className="v2-attach-btn" title="Subir imagen" onClick={() => fileInputRef.current?.click()}>
-                    <div className="v2-attach-icon-wrapper">
-                      <Plus size={20} />
-                    </div>
-                  </button>
-                  <button className="v2-attach-btn v2-attach-doc-btn" title="Adjuntar documento (PDF, Word, TXT)" onClick={() => docFileInputRef.current?.click()}>
-                    <div className="v2-attach-icon-wrapper">
-                      <span style={{ fontSize: '15px', lineHeight: 1 }}>📎</span>
-                    </div>
-                  </button>
-                </div>
+                <button className="v2-attach-btn" title="Subir imagen o documento" onClick={() => fileInputRef.current?.click()}>
+                  <div className="v2-attach-icon-wrapper">
+                    <Plus size={20} />
+                  </div>
+                </button>
                 
                 <textarea
                   ref={textareaRef}
