@@ -35,11 +35,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Trim whitespace and limit to ~50k chars to avoid token overflow
     text = text.trim();
-    if (text.length > 50000) {
-      text = text.slice(0, 50000) + '\n\n[...documento truncado por longitud máxima]';
-    }
 
     return new Response(JSON.stringify({ text }), {
       headers: { 'Content-Type': 'application/json' }
