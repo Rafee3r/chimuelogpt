@@ -54,6 +54,7 @@ type BaseMessage = {
   content: string;
   imagePlaceholder?: string;
   imageData?: string;
+  docPlaceholder?: string;
   reasoning?: string;
   model?: string;
 };
@@ -905,7 +906,8 @@ export default function Home() {
       role: "user", 
       content: messageText,
       ...(imageName ? { imagePlaceholder: imageName } : {}),
-      ...(imagePayload && attachedImage?.type?.startsWith('image/') ? { imageData: attachedImage.base64 } : {})
+      ...(imagePayload && attachedImage?.type?.startsWith('image/') ? { imageData: attachedImage.base64 } : {}),
+      ...(docFile ? { docPlaceholder: docFile.name } : {})
     };
 
     setChats(prev => {
@@ -2209,6 +2211,13 @@ export default function Home() {
                     </div>
                   )}
                   <div className="message-text">
+                    {msg.docPlaceholder && (
+                      <div className="attachment-placeholder doc-attachment-chip">
+                        <span style={{ fontSize: '1rem' }}>📄</span>
+                        <span>{msg.docPlaceholder}</span>
+                      </div>
+                    )}
+
                     {msg.imagePlaceholder && (
                       msg.imageData ? (
                         <div className="attachment-image-preview">
