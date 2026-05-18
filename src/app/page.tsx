@@ -2335,8 +2335,8 @@ export default function Home() {
                       const hasMusicPlayer = !!musicPlayerMatch;
                       const musicPlayerUrl = musicPlayerMatch?.[1] || '';
                       const musicPlayerPrompt = musicPlayerMatch ? decodeURIComponent(musicPlayerMatch[2]) : '';
-                      const bodyWithoutMusic = hasMusicPlayer
-                        ? currentBody.replace(/__MUSIC_PLAYER:[^_]*__/, '').trim()
+                      const bodyWithoutMusic = hasMusicPlayer && musicPlayerMatch
+                        ? currentBody.replace(`__MUSIC_PLAYER:${musicPlayerUrl}::${musicPlayerMatch[2]}__`, '').trim()
                         : currentBody;
 
                       const hasWebSearching = currentBody.includes('__WEB_SEARCHING__');
@@ -2347,8 +2347,13 @@ export default function Home() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
                             {isThinking && isLastMsg && !currentBody.trim() && !reasoning ? (
-                              <div className="chimuelo-thinking-dots">
-                                <span /><span /><span />
+                              <div className="thinking-mini-orb-wrap">
+                                <div className="thinking-mini-orb">
+                                  <div className="thinking-mini-glow" />
+                                  <div className="thinking-mini-core">
+                                    <Cat size={14} strokeWidth={1.5} />
+                                  </div>
+                                </div>
                               </div>
                             ) : hasImgLoading ? (
                               <>
@@ -2519,14 +2524,13 @@ export default function Home() {
                   <Cat size={24} />
                 </div>
                 <div className="message-text">
-                  <div className="thinking-modern-container">
-                    <div className="modern-spinner"></div>
-                    <span className="thinking-text-modern">
-                      {thinkingTask === "image" ? "🎨 Pintando la imagen, preparando pinceles..." : 
-                       thinkingTask === "document" ? "📄 Diseñando y redactando el documento..." :
-                       thinkingTask === "code" ? "💻 Escribiendo y estructurando código..." :
-                       model === 'deepseek-v4-pro' ? "🧠 Pensando profundamente..." : "⚡ Preparando respuesta rápida..."}
-                    </span>
+                  <div className="thinking-mini-orb-wrap">
+                    <div className="thinking-mini-orb">
+                      <div className="thinking-mini-glow" />
+                      <div className="thinking-mini-core">
+                        <Cat size={14} strokeWidth={1.5} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

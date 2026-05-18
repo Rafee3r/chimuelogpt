@@ -1018,30 +1018,62 @@ a {
   padding: 8px 0;
 }
 
-.modern-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid var(--accent-glow);
-  border-top-color: var(--accent-color);
+.thinking-mini-orb-wrap {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.thinking-mini-orb {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thinking-mini-glow {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  flex-shrink: 0;
-  animation: spin 0.9s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    #ff3366, #ff9933, #ffdd33,
+    #66ff66, #33ddff, #6633ff,
+    #ff33cc, #ff3366
+  );
+  filter: blur(8px);
+  opacity: 0.75;
+  animation: thinking-orb-spin 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.thinking-mini-core {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-primary);
+  border-radius: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  animation: thinking-core-pulse 2.4s ease-in-out infinite alternate;
 }
 
-.thinking-text-modern {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  animation: pulse-text 2s ease-in-out infinite;
+@keyframes thinking-orb-spin {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(55deg); }
+  45%  { transform: rotate(200deg); }
+  65%  { transform: rotate(255deg); }
+  85%  { transform: rotate(320deg); }
+  100% { transform: rotate(360deg); }
 }
 
-@keyframes pulse-text {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+@keyframes thinking-core-pulse {
+  0%   { box-shadow: 0 0 6px rgba(255,255,255,0.08); }
+  100% { box-shadow: 0 0 14px rgba(255,255,255,0.22); }
 }
 
 /* Reasoning Box (DeepSeek R1) */
@@ -1731,13 +1763,13 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
-  background: linear-gradient(135deg, #12012b 0%, #0a0a1f 100%);
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 18px;
   padding: 18px 22px;
   margin: 10px 0;
   max-width: 380px;
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
 }
 
 .music-loading-bars {
@@ -1767,13 +1799,13 @@ a {
 }
 
 .music-loading-title {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
   font-size: 0.88rem;
   font-weight: 600;
 }
 
 .music-loading-sub {
-  color: rgba(139, 92, 246, 0.75);
+  color: var(--text-secondary);
   font-size: 0.73rem;
   font-weight: 400;
 }
