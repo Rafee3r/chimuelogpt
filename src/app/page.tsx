@@ -1222,6 +1222,7 @@ export default function Home() {
 
   const handleSwitchChat = (chatId: string | null) => {
     stopGeneration();
+    try { navigator.vibrate?.(8); } catch {}
     if (chatId) {
       setCurrentChatId(chatId);
       localStorage.setItem("chimuelo_current_chat", chatId);
@@ -2121,7 +2122,13 @@ export default function Home() {
                     {msg.imagePlaceholder && (
                       msg.imageData ? (
                         <div className="attachment-image-preview">
-                          <img src={msg.imageData} alt={msg.imagePlaceholder} className="msg-ref-img" />
+                          <img
+                            src={msg.imageData}
+                            alt={msg.imagePlaceholder}
+                            className="msg-ref-img"
+                            style={{ cursor: 'zoom-in' }}
+                            onClick={() => setLightboxImg(msg.imageData!)}
+                          />
                         </div>
                       ) : (
                         <div className="attachment-placeholder">
@@ -2389,6 +2396,29 @@ export default function Home() {
                                 navigator.clipboard.writeText(displayContent);
                                 alert('Copiado al portapapeles');
                               }}><Copy size={16} /></button>
+                            </div>
+                          )}
+
+                          {msg.role === 'user' && (
+                            <div className="message-actions user-actions" style={{ display: 'flex', gap: '10px', marginTop: '4px', justifyContent: 'flex-end', opacity: 0.6 }}>
+                              <button className="action-btn hover-bg" title="Copiar" onClick={() => {
+                                navigator.clipboard.writeText(msg.content || '');
+                                try { navigator.vibrate?.(8); } catch {}
+                              }}><Copy size={14} /></button>
+                              <button className="action-btn hover-bg" title="Eliminar mensaje" onClick={() => {
+                                if (!confirm('¿Eliminar este mensaje?')) return;
+                                try { navigator.vibrate?.(12); } catch {}
+                                setDisplayMessages(prev => prev.filter(m => m.id !== msg.id));
+                                if (currentChatId) {
+                                  setChats(prev => {
+                                    const updated = prev.map(c => c.id === currentChatId
+                                      ? { ...c, messages: c.messages.filter(m => m.id !== msg.id), updatedAt: Date.now() }
+                                      : c);
+                                    localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+                                    return updated;
+                                  });
+                                }
+                              }}><Trash2 size={14} /></button>
                             </div>
                           )}
                         </div>

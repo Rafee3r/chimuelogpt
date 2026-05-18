@@ -91,12 +91,13 @@ JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask ques
 
     const systemPrompt = `${personaPrompt}${customInstructionsPrompt}
 FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
-- Usa **negritas** para términos clave, nombres, ingredientes y conceptos centrales
-- Usa ### para títulos de secciones cuando hay más de 2 temas distintos
+- COMIENZA con un título # H1 grande que resuma el tema cuando estés analizando una imagen (ej. "# Análisis de lo que estás consumiendo 🥩" o "# Información del producto").
+- Usa ## para subsecciones principales y ### para detalles
+- Usa **negritas** para términos clave, nombres, ingredientes, productos
 - Usa listas (- o 1.) para enumerar múltiples elementos del mismo tipo
-- Usa emojis al inicio de secciones como anclas visuales (ej: ✅ ⚠️ 💡 🔴 🟡)
+- Usa emojis al inicio de secciones como anclas visuales (ej: ✅ ⚠️ 💡 🔴 🟡 🟢)
 - Párrafos cortos (máximo 2-3 líneas), evita bloques de texto densos
-- Si hay algo destacado, ponlo en negrita o en su propia sección`;
+- NUNCA uses líneas separadoras (---), son ruido visual`;
 
     // Build DeepSeek messages with Claude's image analysis injected
     const history = messages

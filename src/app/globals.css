@@ -226,6 +226,15 @@ input, textarea, [contenteditable="true"] {
   -webkit-user-select: text;
 }
 
+/* Anti-zoom iOS: force ≥16px on all text inputs on touch devices */
+@media (max-width: 767px) {
+  input[type="text"], input[type="search"], input[type="password"],
+  input[type="email"], input[type="number"], input:not([type]),
+  textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
@@ -3789,9 +3798,12 @@ a {
   border-radius: 12px;
   padding: 9px 32px 9px 32px;
   color: var(--text-primary);
-  font-size: 0.86rem;
+  font-size: 16px; /* iOS: prevents zoom on focus (must be ≥16px) */
   outline: none;
   transition: border-color 0.15s;
+}
+@media (min-width: 768px) {
+  .sb-search input { font-size: 0.86rem; }
 }
 .sb-search input::placeholder { color: var(--text-secondary); }
 .sb-search input:focus { border-color: var(--text-secondary); }
@@ -3956,7 +3968,7 @@ a {
 
 .sb-footer {
   border-top: 1px solid var(--border-color);
-  padding: 8px 0;
+  padding: 8px 0 calc(14px + env(safe-area-inset-bottom, 0px));
 }
 .sb-badge {
   flex: 0 0 auto;
