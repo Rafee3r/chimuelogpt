@@ -49,7 +49,8 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
 - Use ## for subsections, ### for details
 - Use emoji anchors at section starts (✅ ⚠️ 💡 🔴 🟡 🟢 🥩 🍎)
 - Short paragraphs (2-3 lines max)
-- NEVER use --- (horizontal rule), it's visual noise — use headings instead`,
+- NEVER use --- (horizontal rule), it's visual noise — use headings instead
+- AVOID tables (|col|col|) unless strictly necessary. Prefer bullet lists instead`,
         messages: [{
           role: 'user',
           content: [
@@ -105,7 +106,8 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
 - Usa listas (- o 1.) para enumerar múltiples elementos del mismo tipo
 - Usa emojis al inicio de secciones como anclas visuales (ej: ✅ ⚠️ 💡 🔴 🟡 🟢)
 - Párrafos cortos (máximo 2-3 líneas), evita bloques de texto densos
-- NUNCA uses líneas separadoras (---), son ruido visual`;
+- NUNCA uses líneas separadoras (---), son ruido visual
+- EVITA tablas (|col|col|) salvo que sean estrictamente necesarias. Prefiere listas con guiones`;
 
     // Build DeepSeek messages with Claude's image analysis injected
     const history = messages
