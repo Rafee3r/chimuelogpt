@@ -2346,7 +2346,11 @@ export default function Home() {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
-                            {hasImgLoading ? (
+                            {isThinking && isLastMsg && !currentBody.trim() && !reasoning ? (
+                              <div className="chimuelo-thinking-dots">
+                                <span /><span /><span />
+                              </div>
+                            ) : hasImgLoading ? (
                               <>
                                 {bodyBefore.trim() && (
                                   <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />

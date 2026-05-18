@@ -1791,6 +1791,28 @@ a {
   width: fit-content;
 }
 
+.chimuelo-thinking-dots {
+  display: flex;
+  gap: 7px;
+  padding: 6px 2px;
+}
+
+.chimuelo-thinking-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a18cd1, #10a37f);
+  animation: chimueloDot 1.4s ease-in-out infinite;
+}
+
+.chimuelo-thinking-dots span:nth-child(2) { animation-delay: 0.2s; background: linear-gradient(135deg, #fbc2eb, #a18cd1); }
+.chimuelo-thinking-dots span:nth-child(3) { animation-delay: 0.4s; background: linear-gradient(135deg, #10a37f, #4facfe); }
+
+@keyframes chimueloDot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.75) translateY(0); }
+  40%           { opacity: 1;   transform: scale(1.15) translateY(-4px); }
+}
+
 .web-search-loading-dots {
   display: flex;
   gap: 5px;
