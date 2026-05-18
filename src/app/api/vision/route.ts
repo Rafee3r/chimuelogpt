@@ -41,7 +41,15 @@ JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, 
 - Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
 Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.
 
-JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask questions about the image, provide a comprehensive factual analysis in English covering: all visible objects, text/labels, people, colors, context, numbers, ingredients, brands, or any relevant details. Be thorough and precise — this analysis will be used by another AI to answer the user.`,
+JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask questions about the image, provide a comprehensive factual analysis in English covering: all visible objects, text/labels, people, colors, context, numbers, ingredients, brands, or any relevant details. Be thorough and precise — this analysis will be used by another AI to answer the user.
+
+UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief intro before generate_image tag):
+- Use # H1 large title to introduce major topics or analyses
+- Use **bold** for key terms, names, products
+- Use ## for subsections, ### for details
+- Use emoji anchors at section starts (✅ ⚠️ 💡 🔴 🟡 🟢 🥩 🍎)
+- Short paragraphs (2-3 lines max)
+- NEVER use --- (horizontal rule), it's visual noise — use headings instead`,
         messages: [{
           role: 'user',
           content: [

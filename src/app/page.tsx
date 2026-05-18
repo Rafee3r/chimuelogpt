@@ -292,8 +292,40 @@ export default function Home() {
 
   /* Chat context menu (right-click on PC, long-press on mobile) */
   const [chatMenu, setChatMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const [msgMenu, setMsgMenu] = useState<{ msgId: string; x: number; y: number } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef<boolean>(false);
+  const msgLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const msgLongPressFired = useRef<boolean>(false);
+
+  const openMsgMenu = useCallback((msgId: string, x: number, y: number) => {
+    const menuW = 200, menuH = 110;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.min(x, vw - menuW - 8);
+    const top  = Math.min(y, vh - menuH - 8);
+    setMsgMenu({ msgId, x: Math.max(8, left), y: Math.max(8, top) });
+  }, []);
+
+  const startMsgLongPress = useCallback((msgId: string, e: React.TouchEvent) => {
+    msgLongPressFired.current = false;
+    const touch = e.touches[0];
+    const { clientX, clientY } = touch;
+    if (msgLongPressTimer.current) clearTimeout(msgLongPressTimer.current);
+    msgLongPressTimer.current = setTimeout(() => {
+      msgLongPressFired.current = true;
+      if ('vibrate' in navigator) {
+        try { (navigator as any).vibrate(40); } catch {}
+      }
+      openMsgMenu(msgId, clientX, clientY);
+    }, 480);
+  }, [openMsgMenu]);
+
+  const cancelMsgLongPress = useCallback(() => {
+    if (msgLongPressTimer.current) {
+      clearTimeout(msgLongPressTimer.current);
+      msgLongPressTimer.current = null;
+    }
+  }, []);
 
   const openChatMenu = useCallback((chatId: string, x: number, y: number) => {
     // Clamp to viewport (menu is ~180px wide × ~150px tall)
@@ -1288,6 +1320,7 @@ export default function Home() {
     const onKey = (e: KeyboardEvent) => {
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (e.key === 'Escape') {
+        if (msgMenu) { setMsgMenu(null); e.preventDefault(); return; }
         if (chatMenu) { setChatMenu(null); e.preventDefault(); return; }
         if (paletteOpen) { setPaletteOpen(false); e.preventDefault(); return; }
         if (sidebarOpen) { setSidebarOpen(false); return; }
@@ -1725,6 +1758,45 @@ export default function Home() {
       </aside>
 
       {/* ── Chat context menu (right-click / long-press) ── */}
+      {msgMenu && (() => {
+        const msg = displayMessages.find(m => m.id === msgMenu.msgId);
+        if (!msg) return null;
+        return (
+          <>
+            <div className="sb-menu-backdrop" onClick={() => setMsgMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMsgMenu(null); }} />
+            <div className="sb-menu" style={{ left: msgMenu.x, top: msgMenu.y }}>
+              <button onClick={() => {
+                navigator.clipboard.writeText(msg.content || '');
+                try { (navigator as any).vibrate?.(8); } catch {}
+                setMsgMenu(null);
+              }}>
+                <Copy size={14} />
+                <span>Copiar</span>
+              </button>
+              <div className="sb-menu-sep" />
+              <button className="danger" onClick={() => {
+                if (!confirm('¿Eliminar este mensaje?')) { setMsgMenu(null); return; }
+                try { (navigator as any).vibrate?.(12); } catch {}
+                setDisplayMessages(prev => prev.filter(m => m.id !== msgMenu.msgId));
+                if (currentChatId) {
+                  setChats(prev => {
+                    const updated = prev.map(c => c.id === currentChatId
+                      ? { ...c, messages: c.messages.filter(m => m.id !== msgMenu.msgId), updatedAt: Date.now() }
+                      : c);
+                    localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+                    return updated;
+                  });
+                }
+                setMsgMenu(null);
+              }}>
+                <Trash2 size={14} />
+                <span>Eliminar</span>
+              </button>
+            </div>
+          </>
+        );
+      })()}
+
       {chatMenu && (() => {
         const chat = chats.find(c => c.id === chatMenu.chatId);
         if (!chat) return null;
@@ -2111,7 +2183,15 @@ export default function Home() {
               const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
               return (
-              <div key={msg.id} className={`message ${role}`}>
+              <div
+                key={msg.id}
+                className={`message ${role}`}
+                onContextMenu={role === 'user' ? (e) => { e.preventDefault(); openMsgMenu(msg.id, e.clientX, e.clientY); } : undefined}
+                onTouchStart={role === 'user' ? (e) => startMsgLongPress(msg.id, e) : undefined}
+                onTouchEnd={role === 'user' ? cancelMsgLongPress : undefined}
+                onTouchMove={role === 'user' ? cancelMsgLongPress : undefined}
+                onTouchCancel={role === 'user' ? cancelMsgLongPress : undefined}
+              >
                 <div className="message-content-wrapper">
                   {role === 'assistant' && (
                     <div className="avatar assistant">
@@ -2399,28 +2479,6 @@ export default function Home() {
                             </div>
                           )}
 
-                          {msg.role === 'user' && (
-                            <div className="message-actions user-actions" style={{ display: 'flex', gap: '10px', marginTop: '4px', justifyContent: 'flex-end', opacity: 0.6 }}>
-                              <button className="action-btn hover-bg" title="Copiar" onClick={() => {
-                                navigator.clipboard.writeText(msg.content || '');
-                                try { navigator.vibrate?.(8); } catch {}
-                              }}><Copy size={14} /></button>
-                              <button className="action-btn hover-bg" title="Eliminar mensaje" onClick={() => {
-                                if (!confirm('¿Eliminar este mensaje?')) return;
-                                try { navigator.vibrate?.(12); } catch {}
-                                setDisplayMessages(prev => prev.filter(m => m.id !== msg.id));
-                                if (currentChatId) {
-                                  setChats(prev => {
-                                    const updated = prev.map(c => c.id === currentChatId
-                                      ? { ...c, messages: c.messages.filter(m => m.id !== msg.id), updatedAt: Date.now() }
-                                      : c);
-                                    localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
-                                    return updated;
-                                  });
-                                }
-                              }}><Trash2 size={14} /></button>
-                            </div>
-                          )}
                         </div>
                       );
                     })()}
