@@ -84,8 +84,7 @@ export default function Home() {
   
   const [inputMessage, setInputMessage] = useState("");
   const [attachedImage, setAttachedImage] = useState<{base64: string, name: string, type?: string} | null>(null);
-  const [attachedDoc, setAttachedDoc] = useState<{text: string, name: string} | null>(null);
-  const [docLoading, setDocLoading] = useState(false);
+  const [attachedDoc, setAttachedDoc] = useState<File | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
@@ -722,19 +721,7 @@ export default function Home() {
       };
       reader.readAsDataURL(file);
     } else {
-      setDocLoading(true);
-      try {
-        const form = new FormData();
-        form.append('file', file);
-        const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al procesar');
-        setAttachedDoc({ text: data.text, name: file.name });
-      } catch (err: any) {
-        alert('No se pudo leer el documento: ' + err.message);
-      } finally {
-        setDocLoading(false);
-      }
+      setAttachedDoc(file);
     }
   };
 
@@ -881,7 +868,7 @@ export default function Home() {
     };
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
-    const docPayload = attachedDoc ? attachedDoc : null;
+    const docFile = attachedDoc ?? null;
     
     const lower = messageText.toLowerCase();
     if (lower.includes('imagen') || lower.includes('dibuja') || lower.includes('foto') || lower.includes('pint')) {
@@ -951,8 +938,17 @@ export default function Home() {
 
     try {
       let finalContent = messageText || (imagePayload ? 'Describe esta imagen.' : '');
-      if (docPayload) {
-        finalContent = `[DOCUMENTO ADJUNTO: ${docPayload.name}]\n${docPayload.text}\n[FIN DEL DOCUMENTO]\n\n${finalContent}`;
+      if (docFile) {
+        try {
+          const form = new FormData();
+          form.append('file', docFile);
+          const docRes = await fetch('/api/parse-doc', { method: 'POST', body: form });
+          const docData = await docRes.json();
+          if (!docRes.ok) throw new Error(docData.error || 'Error al procesar');
+          finalContent = `[DOCUMENTO ADJUNTO: ${docFile.name}]\n${docData.text}\n[FIN DEL DOCUMENTO]\n\n${finalContent}`;
+        } catch (err: any) {
+          throw new Error('No se pudo leer el documento: ' + err.message);
+        }
       }
 
       // Build messages history for the API
@@ -2563,15 +2559,6 @@ export default function Home() {
                     <button className="image-preview-remove" style={{ position: 'static', marginLeft: 4 }} onClick={() => setAttachedDoc(null)}>
                       <XCircle size={15} fill="white" color="#555" />
                     </button>
-                  </div>
-                </div>
-              )}
-
-              {docLoading && (
-                <div className="image-preview-container">
-                  <div className="doc-preview-chip" style={{ opacity: 0.6 }}>
-                    <span className="doc-preview-icon">⏳</span>
-                    <span className="doc-preview-name">Procesando documento…</span>
                   </div>
                 </div>
               )}
