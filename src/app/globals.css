@@ -2255,6 +2255,32 @@ a {
   gap: 8px;
 }
 
+.v2-attach-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.v2-attach-doc-btn .v2-attach-icon-wrapper {
+  background: transparent;
+}
+
+.doc-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 6px 10px 6px 10px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  max-width: 260px;
+}
+
+.doc-preview-icon { font-size: 1rem; flex-shrink: 0; }
+.doc-preview-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .v2-attach-btn {
   background: transparent;
   border: none;

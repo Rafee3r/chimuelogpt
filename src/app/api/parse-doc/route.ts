@@ -1,0 +1,54 @@
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
+
+    if (!file) {
+      return new Response(JSON.stringify({ error: 'No se recibió archivo.' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const name = file.name.toLowerCase();
+
+    let text = '';
+
+    if (name.endsWith('.pdf')) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfMod = await import('pdf-parse') as any;
+      const pdfParse = pdfMod.default ?? pdfMod;
+      const data = await pdfParse(buffer);
+      text = data.text;
+    } else if (name.endsWith('.docx')) {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value;
+    } else if (name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.csv')) {
+      text = buffer.toString('utf-8');
+    } else {
+      return new Response(JSON.stringify({ error: 'Formato no soportado. Usa PDF, Word (.docx) o TXT.' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Trim whitespace and limit to ~50k chars to avoid token overflow
+    text = text.trim();
+    if (text.length > 50000) {
+      text = text.slice(0, 50000) + '\n\n[...documento truncado por longitud máxima]';
+    }
+
+    return new Response(JSON.stringify({ text }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error: any) {
+    console.error('Parse doc error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Error al procesar el documento.' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}

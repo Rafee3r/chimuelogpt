@@ -84,6 +84,8 @@ export default function Home() {
   
   const [inputMessage, setInputMessage] = useState("");
   const [attachedImage, setAttachedImage] = useState<{base64: string, name: string, type?: string} | null>(null);
+  const [attachedDoc, setAttachedDoc] = useState<{text: string, name: string} | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   // Scroll architecture v4 — prevMaxScrollTop + useLayoutEffect.
   // The DOM is the single source of truth. Before each render, we know the
@@ -713,20 +716,31 @@ export default function Home() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       const originalBase64 = reader.result as string;
-      let finalBase64 = originalBase64;
-      
-      if (file.type.startsWith('image/')) {
-        finalBase64 = await compressImage(originalBase64);
-      }
-      
-      setAttachedImage({
-        base64: finalBase64,
-        name: file.name,
-        type: file.type
-      });
+      const finalBase64 = await compressImage(originalBase64);
+      setAttachedImage({ base64: finalBase64, name: file.name, type: file.type });
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDocFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (docFileInputRef.current) docFileInputRef.current.value = "";
+
+    setDocLoading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al procesar');
+      setAttachedDoc({ text: data.text, name: file.name });
+    } catch (err: any) {
+      alert('No se pudo leer el documento: ' + err.message);
+    } finally {
+      setDocLoading(false);
+    }
   };
 
   const handleCreateSubject = () => {
@@ -872,6 +886,7 @@ export default function Home() {
     };
     const imagePayload = attachedImage ? attachedImage.base64 : null;
     const imageName = attachedImage ? attachedImage.name : null;
+    const docPayload = attachedDoc ? attachedDoc : null;
     
     const lower = messageText.toLowerCase();
     if (lower.includes('imagen') || lower.includes('dibuja') || lower.includes('foto') || lower.includes('pint')) {
@@ -928,6 +943,7 @@ export default function Home() {
 
     setInputMessage("");
     setAttachedImage(null);
+    setAttachedDoc(null);
     forceScrollNext.current = true; // user just sent — guarantee scroll to bottom
     setIsThinking(true);
 
@@ -939,7 +955,10 @@ export default function Home() {
     abortControllerRef.current = controller;
 
     try {
-      let finalContent = messageText || 'Describe esta imagen.';
+      let finalContent = messageText || (imagePayload ? 'Describe esta imagen.' : '');
+      if (docPayload) {
+        finalContent = `[DOCUMENTO ADJUNTO: ${docPayload.name}]\n${docPayload.text}\n[FIN DEL DOCUMENTO]\n\n${finalContent}`;
+      }
 
       // Build messages history for the API
       const chatForApi = chats.find(c => c.id === targetChatId);
@@ -2533,28 +2552,51 @@ export default function Home() {
               {attachedImage && (
                 <div className="image-preview-container">
                   <div className="image-preview-item" style={{ background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {attachedImage.type?.startsWith('image/') ? (
-                      <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
-                    ) : (
-                      <div style={{ padding: '8px', fontSize: '0.7rem', textAlign: 'center', wordBreak: 'break-all', color: 'var(--text-primary)' }}>
-                        📄 {attachedImage.name.length > 10 ? attachedImage.name.substring(0, 10) + '...' : attachedImage.name}
-                      </div>
-                    )}
+                    <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
                     <button className="image-preview-remove" onClick={() => setAttachedImage(null)}>
                       <XCircle size={16} fill="white" color="#333" />
                     </button>
                   </div>
                 </div>
               )}
-              
-              <input type="file" accept="*/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+
+              {attachedDoc && (
+                <div className="image-preview-container">
+                  <div className="doc-preview-chip">
+                    <span className="doc-preview-icon">📄</span>
+                    <span className="doc-preview-name">{attachedDoc.name.length > 22 ? attachedDoc.name.slice(0, 22) + '…' : attachedDoc.name}</span>
+                    <button className="image-preview-remove" style={{ position: 'static', marginLeft: 4 }} onClick={() => setAttachedDoc(null)}>
+                      <XCircle size={15} fill="white" color="#555" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {docLoading && (
+                <div className="image-preview-container">
+                  <div className="doc-preview-chip" style={{ opacity: 0.6 }}>
+                    <span className="doc-preview-icon">⏳</span>
+                    <span className="doc-preview-name">Procesando documento…</span>
+                  </div>
+                </div>
+              )}
+
+              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              <input type="file" accept=".pdf,.docx,.txt,.md,.csv" ref={docFileInputRef} style={{ display: 'none' }} onChange={handleDocFileChange} />
               
               <div className="v2-input-row">
-                <button className="v2-attach-btn" title="Subir foto" onClick={() => fileInputRef.current?.click()}>
-                  <div className="v2-attach-icon-wrapper">
-                    <Plus size={20} />
-                  </div>
-                </button>
+                <div className="v2-attach-group">
+                  <button className="v2-attach-btn" title="Subir imagen" onClick={() => fileInputRef.current?.click()}>
+                    <div className="v2-attach-icon-wrapper">
+                      <Plus size={20} />
+                    </div>
+                  </button>
+                  <button className="v2-attach-btn v2-attach-doc-btn" title="Adjuntar documento (PDF, Word, TXT)" onClick={() => docFileInputRef.current?.click()}>
+                    <div className="v2-attach-icon-wrapper">
+                      <span style={{ fontSize: '15px', lineHeight: 1 }}>📎</span>
+                    </div>
+                  </button>
+                </div>
                 
                 <textarea
                   ref={textareaRef}
@@ -2587,9 +2629,9 @@ export default function Home() {
                   </button>
                 ) : (
                   <button
-                    className={`v2-send-btn ${inputMessage.trim() || attachedImage ? 'active' : ''}`}
+                    className={`v2-send-btn ${inputMessage.trim() || attachedImage || attachedDoc ? 'active' : ''}`}
                     onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() && !attachedImage}
+                    disabled={!inputMessage.trim() && !attachedImage && !attachedDoc}
                   >
                     <Send size={18} />
                   </button>
