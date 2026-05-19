@@ -2370,15 +2370,13 @@ export default function Home() {
                                 {currentBody.split('__MUSIC_LOADING__')[0].trim() && (
                                   <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[0]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                                 )}
-                                <div className="music-gen-loading">
-                                  <div className="music-loading-bars">
-                                    {[...Array(8)].map((_, i) => (
-                                      <div key={i} className="music-loading-bar" style={{ animationDelay: `${(i * 0.1).toFixed(1)}s` }} />
-                                    ))}
+                                <div className="gen-loading-card">
+                                  <div className="gen-loading-icon-wrap">
+                                    <div className="thinking-v2-pill gen-loading-pill" />
                                   </div>
-                                  <div className="music-loading-info">
-                                    <span className="music-loading-title">Componiendo tu música...</span>
-                                    <span className="music-loading-sub">Puede tomar hasta 30 segundos</span>
+                                  <div className="gen-loading-info">
+                                    <span className="gen-loading-title">🎵 Componiendo tu música…</span>
+                                    <span className="gen-loading-sub">Puede tomar hasta 30 segundos</span>
                                   </div>
                                 </div>
                                 {currentBody.split('__MUSIC_LOADING__')[1]?.trim() && (

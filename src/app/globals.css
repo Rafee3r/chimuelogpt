@@ -1144,18 +1144,21 @@ a {
   transition: all 0.3s ease;
 }
 
+.reasoning-v3-card {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 [data-theme="dark"] .reasoning-v3-card,
 [data-theme="oled"] .reasoning-v3-card {
   background: rgba(255,255,255,0.03);
   border-color: rgba(255,255,255,0.08);
-  backdrop-filter: blur(10px);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .reasoning-v3-card {
     background: rgba(255,255,255,0.03);
     border-color: rgba(255,255,255,0.08);
-    backdrop-filter: blur(10px);
   }
 }
 
@@ -1869,17 +1872,77 @@ a {
 /* =========================================================================
    Music Generation Loading Animation
    ========================================================================= */
+/* ── Generation loading card v2 (música/imágenes/etc) ── */
+.gen-loading-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 10px 0;
+  max-width: 380px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .gen-loading-card,
+[data-theme="oled"] .gen-loading-card {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .gen-loading-card {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+  }
+}
+
+.gen-loading-icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gen-loading-pill {
+  width: 52px;
+  height: 12px;
+}
+
+.gen-loading-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gen-loading-title {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.gen-loading-sub {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+/* ── Legacy music loading (kept for backward compat) ── */
 .music-gen-loading {
   display: flex;
   align-items: center;
   gap: 18px;
-  background: var(--bg-secondary);
+  background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: 18px;
   padding: 18px 22px;
   margin: 10px 0;
   max-width: 380px;
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
 }
 
 .music-loading-bars {
