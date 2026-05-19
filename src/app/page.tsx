@@ -150,6 +150,7 @@ export default function Home() {
   // No flags, no event handlers needed for the auto-scroll decision.
   const prevMaxScrollTop = useRef<number>(0);
   const forceScrollNext = useRef<boolean>(true);
+  const skipAutoScrollRef = useRef<boolean>(false);
   const prevViewMode = useRef<"chat" | "university">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
@@ -179,6 +180,7 @@ export default function Home() {
       localStorageQueueRef.current.timer = null;
     }
     try { localStorage.setItem("chimuelo_chats", JSON.stringify(chats)); } catch {}
+    try { localStorage.setItem("chimuelo_last_active", Date.now().toString()); } catch {}
   }, []);
 
   /* v2.0 — Stop generation */
@@ -485,8 +487,11 @@ export default function Home() {
     const savedActiveSubject = localStorage.getItem("chimuelo_active_subject");
     if (savedActiveSubject) setActiveSubjectId(savedActiveSubject);
 
+    // Si pasó más de 30 min desde la última actividad, abrir home (nuevo chat)
+    const lastActive = parseInt(localStorage.getItem("chimuelo_last_active") || '0', 10);
+    const idleMinutes = (Date.now() - lastActive) / 60000;
     const currentChat = localStorage.getItem("chimuelo_current_chat");
-    if (currentChat) {
+    if (currentChat && idleMinutes < 30) {
       setCurrentChatId(currentChat);
       if (savedChats) {
         const parsed = JSON.parse(savedChats);
@@ -495,6 +500,9 @@ export default function Home() {
           setDisplayMessages(active.messages);
         }
       }
+    } else if (idleMinutes >= 30) {
+      // Limpiar el chat actual para mostrar home
+      localStorage.removeItem("chimuelo_current_chat");
     }
 
     const checkVersion = async () => {
@@ -602,8 +610,7 @@ export default function Home() {
 
     const currentMax = el.scrollHeight - el.clientHeight;
 
-    // forceScrollNext is set on chat switch and on send — explicit user actions
-    // that ALWAYS warrant scrolling to bottom regardless of prior position.
+    // forceScrollNext is set on chat switch — siempre scroll al fondo
     if (forceScrollNext.current) {
       el.scrollTop = currentMax;
       forceScrollNext.current = false;
@@ -611,14 +618,17 @@ export default function Home() {
       return;
     }
 
-    // Was the user at the bottom of the PREVIOUS render's content?
-    // Use a tiny 4px tolerance for subpixel jitter.
-    const wasAtBottom = el.scrollTop >= prevMaxScrollTop.current - 4;
+    // skipAutoScrollRef se activa en send y mientras la IA streamea —
+    // el usuario decide cuándo ir al fondo, no la app.
+    if (skipAutoScrollRef.current) {
+      prevMaxScrollTop.current = currentMax;
+      return;
+    }
 
+    const wasAtBottom = el.scrollTop >= prevMaxScrollTop.current - 4;
     if (wasAtBottom) {
       el.scrollTop = currentMax;
     }
-    // else: user scrolled up. Don't touch scrollTop. They keep reading.
 
     prevMaxScrollTop.current = currentMax;
   }, [displayMessages, isThinking]);
@@ -928,7 +938,13 @@ export default function Home() {
     setInputMessage("");
     setAttachedImage(null);
     setAttachedDoc(null);
-    forceScrollNext.current = true; // user just sent — guarantee scroll to bottom
+    // NO forzar scroll al fondo. Llevar el mensaje del usuario al TOP del viewport
+    // y bloquear el auto-scroll durante todo el streaming.
+    skipAutoScrollRef.current = true;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-msg-id="${userMsgId}"]`) as HTMLElement | null;
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     setIsThinking(true);
 
     // Add user message to display immediately
@@ -1237,6 +1253,7 @@ export default function Home() {
       }
     } finally {
       setIsThinking(false);
+      skipAutoScrollRef.current = false;
       abortControllerRef.current = null;
     }
   };
@@ -2197,6 +2214,7 @@ export default function Home() {
               return (
               <div
                 key={msg.id}
+                data-msg-id={msg.id}
                 className={`message ${role}`}
                 onContextMenu={role === 'user' ? (e) => { e.preventDefault(); openMsgMenu(msg.id, e.clientX, e.clientY); } : undefined}
                 onTouchStart={role === 'user' ? (e) => startMsgLongPress(msg.id, e) : undefined}
