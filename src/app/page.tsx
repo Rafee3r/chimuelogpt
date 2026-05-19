@@ -2240,32 +2240,25 @@ export default function Home() {
                     {role === 'assistant' && reasoning && (() => {
                       const isStreaming = !displayContent;
                       return (
-                        <div className={`reasoning-v2-card v3 ${isStreaming ? 'streaming' : 'done'}`}>
-                          <div className="reasoning-v2-header">
-                            <div className="reasoning-v2-orb">
-                              <span className="reasoning-v2-brain">🧠</span>
-                            </div>
-                            <div className="reasoning-v2-title-area">
-                              {isStreaming ? (
-                                <>
-                                  <span className="reasoning-v2-title">Analizando tu pregunta...</span>
-                                  <div className="reasoning-v2-dots">
-                                    <span></span><span></span><span></span>
-                                  </div>
-                                </>
-                              ) : (
-                                <details style={{ listStyle: 'none', width: '100%' }}>
-                                  <summary className="reasoning-v2-summary">
-                                    <span className="reasoning-v2-title">Ver cómo lo pensé →</span>
-                                  </summary>
-                                  <div className="reasoning-v2-body">{reasoning}</div>
-                                </details>
-                              )}
-                            </div>
+                        <div className={`reasoning-v3-card ${isStreaming ? 'streaming' : 'done'}`}>
+                          <div className="reasoning-v3-header">
+                            {isStreaming ? (
+                              <>
+                                <div className="thinking-v2-pill reasoning-v3-pill" />
+                                <span className="reasoning-v3-title">Analizando tu pregunta…</span>
+                              </>
+                            ) : (
+                              <details style={{ listStyle: 'none', width: '100%' }}>
+                                <summary className="reasoning-v3-summary">
+                                  <span className="reasoning-v3-title">Ver cómo lo pensé →</span>
+                                </summary>
+                                <div className="reasoning-v3-body">{reasoning}</div>
+                              </details>
+                            )}
                           </div>
                           {isStreaming && (
-                            <div className="reasoning-v2-live typewriter">
-                              <div className="reasoning-v2-live-text">{reasoning}</div>
+                            <div className="reasoning-v3-live">
+                              <div className="reasoning-v3-live-text">{reasoning}</div>
                             </div>
                           )}
                         </div>
