@@ -2375,11 +2375,14 @@ export default function Home() {
                                 {bodyBefore.trim() && (
                                   <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                                 )}
-                                <div className="img-gen-loading">
-                                  <div className="img-gen-loading-bg" />
-                                  <div className="img-gen-loading-surface">
-                                    <div className="img-gen-loading-icon">🎨</div>
-                                    <span className="img-gen-loading-text">Generando imagen...</span>
+                                <div className="neon-image-card">
+                                  <div className="neon-image-frame">
+                                    <div className="neon-image-scan" />
+                                    <div className="neon-image-grid" />
+                                  </div>
+                                  <div className="neon-image-label">
+                                    <span className="neon-image-title">Generando imagen</span>
+                                    <span className="neon-image-sub">La IA está creando tu visión</span>
                                   </div>
                                 </div>
                                 {bodyAfter?.trim() && (
@@ -2391,13 +2394,15 @@ export default function Home() {
                                 {currentBody.split('__MUSIC_LOADING__')[0].trim() && (
                                   <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[0]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                                 )}
-                                <div className="gen-loading-card">
-                                  <div className="gen-loading-icon-wrap">
-                                    <div className="thinking-v2-pill gen-loading-pill" />
+                                <div className="neon-music-card">
+                                  <div className="neon-music-bars">
+                                    {[...Array(20)].map((_, idx) => (
+                                      <div key={idx} className="neon-music-bar" style={{ animationDelay: `${(idx * 0.07).toFixed(2)}s` }} />
+                                    ))}
                                   </div>
-                                  <div className="gen-loading-info">
-                                    <span className="gen-loading-title">🎵 Componiendo tu música…</span>
-                                    <span className="gen-loading-sub">Puede tomar hasta 30 segundos</span>
+                                  <div className="neon-music-info">
+                                    <span className="neon-music-title">Componiendo tu música</span>
+                                    <span className="neon-music-sub">Puede tomar hasta 30 segundos</span>
                                   </div>
                                 </div>
                                 {currentBody.split('__MUSIC_LOADING__')[1]?.trim() && (
