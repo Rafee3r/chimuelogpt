@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 120;
 
-const MODEL = 'fal-ai/minimax-music/v2';
+const MODEL = 'fal-ai/lyria2';
 
 function extractAudioUrl(data: any): string | null {
   return (
@@ -29,7 +29,6 @@ export async function POST(req: Request) {
       headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: prompt.slice(0, 500),
-        lyrics_prompt: '[verse]\n[chorus]\nLetra en español.',
       }),
     });
 
