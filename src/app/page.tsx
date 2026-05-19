@@ -2265,6 +2265,12 @@ export default function Home() {
                       );
                     })()}
 
+                    {role === 'assistant' && isThinking && i === displayMessages.length - 1 && !displayContent && !reasoning && (
+                      <div className="thinking-v2">
+                        <div className="thinking-v2-pill" />
+                      </div>
+                    )}
+
                     {displayContent && (() => {
                       const hasNewArtifact = displayContent.includes('<artifact>');
                       const hasOldArtifact = displayContent.includes('<artifact_html>') && !hasNewArtifact;
