@@ -1018,62 +1018,55 @@ a {
   padding: 8px 0;
 }
 
-.thinking-mini-orb-wrap {
-  display: flex;
+/* Thinking loader v2 — Apple Intelligence-style flowing pill */
+.thinking-v2 {
+  display: inline-flex;
   align-items: center;
-  padding: 4px 0;
-}
-
-.thinking-mini-orb {
+  padding: 8px 0;
   position: relative;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.thinking-mini-glow {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    #ff3366, #ff9933, #ffdd33,
-    #66ff66, #33ddff, #6633ff,
-    #ff33cc, #ff3366
+.thinking-v2-pill {
+  position: relative;
+  width: 64px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #a18cd1 0%,
+    #fbc2eb 22%,
+    #4facfe 44%,
+    #10a37f 66%,
+    #fbc2eb 88%,
+    #a18cd1 100%
   );
-  filter: blur(8px);
-  opacity: 0.75;
-  animation: thinking-orb-spin 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-size: 300% 100%;
+  animation: thinking-v2-flow 2.8s ease-in-out infinite,
+             thinking-v2-breathe 2.4s ease-in-out infinite;
 }
 
-.thinking-mini-core {
+.thinking-v2-pill::before {
+  content: '';
   position: absolute;
-  width: 28px;
-  height: 28px;
-  background: var(--bg-primary);
-  border-radius: 50%;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-primary);
-  animation: thinking-core-pulse 2.4s ease-in-out infinite alternate;
+  inset: -8px;
+  border-radius: 999px;
+  background: inherit;
+  background-size: 300% 100%;
+  animation: thinking-v2-flow 2.8s ease-in-out infinite;
+  filter: blur(12px);
+  opacity: 0.55;
+  z-index: -1;
 }
 
-@keyframes thinking-orb-spin {
-  0%   { transform: rotate(0deg); }
-  20%  { transform: rotate(55deg); }
-  45%  { transform: rotate(200deg); }
-  65%  { transform: rotate(255deg); }
-  85%  { transform: rotate(320deg); }
-  100% { transform: rotate(360deg); }
+@keyframes thinking-v2-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 200% 50%; }
 }
 
-@keyframes thinking-core-pulse {
-  0%   { box-shadow: 0 0 6px rgba(255,255,255,0.08); }
-  100% { box-shadow: 0 0 14px rgba(255,255,255,0.22); }
+@keyframes thinking-v2-breathe {
+  0%, 100% { transform: scaleX(0.85) scaleY(0.9); opacity: 0.85; }
+  50%      { transform: scaleX(1.05) scaleY(1.05); opacity: 1; }
 }
 
 /* Reasoning Box (DeepSeek R1) */

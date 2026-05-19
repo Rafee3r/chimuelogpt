@@ -2347,13 +2347,8 @@ export default function Home() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
                             {isThinking && isLastMsg && !currentBody.trim() && !reasoning ? (
-                              <div className="thinking-mini-orb-wrap">
-                                <div className="thinking-mini-orb">
-                                  <div className="thinking-mini-glow" />
-                                  <div className="thinking-mini-core">
-                                    <Cat size={14} strokeWidth={1.5} />
-                                  </div>
-                                </div>
+                              <div className="thinking-v2">
+                                <div className="thinking-v2-pill" />
                               </div>
                             ) : hasImgLoading ? (
                               <>
@@ -2524,13 +2519,8 @@ export default function Home() {
                   <Cat size={24} />
                 </div>
                 <div className="message-text">
-                  <div className="thinking-mini-orb-wrap">
-                    <div className="thinking-mini-orb">
-                      <div className="thinking-mini-glow" />
-                      <div className="thinking-mini-core">
-                        <Cat size={14} strokeWidth={1.5} />
-                      </div>
-                    </div>
+                  <div className="thinking-v2">
+                    <div className="thinking-v2-pill" />
                   </div>
                 </div>
               </div>
