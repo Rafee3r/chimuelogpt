@@ -124,7 +124,7 @@ export default function Home() {
     { icon: '🎨', label: 'Crear Imagen', message: 'Genera una imagen de un paisaje cyberpunk en formato ultra realista' },
     { icon: '✉️', label: 'Redactar Correo', message: 'Escribe un correo formal para solicitar una reunión con un cliente' },
     { icon: '🧠', label: 'Explicar Concepto', message: 'Explícame de forma sencilla cómo funciona la gravedad cuántica' },
-    { icon: '💻', label: 'Revisar Código', message: 'Revisa este código y dime cómo optimizarlo' },
+    { icon: '🔒', label: 'Mi Privacidad', message: '¿Puedes explicarme cómo funciona la privacidad en esta app? ¿Rafael o alguien más puede ver mis conversaciones?' },
   ];
   const [smartPills, setSmartPills] = useState<SmartPill[]>(defaultPills);
 
