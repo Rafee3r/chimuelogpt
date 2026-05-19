@@ -1114,7 +1114,10 @@ export default function Home() {
               const musicData = await musicRes.json();
               cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, `__MUSIC_PLAYER:${musicData.url}::${encodeURIComponent(musicPrompt)}__`);
             } else {
-              cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error al generar música)*\n\n');
+              const errData = await musicRes.json().catch(() => ({ error: 'desconocido' }));
+              console.error('Music API failed:', musicRes.status, errData);
+              const errMsg = (errData?.error || 'desconocido').toString().slice(0, 200);
+              cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, `\n\n*(Error al generar música: ${errMsg})*\n\n`);
             }
           } catch {
             cleanContent = cleanContent.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error de red al generar música)*\n\n');

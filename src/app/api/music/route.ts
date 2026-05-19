@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const MODEL = 'fal-ai/lyria2';
 
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'FAL no devolvió URLs de seguimiento.' }, { status: 500 });
     }
 
-    // 2. Poll status_url until COMPLETED
-    const deadline = Date.now() + 100_000;
+    // 2. Poll status_url until COMPLETED (deadline 270s para Lyria 2 que puede tardar)
+    const deadline = Date.now() + 270_000;
     while (Date.now() < deadline) {
       await new Promise(r => setTimeout(r, 3000));
 
