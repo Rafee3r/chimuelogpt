@@ -4698,3 +4698,81 @@ a {
     border-color: rgba(255, 255, 255, 0.1);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   NIVEL 1 — UX x10: Animaciones de entrada
+   Documentación de cambios:
+
+   CAMBIO 1 — Entrada de mensajes animada (todos)
+   Problema: los mensajes aparecían de golpe sin transición alguna,
+   haciendo la app sentirse brusca y estática.
+   Solución: cada <div class="message"> hace fadeUp al montar:
+   translateY(16px)→0 + opacity 0→1 en 300ms con easing de resorte
+   suave (cubic-bezier 0.22,1,0.36,1). Corre una sola vez al montar
+   el elemento. Durante streaming no se repite porque el div no se
+   desmonta, solo cambia su contenido interno.
+   Beneficio colateral: al cambiar de chat, los mensajes del nuevo
+   chat montan desde cero (React usa key={msg.id}), así que el
+   fadeUp se activa automáticamente — sin JS extra.
+
+   CAMBIO 2 — Burbuja de usuario: slide desde la derecha
+   Problema: el mensaje del usuario aparecía igual que el del
+   asistente aunque está alineado a la derecha — no había coherencia
+   direccional.
+   Solución: .message.user sobreescribe la animación con
+   userBubbleEnter: translateX(20px) scale(0.96)→0 scale(1). El
+   usuario siente físicamente que "envió" el mensaje hacia la IA.
+
+   CAMBIO 3 — Transición al cambiar de chat
+   No requiere código adicional. Está resuelto por el Cambio 1:
+   cuando se cambia de chat, React desmonta todos los .message del
+   chat anterior y monta los del nuevo (cada mensaje tiene key único).
+   Al montar, msgEnter se activa en todos, creando una entrada
+   suave y natural del historial completo.
+
+   CAMBIO 4 — Smart pills: entrada escalonada (stagger)
+   Problema: las 4 pills del welcome screen entraban en bloque como
+   un solo elemento (animaba el contenedor, no cada pill individual).
+   Solución: se quita la animación del contenedor y se anima cada
+   .smart-pill individualmente con animation-delay incremental:
+   pill 1→ 0ms, pill 2→ 80ms, pill 3→ 160ms, pill 4→ 240ms.
+   El resultado es una cascada visual de izquierda a derecha.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ── */
+@keyframes msgEnter {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes userBubbleEnter {
+  0%   { opacity: 0; transform: translateX(20px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* ── Cambio 1: Todos los mensajes entran con fadeUp ── */
+.message {
+  animation: msgEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+/* ── Cambio 2: Mensajes del usuario entran desde la derecha ── */
+.message.user {
+  animation: userBubbleEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Cambio 4: Smart pills con stagger individual ── */
+/* Se elimina la animación del contenedor (ahora se anima cada pill) */
+.smart-pills-container {
+  animation: none;
+}
+
+.smart-pill {
+  animation: fadeUpStagger 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.smart-pill:nth-child(1) { animation-delay: 0.05s; }
+.smart-pill:nth-child(2) { animation-delay: 0.13s; }
+.smart-pill:nth-child(3) { animation-delay: 0.21s; }
+.smart-pill:nth-child(4) { animation-delay: 0.29s; }
+
