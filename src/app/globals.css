@@ -4779,3 +4779,110 @@ a {
 .smart-pill:nth-child(3) { animation-delay: 0.21s; }
 .smart-pill:nth-child(4) { animation-delay: 0.29s; }
 
+/* ═══════════════════════════════════════════════════════════════
+   NIVEL 2 — UX x10: Micro-interacciones premium
+   Documentación de cambios:
+
+   CAMBIO 5 — Botón Send: press elástico
+   Problema: el botón de enviar no tenía feedback táctil al presionar.
+   En móvil especialmente, el usuario no sabe si registró el tap.
+   Solución: al presionar (:active), escala a 0.85 en 80ms (fast-in).
+   Al soltar, la transición normal usa cubic-bezier(0.34, 1.56, 0.64, 1)
+   — el easing "overshoot" que simula un resorte — volviendo a scale(1)
+   pasando brevemente por 1.06 antes de asentarse.
+   Aplica solo a .v2-send-btn.active (cuando hay texto escrito).
+
+   CAMBIO 6 — Input: glow bloom al enfocar
+   Problema: el borde del input ya cambiaba de color al enfocar, pero
+   el box-shadow aparecía instantáneo (transition: all 0.3s era
+   suficientemente rápido pero sin carácter).
+   Solución: se reemplaza `all 0.3s ease` con transiciones específicas
+   por propiedad. El box-shadow usa spring easing y crece de 0px a 4px
+   (era 3px). El resultado es un "bloom" suave que aparece como un halo
+   que crece alrededor del input. Mejora la claridad visual de "estoy
+   escribiendo aquí" sin distraer.
+
+   CAMBIO 7 — Botones de acción: pop escalonado al aparecer
+   Problema: los botones (👍 👎 📋 🔁 📤) debajo de cada respuesta
+   aparecían de golpe como un bloque sin vida.
+   Solución: el contenedor .message-actions entra con fadeUp (opacidad
+   y posición) en 200ms. Cada .action-btn individual hace un pop con
+   scale(0.5)→scale(1) usando easing elástico, escalonados cada 40ms.
+   El efecto: los botones "brotan" uno a uno de izquierda a derecha.
+   Nota: se anima solo transform (no opacity) en los botones individuales
+   para respetar el opacity:0.7 del contenedor definido en JSX.
+
+   CAMBIO 8 — Pills: spring click (Académico + welcome screen)
+   Problema: al tocar una materia o pill, el cambio de estado era
+   inmediato y plano — no había feedback físico de "seleccioné algo".
+   Solución: .uni-v2-pill:active y .smart-pill:active escalan a 0.92
+   en 80ms. Al soltar, la transición normal con spring easing
+   cubic-bezier(0.34, 1.56, 0.64, 1) hace que reboten de vuelta a
+   scale(1) con un pequeño overshoot. Se siente como presionar
+   un botón físico.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Cambio 5 — Send button: press elástico ── */
+.v2-send-btn.active {
+  /* Spring easing para el rebote al soltar */
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.3s ease,
+              box-shadow 0.3s ease,
+              color 0.3s ease;
+}
+.v2-send-btn.active:active {
+  transform: scale(0.85);
+  transition: transform 0.08s ease-in; /* press rápido hacia abajo */
+}
+
+/* ── Cambio 6 — Input focus: glow bloom ── */
+.v2-input-container {
+  transition: border-color 0.2s ease,
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.2s ease;
+}
+.v2-input-container:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow), 0 4px 28px rgba(0,0,0,0.12);
+}
+
+/* ── Cambio 7 — Botones de acción: pop escalonado ── */
+@keyframes btnPop {
+  0%   { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+
+.message-actions {
+  animation: fadeUpStagger 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.message-actions .action-btn {
+  animation: btnPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.message-actions .action-btn:nth-child(1) { animation-delay: 0.00s; }
+.message-actions .action-btn:nth-child(2) { animation-delay: 0.04s; }
+.message-actions .action-btn:nth-child(3) { animation-delay: 0.08s; }
+.message-actions .action-btn:nth-child(4) { animation-delay: 0.12s; }
+.message-actions .action-btn:nth-child(5) { animation-delay: 0.16s; }
+
+/* ── Cambio 8 — Pills: spring click ── */
+.uni-v2-pill {
+  transition: background 0.25s ease, border-color 0.25s ease,
+              box-shadow 0.25s ease, color 0.2s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.uni-v2-pill:active {
+  transform: scale(0.92);
+  transition: transform 0.08s ease-in;
+}
+
+.smart-pill {
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s ease, box-shadow 0.3s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.smart-pill:active {
+  transform: scale(0.92);
+  transition: transform 0.08s ease-in;
+}
+
