@@ -4750,14 +4750,17 @@ a {
   100% { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-/* ── Cambio 1: Todos los mensajes entran con fadeUp ── */
-.message {
+/* ── Cambio 1: Todos los mensajes entran con fadeUp ──
+   Se anima .message-content-wrapper (contenido visible), NO .message
+   (el contenedor espaciador). Así el layout ya ocupa su espacio y
+   solo el contenido hace el efecto — sin que la UI "salte". ── */
+.message-content-wrapper {
   animation: msgEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: transform, opacity;
 }
 
 /* ── Cambio 2: Mensajes del usuario entran desde la derecha ── */
-.message.user {
+.message.user .message-content-wrapper {
   animation: userBubbleEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
