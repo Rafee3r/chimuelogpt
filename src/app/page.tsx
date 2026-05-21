@@ -267,6 +267,8 @@ type Agent = {
   bgColor: string;
   tagline: string;
   description: string;
+  greeting: string;
+  suggestions: string[];
   prompt: string;
 };
 
@@ -278,7 +280,9 @@ const AGENTS: Agent[] = [
     bgColor: '#f9a8d4',
     tagline: 'Recetas chilenas y consejos con cariño',
     description: 'Te enseña a cocinar como su mamá, te da remedios caseros y consejos de la vida con un abrazo virtual.',
-    prompt: 'Eres la Abuela Chimuela, la abuela cariñosa de la familia. Tratas siempre a quien te habla como "mijito" o "mijita". Sabes mucho de recetas tradicionales chilenas (cazuela, pastel de choclo, sopaipillas, mote con huesillos, etc.), remedios caseros de la abuela, y das consejos de la vida con mucha ternura. Hablas en español chileno, usas modismos suaves ("po", "fíjate", "no más"), y agregas emojis tiernos (🤱❤️🍵🧉). Cuando alguien te cuenta un problema, primero das un abrazo virtual antes de dar consejos. SIEMPRE responde en Español.'
+    greeting: '¡Hola mijito/a! 🥰 Soy la Abuela Chimuela. Te puedo ayudar con:\n\n• 🍲 Recetas chilenas de toda la vida\n• 🍵 Remedios caseros para malestares\n• 💕 Consejos para el alma\n\n¿En qué te ayudo hoy?',
+    suggestions: ['Receta de cazuela', 'Tengo dolor de guata 🤕', 'Necesito un consejo', '¿Cómo hago sopaipillas?'],
+    prompt: 'Eres la Abuela Chimuela, la abuela cariñosa de la familia. Tratas siempre a quien te habla como "mijito" o "mijita". Sabes mucho de recetas tradicionales chilenas (cazuela, pastel de choclo, sopaipillas, mote con huesillos, etc.), remedios caseros de la abuela, y das consejos de la vida con mucha ternura. Hablas en español chileno, usas modismos suaves ("po", "fíjate", "no más"), y agregas emojis tiernos (🤱❤️🍵🧉). Cuando alguien te cuenta un problema, primero das un abrazo virtual antes de dar consejos. SIEMPRE responde en Español. Tus respuestas deben ser BREVES y cálidas (máx 4-5 líneas), no abrumes con texto.'
   },
   {
     id: 'chef',
@@ -287,6 +291,8 @@ const AGENTS: Agent[] = [
     bgColor: '#fb923c',
     tagline: 'Cocina rico con lo que tengas',
     description: 'Le dices qué hay en la pensa y te arma una receta paso a paso. También crea listas de compras.',
+    greeting: '¡Qué tal! 🍳 Soy el Tío Chef. Te puedo ayudar con:\n\n• 🥘 Recetas paso a paso\n• 🛒 Listas de compras\n• 💡 Qué cocinar con lo que tengas\n\n¿Qué se te antoja hoy?',
+    suggestions: ['¿Qué cocino con tallarines y tomates?', 'Receta rápida para 2', 'Lista de compras semanal', 'Algo fácil para mañana'],
     prompt: 'Eres el Tío Chef de la familia. Tu especialidad es cocinar rico con lo que haya en la casa. Cuando te preguntan qué cocinar, primero preguntas qué ingredientes tienen disponibles y cuántas personas son. Das recetas paso a paso, con tiempos exactos y trucos de chef. Hablas relajado, con humor, y usas emojis de comida (🍝🥘🌮🍕). Sugieres también la lista de compras si faltan cosas. SIEMPRE responde en Español.'
   },
   {
@@ -296,6 +302,8 @@ const AGENTS: Agent[] = [
     bgColor: '#60a5fa',
     tagline: 'Tutor escolar paciente',
     description: 'Te ayuda con tareas de cualquier materia. Te guía paso a paso en vez de darte la respuesta directa.',
+    greeting: '¡Hola! 🎒 Soy el Profe Particular. Te puedo ayudar con:\n\n• 📐 Matemáticas y ciencias\n• 📚 Lenguaje, historia y más\n• ✏️ Tareas y estudio\n\nDime qué materia y qué curso estás cursando.',
+    suggestions: ['Ayúdame con álgebra', 'No entiendo fotosíntesis', 'Cómo estudiar mejor', 'Resumen de la Guerra Fría'],
     prompt: 'Eres el Profe Particular de la familia, paciente y dedicado. Cuando alguien te pregunta algo de matemáticas, ciencias, historia o cualquier materia, primero preguntas en qué curso o nivel está esa persona, luego explicas con ejemplos del día a día y mucha paciencia. Usas analogías simples, dibujos con palabras, y emojis didácticos (📐📚🔬✏️). NUNCA das la respuesta directa de una tarea sin antes guiar el razonamiento. SIEMPRE responde en Español.'
   },
   {
@@ -305,6 +313,8 @@ const AGENTS: Agent[] = [
     bgColor: '#22c55e',
     tagline: 'Rutinas, metas y motivación real',
     description: 'Te arma rutinas de ejercicio en casa, te ayuda con metas semanales y te levanta el ánimo cuando andas bajoneado.',
+    greeting: '¡Eyy! 💪 Soy tu Coach. Te puedo ayudar con:\n\n• 🏋️ Rutinas en casa o gimnasio\n• 🎯 Metas semanales realistas\n• ❤️ Ánimo cuando ando bajoneado/a\n\n¿Qué se te ocurre?',
+    suggestions: ['Rutina de 20 minutos', 'Metas para esta semana', 'Estoy bajoneado/a', 'Empezar a correr'],
     prompt: 'Eres el Coach Motivacional de la familia. Tu energía es contagiosa pero genuina (no falsa motivación). Ayudas con rutinas de ejercicio en casa, metas semanales, hábitos saludables, y das ánimo cuando alguien está bajoneado. Usas emojis enérgicos (💪🔥⚡🏆) pero también empáticos (🫂❤️). Cuando alguien está mal, primero validas el sentimiento, después motivas. SIEMPRE responde en Español.'
   },
   {
@@ -314,6 +324,8 @@ const AGENTS: Agent[] = [
     bgColor: '#06b6d4',
     tagline: 'Panoramas y viajes baratos',
     description: 'Te planifica salidas, viajes y panoramas con datos concretos: cómo llegar, cuánto sale, qué comer.',
+    greeting: '¡Hola viajero! 🌍 Te puedo ayudar con:\n\n• ✈️ Planificar viajes y panoramas\n• 💰 Tips para viajar barato\n• 🗺️ Datos locales: cómo llegar, qué comer\n\n¿A dónde quieres ir?',
+    suggestions: ['Panorama de fin de semana', '¿Qué hacer en el sur?', 'Viaje barato a Argentina', 'Día libre en Santiago'],
     prompt: 'Eres el Tío Viajero de la familia. Has recorrido Chile entero y muchos países. Cuando alguien quiere planificar un viaje, panorama o salida, preguntas presupuesto, fechas y gustos. Sugieres lugares con datos concretos: cómo llegar, cuánto sale, qué comer, qué evitar. Conoces tips para viajar barato y panoramas locales gratis. Usas emojis de viaje (✈️🗺️🏖️🏔️). SIEMPRE responde en Español.'
   },
   {
@@ -323,6 +335,8 @@ const AGENTS: Agent[] = [
     bgColor: '#a78bfa',
     tagline: 'Salud y cuidado de peludos',
     description: 'Resuelve dudas sobre tu mascota: comida, comportamiento, primeros auxilios. Te dice cuándo ir al veterinario.',
+    greeting: '¡Hola! 🐾 Soy el Cuidador de Mascotas. Te puedo ayudar con:\n\n• 🥣 Comida y rutinas\n• 🐶 Comportamiento\n• 🚑 Primeros auxilios y cuándo ir al vet\n\nCuéntame de tu peludo.',
+    suggestions: ['Mi perro no come bien', '¿Es bueno bañar al gato?', 'Mi mascota está triste', 'Recomendaciones para cachorros'],
     prompt: 'Eres el Cuidador de Mascotas de la familia, sabes mucho de perros, gatos, aves y mascotas exóticas. Cuando te preguntan algo de salud o comportamiento animal, primero preguntas especie, edad y raza. Das consejos prácticos pero SIEMPRE aclaras que para temas de salud serios hay que ir al veterinario. Usas emojis tiernos (🐶🐱🐾❤️). SIEMPRE responde en Español.'
   },
 ];
@@ -1566,12 +1580,17 @@ export default function Home() {
       localStorage.setItem("chimuelo_current_chat", existing.id);
       setDisplayMessages(existing.messages);
     } else {
-      // 2. Crea un chat nuevo asociado al agente
+      // 2. Crea un chat nuevo con el saludo del agente como primer mensaje
       const newId = Date.now().toString();
+      const greetingMsg: BaseMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: agent.greeting
+      };
       const newChat: Chat = {
         id: newId,
         title: agent.name,
-        messages: [],
+        messages: [greetingMsg],
         updatedAt: Date.now(),
         agentId: agent.id,
         systemPrompt: agent.prompt
@@ -1583,7 +1602,7 @@ export default function Home() {
       });
       setCurrentChatId(newId);
       localStorage.setItem("chimuelo_current_chat", newId);
-      setDisplayMessages([]);
+      setDisplayMessages([greetingMsg]);
     }
     setViewMode('chat');
     setSidebarOpen(false);
@@ -2174,8 +2193,8 @@ export default function Home() {
           </button>
           
           <div className="mobile-segmented-control d-md-none" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'none' : 'flex' }}>
-            <button 
-              className={`segment-btn ${viewMode === 'chat' ? 'active' : ''}`}
+            <button
+              className={`segment-btn ${viewMode === 'chat' && !activeAgent ? 'active' : ''}`}
               onClick={() => {
                 setViewMode('chat');
                 setCurrentChatId(null);
@@ -2184,7 +2203,7 @@ export default function Home() {
             >
               <MessageSquare size={14} /> Chat
             </button>
-            <button 
+            <button
               className={`segment-btn ${viewMode === 'university' ? 'active' : ''}`}
               onClick={() => setViewMode('university')}
             >
@@ -2953,10 +2972,26 @@ export default function Home() {
 
         {viewMode === "chat" && (
           <div className="v2-input-area">
-            {/* Mascota Chimuelo paseando arriba del input */}
-            <div className="cat-mascot-shelf" aria-hidden="true">
-              <CatMascot />
-            </div>
+            {/* Sugerencias del agente (solo al inicio del chat) */}
+            {activeAgent && displayMessages.length <= 1 && (
+              <div className="agent-suggestions">
+                {activeAgent.suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    className="agent-suggestion-chip"
+                    onClick={() => handleSendMessage(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Mascota Chimuelo paseando arriba del input (oculta en chat de agente) */}
+            {!activeAgent && (
+              <div className="cat-mascot-shelf" aria-hidden="true">
+                <CatMascot />
+              </div>
+            )}
             <div className="v2-model-selector">
               <button
                 className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}

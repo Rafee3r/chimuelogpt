@@ -5330,6 +5330,23 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   z-index: 5;
 }
 
+/* En temas oscuros: halo gris claro detrás del gato para que se vea */
+[data-theme="dark"] .cat-mascot,
+[data-theme="oled"] .cat-mascot {
+  filter:
+    drop-shadow(0 0 12px rgba(180, 180, 200, 0.35))
+    drop-shadow(0 0 4px rgba(200, 200, 220, 0.5))
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .cat-mascot {
+    filter:
+      drop-shadow(0 0 12px rgba(180, 180, 200, 0.35))
+      drop-shadow(0 0 4px rgba(200, 200, 220, 0.5))
+      drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
+  }
+}
+
 /* Idle breathing (sentado) */
 .cat-mascot.pose-sit svg {
   animation: catBreathe 2.5s ease-in-out infinite;
@@ -5474,7 +5491,18 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   animation: settingsSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-[data-theme="oled"] .wa-chat-header { background: #0a3933; }
+/* Dark themes: usar el header gris-azulado de WhatsApp dark mode */
+[data-theme="dark"] .wa-chat-header,
+[data-theme="oled"] .wa-chat-header {
+  background: #1f2c34;
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .wa-chat-header {
+    background: #1f2c34;
+    border-bottom-color: rgba(255,255,255,0.06);
+  }
+}
 
 .wa-back-btn {
   background: transparent;
@@ -5565,8 +5593,67 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 [data-theme="dark"] .chat-area.whatsapp-mode .message.user .message-text,
 [data-theme="oled"] .chat-area.whatsapp-mode .message.user .message-text {
-  background: #056162 !important;
+  background: #005c4b !important;
   color: #e9edef !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .chat-area.whatsapp-mode .message.user .message-text {
+    background: #005c4b !important;
+    color: #e9edef !important;
+  }
+  :root:not([data-theme]) .chat-area.whatsapp-mode .message.assistant .message-text {
+    background: #202c33;
+    color: #e9edef;
+  }
+}
+
+/* ── Chips de sugerencias del agente (al iniciar chat) ── */
+.agent-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 8px;
+  justify-content: center;
+  max-width: 48rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.agent-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 18px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s,
+              transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: agentRowEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.agent-suggestion-chip:nth-child(1) { animation-delay: 0.05s; }
+.agent-suggestion-chip:nth-child(2) { animation-delay: 0.12s; }
+.agent-suggestion-chip:nth-child(3) { animation-delay: 0.19s; }
+.agent-suggestion-chip:nth-child(4) { animation-delay: 0.26s; }
+
+.agent-suggestion-chip:hover {
+  background: var(--sidebar-hover);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+.agent-suggestion-chip:active {
+  transform: scale(0.94);
+  transition: transform 0.08s ease;
+}
+
+[data-theme="dark"] .agent-suggestion-chip,
+[data-theme="oled"] .agent-suggestion-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
 }
 
 /* Burbuja del asistente (agente): blanca */
