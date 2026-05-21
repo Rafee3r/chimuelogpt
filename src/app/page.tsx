@@ -29,7 +29,7 @@ function CodeBlock({ inline, className, children, ...props }: any) {
   return (
     <div className="code-block-wrapper">
       <button
-        className="code-copy-btn"
+        className={`code-copy-btn ${copied ? 'copied' : ''}`}
         onClick={() => {
           navigator.clipboard.writeText(text).then(() => {
             setCopied(true);
@@ -38,7 +38,7 @@ function CodeBlock({ inline, className, children, ...props }: any) {
         }}
         title="Copiar código"
       >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
+        {copied ? <Check size={14} key="check" /> : <Copy size={14} key="copy" />}
         <span>{copied ? "Copiado" : "Copiar"}</span>
       </button>
       <pre><code className={className} {...props}>{children}</code></pre>
@@ -160,6 +160,18 @@ export default function Home() {
   const uniTextareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSystemHint = useRef('');
   const currentChatIdRef = useRef<string | null>(null);
+
+  /* ─────────── Toast (Nivel 4 — Cambio 15) ─────────── */
+  const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: '', show: false });
+  const toastTimerRef = useRef<any>(null);
+  const showToast = (msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, show: true });
+    toastTimerRef.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 1800);
+  };
+
+  /* ─────────── Scroll-to-bottom (Nivel 3 — Cambio 12) ─────────── */
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
   const queueChatsToLS = useCallback((chats: Chat[]) => {
@@ -2030,7 +2042,13 @@ export default function Home() {
           </div>
         )}
 
-        <div ref={chatScrollRef} className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+        <div ref={chatScrollRef}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+            setShowScrollBtn(distFromBottom > 200 && displayMessages.length > 0);
+          }}
+          className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "university" ? (
             /* ── CEREBRO ACADÉMICO v2 — chat-first ── */
             <div className="uni-v2-shell">
@@ -2515,12 +2533,12 @@ export default function Home() {
                                   navigator.share({ title: 'ChimueloGPT', text: displayContent }).catch(() => {});
                                 } else {
                                   navigator.clipboard.writeText(displayContent);
-                                  alert('Copiado al portapapeles');
+                                  showToast('Copiado al portapapeles');
                                 }
                               }}><Share2 size={16} /></button>
                               <button className="action-btn hover-bg" title="Copiar" onClick={() => {
                                 navigator.clipboard.writeText(displayContent);
-                                alert('Copiado al portapapeles');
+                                showToast('Copiado al portapapeles');
                               }}><Copy size={16} /></button>
                             </div>
                           )}
@@ -2842,6 +2860,27 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── Nivel 3 Cambio 12 — Scroll to bottom button ── */}
+      {showScrollBtn && (
+        <button
+          className="scroll-to-bottom-btn"
+          onClick={() => {
+            const el = chatScrollRef.current;
+            if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+          }}
+          title="Bajar al final"
+          aria-label="Bajar al final"
+        >
+          <ChevronDown size={20} />
+        </button>
+      )}
+
+      {/* ── Nivel 4 Cambio 15 — Toast premium ── */}
+      <div className={`chimuelo-toast ${toast.show ? 'visible' : ''}`} role="status">
+        <Check size={16} />
+        <span>{toast.msg}</span>
+      </div>
     </div>
   );
 }

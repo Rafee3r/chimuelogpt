@@ -4886,3 +4886,258 @@ a {
   transition: transform 0.08s ease-in;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   NIVEL 3 — UX x10: Detalles pulidos (bueno → excelente)
+   Documentación de cambios:
+
+   CAMBIO 9 — Cambio de tema con morphing de colores
+   Problema: al cambiar entre claro/oscuro/OLED/sakura, etc., los
+   colores saltaban instantáneamente, sintiéndose abrupto.
+   Solución: se agregan transiciones de background-color, color y
+   border-color de 400ms a TODAS las superficies clave (body, sidebar,
+   chat-area, input-container, message bubbles, sb-row, smart-pill,
+   settings, modales). Cuando el data-theme cambia, los nuevos valores
+   de las variables CSS se aplican y los elementos hacen "morph"
+   suave entre paletas. La app se siente vivir, no parpadea.
+
+   CAMBIO 10 — Sidebar: hover deslizante con ::before
+   Problema: los items del sidebar solo cambiaban el fondo al hacer
+   hover, sin indicador direccional o de profundidad.
+   Solución: cada .sb-row gana un ::before — una barra vertical de
+   3px que crece desde la izquierda en 250ms al hacer hover. Cuando
+   el item está .active, la barra queda llena (height 70%, color
+   blanco translúcido). Funciona como anclaje visual lateral.
+
+   CAMBIO 11 — Botón copiar código: morph de íconos
+   Problema: el ícono Copy → Check cambiaba de golpe sin animación.
+   Solución: cuando aparece .code-copy-btn.copied, el botón
+   transiciona a un fondo verde translúcido + borde verde, y el
+   nuevo <svg> entra con scale(0)→scale(1) usando spring easing.
+   Como cada lucide-icon es un componente distinto, el nuevo SVG es
+   un nodo nuevo del DOM → la animación CSS dispara automáticamente.
+   El "key" en el JSX refuerza el remount.
+
+   CAMBIO 12 — Botón scroll-to-bottom con pulse
+   Problema: cuando el usuario sube a leer mensajes anteriores y la
+   conversación sigue, no había forma visual de volver al final.
+   Solución: nuevo botón flotante (.scroll-to-bottom-btn) abajo
+   derecha del chat. Aparece cuando el usuario está a más de 200px
+   del fondo. Hace un fadeUp al aparecer + pulse infinito suave del
+   box-shadow para invitar al click. Click → scroll suave al final.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Cambio 9 — Theme morphing ── */
+body, .sidebar, .chat-area, .v2-input-container, .message-text,
+.sb-row, .smart-pill, .uni-v2-pill, .settings-page, .settings-page-body,
+.v2-input-area, .mobile-header, .modal-content, .sidebar-header,
+.code-copy-btn, .action-btn, .v2-send-btn, .v2-model-btn,
+.segment-btn, .palette-modal, .palette-item, .uni-v2-tpl-btn,
+.uni-v2-pill-new, .attachment-placeholder, .doc-preview-chip,
+.image-preview-img {
+  transition: background-color 0.4s ease, color 0.4s ease,
+              border-color 0.4s ease;
+}
+
+/* Las pills y botones tenían transiciones específicas (hover, press elástico).
+   Las preservamos sobreescribiendo solo los colores con duración 400ms:
+   las transformaciones siguen rápidas. */
+.smart-pill {
+  transition: background-color 0.4s ease, border-color 0.4s ease,
+              color 0.4s ease, box-shadow 0.3s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.uni-v2-pill {
+  transition: background-color 0.4s ease, border-color 0.4s ease,
+              color 0.4s ease, box-shadow 0.3s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Cambio 10 — Sidebar items: hover deslizante ── */
+.sb-row {
+  position: relative;
+  overflow: hidden;
+}
+.sb-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  background: var(--accent-color);
+  border-radius: 0 3px 3px 0;
+  transform: translateY(-50%);
+  transition: height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.3s ease;
+  pointer-events: none;
+}
+.sb-row:hover::before {
+  height: 50%;
+}
+.sb-row.active::before {
+  height: 70%;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Cambio 11 — Code copy button: morph ── */
+.code-copy-btn {
+  transition: opacity 0.2s, background 0.3s ease,
+              border-color 0.3s ease, color 0.3s ease;
+}
+.code-copy-btn.copied {
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.45) !important;
+  color: #22c55e !important;
+  opacity: 1 !important;
+}
+.code-copy-btn svg {
+  animation: iconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+}
+@keyframes iconPop {
+  0%   { transform: scale(0) rotate(-25deg); opacity: 0; }
+  60%  { transform: scale(1.15) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ── Cambio 12 — Scroll-to-bottom button con pulse ── */
+.scroll-to-bottom-btn {
+  position: fixed;
+  bottom: 140px;
+  right: 24px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 30;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15), 0 0 0 0 var(--accent-glow);
+  animation: scrollBtnIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both,
+             scrollBtnPulse 2.4s ease-in-out 0.3s infinite;
+  transition: transform 0.2s, background 0.2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.scroll-to-bottom-btn:hover {
+  transform: scale(1.08);
+  background: var(--sidebar-hover);
+}
+.scroll-to-bottom-btn:active {
+  transform: scale(0.92);
+  transition: transform 0.08s;
+}
+@keyframes scrollBtnIn {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.7); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes scrollBtnPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.15), 0 0 0 0 var(--accent-glow); }
+  50%      { box-shadow: 0 4px 14px rgba(0,0,0,0.15), 0 0 0 10px transparent; }
+}
+
+@media (max-width: 768px) {
+  .scroll-to-bottom-btn {
+    bottom: 120px;
+    right: 16px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NIVEL 4 — UX x10: Polish fino (solo lo notarás si buscas)
+   Documentación de cambios:
+
+   CAMBIO 13 — Settings: slide-up al entrar
+   Problema: la pantalla de configuración aparecía instantáneamente
+   al tocar el engranaje — sin transición.
+   Solución: .settings-page entra con translateY(30px)→0 + opacity
+   fade en 350ms con easing suave. Da la sensación de panel que
+   "sube" desde abajo, típico de iOS sheet.
+
+   CAMBIO 14 — Sidebar mobile: slide real + backdrop blur creciente
+   Problema: el sidebar móvil ya se desliza desde la izquierda, pero
+   el backdrop solo cambiaba de opacidad — sin blur que enfocara
+   visualmente el sidebar.
+   Solución: se agrega backdrop-filter: blur(0px)→blur(8px) al
+   .sidebar-backdrop. También se aumenta la duración del slide del
+   sidebar a 320ms y se cambia el easing a cubic-bezier(0.32, 0.72, 0, 1)
+   (el "spring" suave que usa iOS para sheets).
+
+   CAMBIO 15 — Toast premium con slide+fade
+   Problema: se usaba alert() del navegador para "Copiado al
+   portapapeles" — bloqueante, feo, requiere click para cerrar.
+   Solución: nuevo componente .chimuelo-toast fixed centrado abajo.
+   Entrada: translateY(20px)→0 + opacity 0→1 (250ms).
+   Salida: translateY(-8px) + opacity 0 (250ms). Auto-cierre 1.8s.
+   Incluye ícono Check verde + texto. Glassmorphism con backdrop-blur.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Cambio 13 — Settings page: slide up ── */
+.settings-page {
+  animation: settingsSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes settingsSlideUp {
+  0%   { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cambio 14 — Sidebar mobile: slide + backdrop blur ── */
+@media (max-width: 767px) {
+  .sidebar {
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+.sidebar-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+              backdrop-filter 0.32s ease;
+}
+
+/* ── Cambio 15 — Toast premium ── */
+.chimuelo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%) translateY(20px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: rgba(20, 20, 22, 0.92);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 0.25s ease,
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chimuelo-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.chimuelo-toast svg {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+[data-theme="light"] .chimuelo-toast,
+[data-theme="sakura"] .chimuelo-toast,
+[data-theme="solar"] .chimuelo-toast,
+[data-theme="ocean"] .chimuelo-toast {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15),
+              0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
