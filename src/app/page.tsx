@@ -48,44 +48,93 @@ function CodeBlock({ inline, className, children, ...props }: any) {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-/* ─────────── Mascota: gatito negro detallado con poses ───────────
-   Más grande (90x70), con pancita, dedos en patas, hocico, parpadeo,
-   oreja interna rosada, bigotes largos. SVG inline con 4 poses. */
+/* ─────────── Mascota: gatito negro con vida propia ───────────
+   9 poses + click para maullar. Movimiento random por el shelf.
+   SVG detallado: pancita blanca, rayas sutiles, garras, ojos
+   expresivos según el estado. */
+type CatPose = 'walk-right' | 'walk-left' | 'sit' | 'sleep' | 'stretch'
+             | 'groom' | 'play' | 'look-up' | 'yawn';
+
 function CatMascot() {
-  const [pose, setPose] = useState<'walk-right' | 'walk-left' | 'sit' | 'sleep' | 'stretch'>('sit');
+  const [pose, setPose] = useState<CatPose>('sit');
   const [pos, setPos] = useState(20);
+  const [meowing, setMeowing] = useState(false);
+
+  // Helper: pick random position avoiding too close to current
+  const randomPos = (current: number) => {
+    let p = 5 + Math.random() * 85;
+    while (Math.abs(p - current) < 25) p = 5 + Math.random() * 85;
+    return Math.round(p);
+  };
 
   useEffect(() => {
     let cancelled = false;
-    const states: Array<{ pose: typeof pose; duration: number; target?: number }> = [
-      { pose: 'sit', duration: 4000 },
-      { pose: 'walk-right', duration: 5500, target: 82 },
-      { pose: 'sit', duration: 2500 },
-      { pose: 'stretch', duration: 3500 },
-      { pose: 'walk-left', duration: 5500, target: 18 },
-      { pose: 'sit', duration: 2000 },
-      { pose: 'sleep', duration: 7000 },
+    let lastPos = 20;
+    // Action pool with weights (probability per cycle)
+    const actionPool: Array<{ pose: CatPose; duration: number; moves: boolean }> = [
+      { pose: 'sit',        duration: 3500, moves: false },
+      { pose: 'sit',        duration: 4500, moves: false },
+      { pose: 'walk-right', duration: 4500, moves: true  },
+      { pose: 'walk-left',  duration: 4500, moves: true  },
+      { pose: 'stretch',    duration: 3000, moves: false },
+      { pose: 'sleep',      duration: 7000, moves: false },
+      { pose: 'groom',      duration: 4000, moves: false },
+      { pose: 'play',       duration: 4500, moves: false },
+      { pose: 'look-up',    duration: 3500, moves: false },
+      { pose: 'yawn',       duration: 2500, moves: false },
     ];
-    let i = 0;
+    const pick = () => actionPool[Math.floor(Math.random() * actionPool.length)];
+
     const next = () => {
       if (cancelled) return;
-      const s = states[i % states.length];
+      const s = pick();
       setPose(s.pose);
-      if (s.target !== undefined) setPos(s.target);
-      i++;
-      setTimeout(next, s.duration);
+      if (s.moves) {
+        const target = randomPos(lastPos);
+        // Si va a caminar a la derecha, asegurar que target sea > posición actual
+        if (s.pose === 'walk-right' && target < lastPos) {
+          const newT = Math.min(90, lastPos + 30 + Math.random() * 30);
+          setPos(Math.round(newT));
+          lastPos = newT;
+        } else if (s.pose === 'walk-left' && target > lastPos) {
+          const newT = Math.max(5, lastPos - 30 - Math.random() * 30);
+          setPos(Math.round(newT));
+          lastPos = newT;
+        } else {
+          setPos(target);
+          lastPos = target;
+        }
+      }
+      const variableDuration = s.duration + (Math.random() * 1500 - 500);
+      setTimeout(next, variableDuration);
     };
     next();
     return () => { cancelled = true; };
   }, []);
 
+  const handleClick = () => {
+    if (meowing) return;
+    setMeowing(true);
+    setTimeout(() => setMeowing(false), 1800);
+  };
+
   const flip = pose === 'walk-left';
 
   return (
     <div
-      className={`cat-mascot pose-${pose}`}
+      className={`cat-mascot pose-${pose} ${meowing ? 'meowing' : ''}`}
       style={{ left: `${pos}%`, transform: `translateX(-50%) ${flip ? 'scaleX(-1)' : ''}` }}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label="Maúlla al gatito"
     >
+      {/* Burbuja "¡Miau!" cuando se le hace click */}
+      {meowing && (
+        <div className="cat-meow-bubble" aria-hidden="true">
+          ¡Miau! 🐾
+        </div>
+      )}
       <svg viewBox="0 0 100 70" width="92" height="64" xmlns="http://www.w3.org/2000/svg">
         {pose === 'sleep' ? (
           <>
@@ -162,74 +211,197 @@ function CatMascot() {
           </>
         ) : (
           <>
-            {/* SENTADO / CAMINANDO: postura standard */}
+            {/* SENTADO / CAMINANDO / GROOM / PLAY / LOOK-UP / YAWN */}
+
+            {/* Bolita roja cuando juega — antes del cuerpo para que pase atrás */}
+            {pose === 'play' && (
+              <circle className="cat-ball" cx="22" cy="62" r="4" fill="#ef4444" />
+            )}
+
             {/* Cola */}
             <path
               className="cat-tail"
-              d={pose === 'sit' ? 'M22 50 Q12 42 18 28' : 'M22 48 Q10 38 14 22'}
+              d={
+                pose === 'walk-right' || pose === 'walk-left' ? 'M22 48 Q10 38 14 22' :
+                pose === 'play' ? 'M22 50 Q14 38 22 22' :
+                pose === 'look-up' ? 'M22 50 Q12 44 20 32' :
+                'M22 50 Q12 42 18 28'
+              }
               stroke="#0a0a0a"
               strokeWidth="6"
               fill="none"
               strokeLinecap="round"
             />
+
             {/* Cuerpo (pancita) */}
             <ellipse cx="50" cy="48" rx="26" ry="14" fill="#1a1a1a" />
-            {/* Pancita más clara */}
-            <ellipse cx="50" cy="52" rx="18" ry="9" fill="#2a2a2a" />
-            {/* Cabeza */}
-            <circle cx="72" cy="32" r="14" fill="#1a1a1a" />
-            <circle cx="72" cy="32" r="12" fill="#222" />
-            {/* Orejas grandes triangulares */}
-            <path d="M63 22 L61 11 L70 18 Z" fill="#0a0a0a" className="cat-ear-left" />
-            <path d="M64 20 L63 14 L68 18 Z" fill="#ff9eb5" />
-            <path d="M75 18 L80 9 L84 20 Z" fill="#0a0a0a" className="cat-ear-right" />
-            <path d="M77 18 L80 13 L82 19 Z" fill="#ff9eb5" />
-            {/* Ojos amarillos grandes con parpadeo */}
-            <g className="cat-eyes">
-              <ellipse cx="67" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
-              <ellipse cx="76" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
-              {/* Pupilas verticales */}
-              <ellipse cx="67" cy="32" rx="0.8" ry="2.8" fill="#000" />
-              <ellipse cx="76" cy="32" rx="0.8" ry="2.8" fill="#000" />
-              {/* Brillo */}
-              <circle cx="67.8" cy="31" r="0.6" fill="#fff" />
-              <circle cx="76.8" cy="31" r="0.6" fill="#fff" />
+            {/* Rayas sutiles del pelaje */}
+            <path d="M35 41 Q40 39 45 41" stroke="#2d2d2d" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.6" />
+            <path d="M50 40 Q55 38 60 40" stroke="#2d2d2d" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.6" />
+            <path d="M40 45 Q48 43 56 45" stroke="#2d2d2d" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.5" />
+            {/* Pancita blanca/clara */}
+            <ellipse cx="50" cy="54" rx="14" ry="7" fill="#3a3a3a" />
+            <ellipse cx="50" cy="55" rx="9" ry="4" fill="#4a4a4a" opacity="0.7" />
+
+            {/* Cabeza — rota un poco hacia arriba si está mirando arriba */}
+            <g className={pose === 'look-up' ? 'cat-head-up' : ''} style={pose === 'look-up' ? { transformOrigin: '72px 40px' } : undefined}>
+              <circle cx="72" cy="32" r="14" fill="#1a1a1a" />
+              <circle cx="72" cy="32" r="12" fill="#222" />
+              {/* Mejillas más claras */}
+              <ellipse cx="62" cy="36" rx="3" ry="2" fill="#2d2d2d" opacity="0.7" />
+              <ellipse cx="82" cy="36" rx="3" ry="2" fill="#2d2d2d" opacity="0.7" />
+              {/* Raya frontal entre los ojos */}
+              <path d="M72 22 L72 28" stroke="#0a0a0a" strokeWidth="1.5" opacity="0.6" strokeLinecap="round" />
+
+              {/* Orejas grandes triangulares */}
+              <path d="M63 22 L61 11 L70 18 Z" fill="#0a0a0a" className="cat-ear-left" />
+              <path d="M64 20 L63 14 L68 18 Z" fill="#ff9eb5" className="cat-ear-left" />
+              <path d="M75 18 L80 9 L84 20 Z" fill="#0a0a0a" className="cat-ear-right" />
+              <path d="M77 18 L80 13 L82 19 Z" fill="#ff9eb5" className="cat-ear-right" />
+
+              {/* Ojos — diferentes expresiones por pose */}
+              {pose === 'yawn' || pose === 'groom' ? (
+                /* Ojos entrecerrados (placer/sueño) */
+                <g className="cat-eyes">
+                  <path d="M64.5 32 Q67 33.5 69.5 32" stroke="#000" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  <path d="M73.5 32 Q76 33.5 78.5 32" stroke="#000" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                </g>
+              ) : pose === 'play' ? (
+                /* Ojos grandes redondos (entusiasmo) */
+                <g className="cat-eyes">
+                  <ellipse cx="67" cy="32" rx="3" ry="3.5" fill="#fde047" />
+                  <ellipse cx="76" cy="32" rx="3" ry="3.5" fill="#fde047" />
+                  <ellipse cx="67" cy="32" rx="2" ry="3" fill="#000" />
+                  <ellipse cx="76" cy="32" rx="2" ry="3" fill="#000" />
+                  <circle cx="67.6" cy="31" r="0.7" fill="#fff" />
+                  <circle cx="76.6" cy="31" r="0.7" fill="#fff" />
+                </g>
+              ) : pose === 'look-up' ? (
+                /* Ojos mirando hacia arriba */
+                <g className="cat-eyes">
+                  <ellipse cx="67" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+                  <ellipse cx="76" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+                  <ellipse cx="67" cy="30.5" rx="0.9" ry="2.5" fill="#000" />
+                  <ellipse cx="76" cy="30.5" rx="0.9" ry="2.5" fill="#000" />
+                  <circle cx="67.7" cy="29.5" r="0.6" fill="#fff" />
+                  <circle cx="76.7" cy="29.5" r="0.6" fill="#fff" />
+                </g>
+              ) : (
+                /* Default: amarillos con pupila vertical */
+                <g className="cat-eyes">
+                  <ellipse cx="67" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+                  <ellipse cx="76" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+                  <ellipse cx="67" cy="32" rx="0.8" ry="2.8" fill="#000" />
+                  <ellipse cx="76" cy="32" rx="0.8" ry="2.8" fill="#000" />
+                  <circle cx="67.8" cy="31" r="0.6" fill="#fff" />
+                  <circle cx="76.8" cy="31" r="0.6" fill="#fff" />
+                </g>
+              )}
+
+              {/* Hocico */}
+              <ellipse cx="72" cy="37" rx="3.5" ry="2.5" fill="#2a2a2a" />
+              {/* Nariz */}
+              <path d="M70.5 36 L73.5 36 L72 37.5 Z" fill="#ff9eb5" />
+
+              {/* Boca — varía por pose */}
+              {pose === 'yawn' ? (
+                <ellipse cx="72" cy="40.5" rx="3" ry="3.5" fill="#2a0a14" />
+              ) : pose === 'groom' ? (
+                <>
+                  {/* Boca abierta con lengua afuera */}
+                  <ellipse cx="72" cy="40" rx="2" ry="2" fill="#2a0a14" />
+                  <ellipse cx="72" cy="41.5" rx="1.6" ry="2.2" fill="#ff7fa5" className="cat-tongue" />
+                </>
+              ) : pose === 'play' || (meowing) ? (
+                /* Boquita abierta sonriendo */
+                <>
+                  <path d="M72 37.5 L72 39" stroke="#000" strokeWidth="0.6" />
+                  <path d="M72 39 Q69 41.5 67 40.5" stroke="#000" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                  <path d="M72 39 Q75 41.5 77 40.5" stroke="#000" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                </>
+              ) : (
+                <path d="M72 37.5 L72 39 M72 39 Q70.5 40 70 39.5 M72 39 Q73.5 40 74 39.5" stroke="#000" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+              )}
+
+              {/* Bigotes largos */}
+              <line x1="58" y1="36" x2="68" y2="36" stroke="#bbb" strokeWidth="0.5" />
+              <line x1="58" y1="38" x2="68" y2="37.5" stroke="#bbb" strokeWidth="0.5" />
+              <line x1="58" y1="40" x2="68" y2="39" stroke="#bbb" strokeWidth="0.5" />
+              <line x1="76" y1="36" x2="86" y2="36" stroke="#bbb" strokeWidth="0.5" />
+              <line x1="76" y1="37.5" x2="86" y2="38" stroke="#bbb" strokeWidth="0.5" />
+              <line x1="76" y1="39" x2="86" y2="40" stroke="#bbb" strokeWidth="0.5" />
             </g>
-            {/* Hocico definido */}
-            <ellipse cx="72" cy="37" rx="3.5" ry="2.5" fill="#2a2a2a" />
-            {/* Naricita rosada en forma de triángulo */}
-            <path d="M70.5 36 L73.5 36 L72 37.5 Z" fill="#ff9eb5" />
-            {/* Boquita */}
-            <path d="M72 37.5 L72 39 M72 39 Q70.5 40 70 39.5 M72 39 Q73.5 40 74 39.5" stroke="#000" strokeWidth="0.6" fill="none" strokeLinecap="round" />
-            {/* Bigotes largos a ambos lados */}
-            <line x1="58" y1="36" x2="68" y2="36" stroke="#bbb" strokeWidth="0.5" />
-            <line x1="58" y1="38" x2="68" y2="37.5" stroke="#bbb" strokeWidth="0.5" />
-            <line x1="58" y1="40" x2="68" y2="39" stroke="#bbb" strokeWidth="0.5" />
-            <line x1="76" y1="36" x2="86" y2="36" stroke="#bbb" strokeWidth="0.5" />
-            <line x1="76" y1="37.5" x2="86" y2="38" stroke="#bbb" strokeWidth="0.5" />
-            <line x1="76" y1="39" x2="86" y2="40" stroke="#bbb" strokeWidth="0.5" />
-            {/* Patas con dedos */}
-            <g className="cat-leg cat-leg-1">
-              <rect x="34" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
-              <ellipse cx="37" cy="66" rx="4" ry="2" fill="#222" />
-              <circle cx="35" cy="65.5" r="0.7" fill="#ff9eb5" />
-              <circle cx="37" cy="65.8" r="0.7" fill="#ff9eb5" />
-              <circle cx="39" cy="65.5" r="0.7" fill="#ff9eb5" />
-            </g>
-            <g className="cat-leg cat-leg-2">
-              <rect x="46" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
-              <ellipse cx="49" cy="66" rx="4" ry="2" fill="#222" />
-              <circle cx="47" cy="65.5" r="0.7" fill="#ff9eb5" />
-              <circle cx="49" cy="65.8" r="0.7" fill="#ff9eb5" />
-              <circle cx="51" cy="65.5" r="0.7" fill="#ff9eb5" />
-            </g>
-            <g className="cat-leg cat-leg-3">
-              <rect x="58" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
-              <ellipse cx="61" cy="66" rx="4" ry="2" fill="#222" />
-              <circle cx="59" cy="65.5" r="0.7" fill="#ff9eb5" />
-              <circle cx="61" cy="65.8" r="0.7" fill="#ff9eb5" />
-              <circle cx="63" cy="65.5" r="0.7" fill="#ff9eb5" />
-            </g>
+
+            {/* Patas con dedos y garras */}
+            {pose === 'groom' ? (
+              /* Una pata levantada hacia la cara (acicalándose) */
+              <>
+                <g className="cat-paw-up">
+                  <rect x="62" y="38" width="5" height="14" fill="#0a0a0a" rx="2.5" transform="rotate(35, 64.5, 45)" />
+                  <ellipse cx="62" cy="40" rx="3.5" ry="2.2" fill="#222" />
+                  <circle cx="60.5" cy="39.5" r="0.7" fill="#ff9eb5" />
+                  <circle cx="62" cy="40" r="0.7" fill="#ff9eb5" />
+                  <circle cx="63.5" cy="39.5" r="0.7" fill="#ff9eb5" />
+                </g>
+                {/* Patas restantes en el suelo */}
+                <g className="cat-leg">
+                  <rect x="40" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="43" cy="66" rx="4" ry="2" fill="#222" />
+                </g>
+                <g className="cat-leg">
+                  <rect x="52" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="55" cy="66" rx="4" ry="2" fill="#222" />
+                </g>
+              </>
+            ) : pose === 'play' ? (
+              /* Pata extendida hacia la bolita */
+              <>
+                <g className="cat-paw-play">
+                  <rect x="24" y="54" width="6" height="14" fill="#0a0a0a" rx="2.5" transform="rotate(-25, 27, 60)" />
+                  <ellipse cx="22" cy="62" rx="3.5" ry="2.2" fill="#222" />
+                  <circle cx="20.5" cy="61.5" r="0.7" fill="#ff9eb5" />
+                  <circle cx="22" cy="62" r="0.7" fill="#ff9eb5" />
+                  <circle cx="23.5" cy="61.5" r="0.7" fill="#ff9eb5" />
+                </g>
+                <g className="cat-leg">
+                  <rect x="46" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="49" cy="66" rx="4" ry="2" fill="#222" />
+                </g>
+                <g className="cat-leg">
+                  <rect x="58" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="61" cy="66" rx="4" ry="2" fill="#222" />
+                </g>
+              </>
+            ) : (
+              /* Patas normales (sit, walk, look-up, yawn) */
+              <>
+                <g className="cat-leg cat-leg-1">
+                  <rect x="34" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="37" cy="66" rx="4" ry="2" fill="#222" />
+                  <circle cx="35" cy="65.5" r="0.7" fill="#ff9eb5" />
+                  <circle cx="37" cy="65.8" r="0.7" fill="#ff9eb5" />
+                  <circle cx="39" cy="65.5" r="0.7" fill="#ff9eb5" />
+                  {/* Mini garras */}
+                  <line x1="35" y1="67.5" x2="35" y2="68.3" stroke="#fff" strokeWidth="0.4" />
+                  <line x1="37" y1="67.8" x2="37" y2="68.6" stroke="#fff" strokeWidth="0.4" />
+                  <line x1="39" y1="67.5" x2="39" y2="68.3" stroke="#fff" strokeWidth="0.4" />
+                </g>
+                <g className="cat-leg cat-leg-2">
+                  <rect x="46" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="49" cy="66" rx="4" ry="2" fill="#222" />
+                  <circle cx="47" cy="65.5" r="0.7" fill="#ff9eb5" />
+                  <circle cx="49" cy="65.8" r="0.7" fill="#ff9eb5" />
+                  <circle cx="51" cy="65.5" r="0.7" fill="#ff9eb5" />
+                </g>
+                <g className="cat-leg cat-leg-3">
+                  <rect x="58" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+                  <ellipse cx="61" cy="66" rx="4" ry="2" fill="#222" />
+                  <circle cx="59" cy="65.5" r="0.7" fill="#ff9eb5" />
+                  <circle cx="61" cy="65.8" r="0.7" fill="#ff9eb5" />
+                  <circle cx="63" cy="65.5" r="0.7" fill="#ff9eb5" />
+                </g>
+              </>
+            )}
           </>
         )}
       </svg>

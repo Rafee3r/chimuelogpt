@@ -5328,7 +5328,11 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
               transform 0.3s ease;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.22));
   z-index: 5;
+  cursor: pointer;
+  pointer-events: auto;
 }
+.cat-mascot:active { transform: translateX(-50%) scale(0.94); transition: transform 0.08s; }
+.cat-mascot.pose-walk-left:active { transform: translateX(-50%) scaleX(-1) scale(0.94); }
 
 /* En temas oscuros: halo gris claro detrás del gato para que se vea */
 [data-theme="dark"] .cat-mascot,
@@ -5448,6 +5452,113 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
     width: 70px;
     height: 50px;
   }
+}
+
+/* ── Nuevas poses del gato ── */
+/* Lamiéndose la pata: la pata levantada vibra suavemente */
+.cat-mascot.pose-groom .cat-paw-up {
+  animation: catGroom 1.2s ease-in-out infinite;
+  transform-origin: 64px 50px;
+}
+@keyframes catGroom {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-8deg); }
+}
+/* Lengua afuera vibra */
+.cat-tongue {
+  animation: catTongue 0.8s ease-in-out infinite;
+}
+@keyframes catTongue {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(0.5px) scaleY(1.1); }
+}
+
+/* Jugando con la bolita: la pata da toquecitos */
+.cat-mascot.pose-play .cat-paw-play {
+  animation: catPlayPaw 0.6s ease-in-out infinite;
+  transform-origin: 30px 60px;
+}
+@keyframes catPlayPaw {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50%      { transform: translateX(-3px) rotate(-5deg); }
+}
+/* Bolita rebota */
+.cat-ball {
+  animation: catBall 0.6s ease-in-out infinite;
+}
+@keyframes catBall {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-4px, -2px); }
+}
+
+/* Mirando arriba: cabeza inclinada permanentemente */
+.cat-head-up {
+  transform: rotate(-12deg);
+}
+
+/* Bostezando: cuerpo se hincha levemente */
+.cat-mascot.pose-yawn svg {
+  animation: catYawnBreathe 2.5s ease-in-out infinite;
+}
+@keyframes catYawnBreathe {
+  0%, 100% { transform: scaleY(1); }
+  40%      { transform: scaleY(1.06); }
+}
+
+/* ── Burbuja "¡Miau!" al hacer click ── */
+.cat-meow-bubble {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  animation: catMeowBubble 1.8s ease-out forwards;
+  z-index: 10;
+  pointer-events: none;
+}
+.cat-meow-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+@keyframes catMeowBubble {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.6); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.1); }
+  30%  { transform: translateX(-50%) translateY(0) scale(1); }
+  80%  { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(0.8); }
+}
+/* En dark: burbuja blanca con sombra glow */
+[data-theme="dark"] .cat-meow-bubble,
+[data-theme="oled"] .cat-meow-bubble {
+  background: #2a2a2e;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+[data-theme="dark"] .cat-meow-bubble::after,
+[data-theme="oled"] .cat-meow-bubble::after {
+  border-top-color: #2a2a2e;
+}
+
+/* Cuando maúlla: pequeño salto */
+.cat-mascot.meowing svg {
+  animation: catMeowJump 0.4s ease-out;
+}
+@keyframes catMeowJump {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
