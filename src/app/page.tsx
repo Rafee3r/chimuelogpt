@@ -48,43 +48,37 @@ function CodeBlock({ inline, className, children, ...props }: any) {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-/* ─────────── Mascota: gatito negro con poses ───────────
-   4 poses: walking, sitting, sleeping, stretching.
-   Cambia cada 6-10s. SVG inline para tener control de cada pose. */
+/* ─────────── Mascota: gatito negro detallado con poses ───────────
+   Más grande (90x70), con pancita, dedos en patas, hocico, parpadeo,
+   oreja interna rosada, bigotes largos. SVG inline con 4 poses. */
 function CatMascot() {
   const [pose, setPose] = useState<'walk-right' | 'walk-left' | 'sit' | 'sleep' | 'stretch'>('sit');
-  const [pos, setPos] = useState(20); // posición horizontal en %
+  const [pos, setPos] = useState(20);
 
   useEffect(() => {
     let cancelled = false;
-    const cycle = () => {
+    const states: Array<{ pose: typeof pose; duration: number; target?: number }> = [
+      { pose: 'sit', duration: 4000 },
+      { pose: 'walk-right', duration: 5500, target: 82 },
+      { pose: 'sit', duration: 2500 },
+      { pose: 'stretch', duration: 3500 },
+      { pose: 'walk-left', duration: 5500, target: 18 },
+      { pose: 'sit', duration: 2000 },
+      { pose: 'sleep', duration: 7000 },
+    ];
+    let i = 0;
+    const next = () => {
       if (cancelled) return;
-      const states: Array<{ pose: typeof pose; duration: number; target?: number }> = [
-        { pose: 'sit', duration: 4000 },
-        { pose: 'walk-right', duration: 5000, target: 80 },
-        { pose: 'sit', duration: 2500 },
-        { pose: 'stretch', duration: 3500 },
-        { pose: 'walk-left', duration: 5000, target: 15 },
-        { pose: 'sit', duration: 2000 },
-        { pose: 'sleep', duration: 7000 },
-      ];
-      let i = 0;
-      const next = () => {
-        if (cancelled) return;
-        const s = states[i % states.length];
-        setPose(s.pose);
-        if (s.target !== undefined) setPos(s.target);
-        i++;
-        setTimeout(next, s.duration);
-      };
-      next();
+      const s = states[i % states.length];
+      setPose(s.pose);
+      if (s.target !== undefined) setPos(s.target);
+      i++;
+      setTimeout(next, s.duration);
     };
-    cycle();
+    next();
     return () => { cancelled = true; };
   }, []);
 
-  // SVG del gatito negro — orientado a la derecha por defecto
-  // Cuando camina a la izquierda, lo volteamos con scaleX(-1)
   const flip = pose === 'walk-left';
 
   return (
@@ -92,69 +86,150 @@ function CatMascot() {
       className={`cat-mascot pose-${pose}`}
       style={{ left: `${pos}%`, transform: `translateX(-50%) ${flip ? 'scaleX(-1)' : ''}` }}
     >
-      <svg viewBox="0 0 60 40" width="46" height="32" xmlns="http://www.w3.org/2000/svg">
-        {/* Cuerpo + cabeza */}
+      <svg viewBox="0 0 100 70" width="92" height="64" xmlns="http://www.w3.org/2000/svg">
         {pose === 'sleep' ? (
           <>
-            {/* Durmiendo: acostado */}
-            <ellipse cx="30" cy="30" rx="22" ry="7" fill="#1a1a1a" />
-            <circle cx="48" cy="26" r="7" fill="#1a1a1a" />
-            <path d="M44 21 L46 17 L48 20 Z" fill="#1a1a1a" />
-            <path d="M50 21 L52 17 L54 20 Z" fill="#1a1a1a" />
-            {/* Ojos cerrados */}
-            <path d="M45 26 Q47 27 49 26" stroke="#444" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+            {/* DURMIENDO: acurrucado en bolita */}
+            {/* Cola enroscando el cuerpo */}
+            <path d="M20 55 Q12 50 16 38 Q22 30 38 32" stroke="#0a0a0a" strokeWidth="6" fill="none" strokeLinecap="round" />
+            {/* Cuerpo redondeado */}
+            <ellipse cx="55" cy="52" rx="32" ry="14" fill="#1a1a1a" />
+            <ellipse cx="55" cy="50" rx="28" ry="12" fill="#252525" />
+            {/* Cabeza apoyada */}
+            <circle cx="75" cy="44" r="13" fill="#1a1a1a" />
+            <circle cx="75" cy="44" r="11" fill="#222" />
+            {/* Orejas */}
+            <path d="M67 35 L66 27 L73 32 Z" fill="#0a0a0a" />
+            <path d="M68 32 L67 28 L71 31 Z" fill="#ff9eb5" />
+            <path d="M77 32 L80 25 L84 32 Z" fill="#0a0a0a" />
+            <path d="M78 31 L80 28 L82 31 Z" fill="#ff9eb5" />
+            {/* Ojos cerrados con pestañas */}
+            <path d="M70 44 Q72 46 74 44" stroke="#000" strokeWidth="1" fill="none" strokeLinecap="round" />
+            <path d="M76 44 Q78 46 80 44" stroke="#000" strokeWidth="1" fill="none" strokeLinecap="round" />
+            {/* Hocico */}
+            <ellipse cx="75" cy="48" rx="3" ry="2" fill="#2a2a2a" />
+            <path d="M75 47 L74 49 L75 49.5 L76 49 Z" fill="#ff9eb5" />
+            {/* Bigotes */}
+            <line x1="62" y1="48" x2="70" y2="48" stroke="#999" strokeWidth="0.5" />
+            <line x1="62" y1="50" x2="70" y2="49.5" stroke="#999" strokeWidth="0.5" />
+            <line x1="80" y1="48" x2="88" y2="48" stroke="#999" strokeWidth="0.5" />
+            <line x1="80" y1="49.5" x2="88" y2="50" stroke="#999" strokeWidth="0.5" />
+            {/* Patitas asomando */}
+            <ellipse cx="42" cy="62" rx="4" ry="3" fill="#0a0a0a" />
+            <ellipse cx="60" cy="63" rx="4" ry="3" fill="#0a0a0a" />
             {/* Z's flotando */}
-            <text x="12" y="14" fontSize="9" fill="#888" fontWeight="bold" className="cat-z cat-z1">z</text>
-            <text x="6" y="20" fontSize="7" fill="#888" fontWeight="bold" className="cat-z cat-z2">z</text>
+            <text x="20" y="22" fontSize="14" fill="#a5b4fc" fontWeight="bold" className="cat-z cat-z1">z</text>
+            <text x="10" y="32" fontSize="11" fill="#a5b4fc" fontWeight="bold" className="cat-z cat-z2">z</text>
+            <text x="4" y="40" fontSize="8" fill="#a5b4fc" fontWeight="bold" className="cat-z cat-z3">z</text>
           </>
         ) : pose === 'stretch' ? (
           <>
-            {/* Estirándose: cuerpo alargado */}
-            <ellipse cx="30" cy="28" rx="22" ry="6" fill="#1a1a1a" />
-            <circle cx="52" cy="24" r="6" fill="#1a1a1a" />
+            {/* ESTIRÁNDOSE: cuerpo alargado en yoga */}
+            {/* Cola arqueada */}
+            <path d="M12 50 Q4 42 8 28" stroke="#0a0a0a" strokeWidth="6" fill="none" strokeLinecap="round" />
+            {/* Cuerpo */}
+            <ellipse cx="50" cy="48" rx="36" ry="10" fill="#1a1a1a" />
+            <ellipse cx="50" cy="46" rx="32" ry="8" fill="#252525" />
+            {/* Cabeza inclinada hacia abajo */}
+            <circle cx="85" cy="40" r="11" fill="#1a1a1a" />
+            <circle cx="85" cy="40" r="9" fill="#222" />
             {/* Orejas */}
-            <path d="M48 19 L49 15 L52 18 Z" fill="#1a1a1a" />
-            <path d="M53 18 L55 15 L57 19 Z" fill="#1a1a1a" />
-            {/* Ojos cerrados (placer) */}
-            <path d="M50 23 Q51 24 52.5 23" stroke="#222" strokeWidth="0.6" fill="none" strokeLinecap="round" />
-            <path d="M53 23 Q54 24 55 23" stroke="#222" strokeWidth="0.6" fill="none" strokeLinecap="round" />
-            {/* Cola levantada */}
-            <path d="M8 26 Q2 22 4 14" stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+            <path d="M79 32 L77 24 L84 30 Z" fill="#0a0a0a" />
+            <path d="M80 30 L79 26 L82 29 Z" fill="#ff9eb5" />
+            <path d="M86 30 L89 23 L93 31 Z" fill="#0a0a0a" />
+            <path d="M87 29 L89 26 L91 30 Z" fill="#ff9eb5" />
+            {/* Ojos cerrados de placer */}
+            <path d="M81 39 Q83 41 85 39" stroke="#000" strokeWidth="1" fill="none" strokeLinecap="round" />
+            <path d="M86 39 Q88 41 90 39" stroke="#000" strokeWidth="1" fill="none" strokeLinecap="round" />
+            {/* Hocico abierto bostezando */}
+            <ellipse cx="86" cy="44" rx="3" ry="3.5" fill="#2a0a14" />
+            <path d="M85 43 L84 45 L85 45.5 L86 45 Z" fill="#ff9eb5" />
+            {/* Bigotes */}
+            <line x1="73" y1="42" x2="80" y2="42" stroke="#999" strokeWidth="0.5" />
+            <line x1="73" y1="44" x2="80" y2="44" stroke="#999" strokeWidth="0.5" />
+            <line x1="91" y1="42" x2="98" y2="42" stroke="#999" strokeWidth="0.5" />
+            <line x1="91" y1="44" x2="98" y2="44" stroke="#999" strokeWidth="0.5" />
             {/* Patas adelante extendidas */}
-            <rect x="42" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
-            <rect x="14" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+            <rect x="80" y="52" width="6" height="14" fill="#0a0a0a" rx="3" />
+            <rect x="72" y="52" width="6" height="14" fill="#0a0a0a" rx="3" />
+            <ellipse cx="83" cy="65" rx="4" ry="2" fill="#222" />
+            <ellipse cx="75" cy="65" rx="4" ry="2" fill="#222" />
+            {/* Patas atrás */}
+            <rect x="18" y="50" width="6" height="14" fill="#0a0a0a" rx="3" />
+            <rect x="28" y="50" width="6" height="14" fill="#0a0a0a" rx="3" />
+            <ellipse cx="21" cy="65" rx="4" ry="2" fill="#222" />
+            <ellipse cx="31" cy="65" rx="4" ry="2" fill="#222" />
           </>
         ) : (
           <>
-            {/* Sentado / caminando: postura standard */}
-            <ellipse cx="28" cy="26" rx="16" ry="8" fill="#1a1a1a" />
-            <circle cx="44" cy="20" r="8" fill="#1a1a1a" />
-            {/* Orejas */}
-            <path d="M38 14 L39 9 L43 13 Z" fill="#1a1a1a" />
-            <path d="M45 13 L48 9 L50 14 Z" fill="#1a1a1a" />
-            {/* Ojos amarillos */}
-            <circle cx="41.5" cy="19.5" r="1.4" fill="#fde047" />
-            <circle cx="47" cy="19.5" r="1.4" fill="#fde047" />
-            <circle cx="41.5" cy="19.5" r="0.5" fill="#000" />
-            <circle cx="47" cy="19.5" r="0.5" fill="#000" />
-            {/* Nariz rosada */}
-            <path d="M43.5 22 L45.5 22 L44.5 23.2 Z" fill="#fda4af" />
-            {/* Bigotes */}
-            <line x1="36" y1="22" x2="40" y2="22" stroke="#666" strokeWidth="0.3" />
-            <line x1="48" y1="22" x2="52" y2="22" stroke="#666" strokeWidth="0.3" />
+            {/* SENTADO / CAMINANDO: postura standard */}
             {/* Cola */}
             <path
               className="cat-tail"
-              d={pose === 'sit' ? 'M14 28 Q8 24 12 18' : 'M14 28 Q6 22 10 14'}
-              stroke="#1a1a1a"
-              strokeWidth="3.5"
+              d={pose === 'sit' ? 'M22 50 Q12 42 18 28' : 'M22 48 Q10 38 14 22'}
+              stroke="#0a0a0a"
+              strokeWidth="6"
               fill="none"
               strokeLinecap="round"
             />
-            {/* Patas - alternan al caminar */}
-            <rect className="cat-leg cat-leg-1" x="20" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
-            <rect className="cat-leg cat-leg-2" x="28" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
-            <rect className="cat-leg cat-leg-3" x="36" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+            {/* Cuerpo (pancita) */}
+            <ellipse cx="50" cy="48" rx="26" ry="14" fill="#1a1a1a" />
+            {/* Pancita más clara */}
+            <ellipse cx="50" cy="52" rx="18" ry="9" fill="#2a2a2a" />
+            {/* Cabeza */}
+            <circle cx="72" cy="32" r="14" fill="#1a1a1a" />
+            <circle cx="72" cy="32" r="12" fill="#222" />
+            {/* Orejas grandes triangulares */}
+            <path d="M63 22 L61 11 L70 18 Z" fill="#0a0a0a" className="cat-ear-left" />
+            <path d="M64 20 L63 14 L68 18 Z" fill="#ff9eb5" />
+            <path d="M75 18 L80 9 L84 20 Z" fill="#0a0a0a" className="cat-ear-right" />
+            <path d="M77 18 L80 13 L82 19 Z" fill="#ff9eb5" />
+            {/* Ojos amarillos grandes con parpadeo */}
+            <g className="cat-eyes">
+              <ellipse cx="67" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+              <ellipse cx="76" cy="32" rx="2.8" ry="3.2" fill="#fde047" />
+              {/* Pupilas verticales */}
+              <ellipse cx="67" cy="32" rx="0.8" ry="2.8" fill="#000" />
+              <ellipse cx="76" cy="32" rx="0.8" ry="2.8" fill="#000" />
+              {/* Brillo */}
+              <circle cx="67.8" cy="31" r="0.6" fill="#fff" />
+              <circle cx="76.8" cy="31" r="0.6" fill="#fff" />
+            </g>
+            {/* Hocico definido */}
+            <ellipse cx="72" cy="37" rx="3.5" ry="2.5" fill="#2a2a2a" />
+            {/* Naricita rosada en forma de triángulo */}
+            <path d="M70.5 36 L73.5 36 L72 37.5 Z" fill="#ff9eb5" />
+            {/* Boquita */}
+            <path d="M72 37.5 L72 39 M72 39 Q70.5 40 70 39.5 M72 39 Q73.5 40 74 39.5" stroke="#000" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+            {/* Bigotes largos a ambos lados */}
+            <line x1="58" y1="36" x2="68" y2="36" stroke="#bbb" strokeWidth="0.5" />
+            <line x1="58" y1="38" x2="68" y2="37.5" stroke="#bbb" strokeWidth="0.5" />
+            <line x1="58" y1="40" x2="68" y2="39" stroke="#bbb" strokeWidth="0.5" />
+            <line x1="76" y1="36" x2="86" y2="36" stroke="#bbb" strokeWidth="0.5" />
+            <line x1="76" y1="37.5" x2="86" y2="38" stroke="#bbb" strokeWidth="0.5" />
+            <line x1="76" y1="39" x2="86" y2="40" stroke="#bbb" strokeWidth="0.5" />
+            {/* Patas con dedos */}
+            <g className="cat-leg cat-leg-1">
+              <rect x="34" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+              <ellipse cx="37" cy="66" rx="4" ry="2" fill="#222" />
+              <circle cx="35" cy="65.5" r="0.7" fill="#ff9eb5" />
+              <circle cx="37" cy="65.8" r="0.7" fill="#ff9eb5" />
+              <circle cx="39" cy="65.5" r="0.7" fill="#ff9eb5" />
+            </g>
+            <g className="cat-leg cat-leg-2">
+              <rect x="46" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+              <ellipse cx="49" cy="66" rx="4" ry="2" fill="#222" />
+              <circle cx="47" cy="65.5" r="0.7" fill="#ff9eb5" />
+              <circle cx="49" cy="65.8" r="0.7" fill="#ff9eb5" />
+              <circle cx="51" cy="65.5" r="0.7" fill="#ff9eb5" />
+            </g>
+            <g className="cat-leg cat-leg-3">
+              <rect x="58" y="54" width="6" height="12" fill="#0a0a0a" rx="2.5" />
+              <ellipse cx="61" cy="66" rx="4" ry="2" fill="#222" />
+              <circle cx="59" cy="65.5" r="0.7" fill="#ff9eb5" />
+              <circle cx="61" cy="65.8" r="0.7" fill="#ff9eb5" />
+              <circle cx="63" cy="65.5" r="0.7" fill="#ff9eb5" />
+            </g>
           </>
         )}
       </svg>
@@ -191,6 +266,7 @@ type Agent = {
   emoji: string;
   bgColor: string;
   tagline: string;
+  description: string;
   prompt: string;
 };
 
@@ -200,7 +276,8 @@ const AGENTS: Agent[] = [
     name: 'Abuela Chimuela',
     emoji: '👵',
     bgColor: '#f9a8d4',
-    tagline: 'Mijito/a, ¿qué necesitas?',
+    tagline: 'Recetas chilenas y consejos con cariño',
+    description: 'Te enseña a cocinar como su mamá, te da remedios caseros y consejos de la vida con un abrazo virtual.',
     prompt: 'Eres la Abuela Chimuela, la abuela cariñosa de la familia. Tratas siempre a quien te habla como "mijito" o "mijita". Sabes mucho de recetas tradicionales chilenas (cazuela, pastel de choclo, sopaipillas, mote con huesillos, etc.), remedios caseros de la abuela, y das consejos de la vida con mucha ternura. Hablas en español chileno, usas modismos suaves ("po", "fíjate", "no más"), y agregas emojis tiernos (🤱❤️🍵🧉). Cuando alguien te cuenta un problema, primero das un abrazo virtual antes de dar consejos. SIEMPRE responde en Español.'
   },
   {
@@ -208,7 +285,8 @@ const AGENTS: Agent[] = [
     name: 'Tío Chef',
     emoji: '🍳',
     bgColor: '#fb923c',
-    tagline: '¿Qué cocinamos hoy?',
+    tagline: 'Cocina rico con lo que tengas',
+    description: 'Le dices qué hay en la pensa y te arma una receta paso a paso. También crea listas de compras.',
     prompt: 'Eres el Tío Chef de la familia. Tu especialidad es cocinar rico con lo que haya en la casa. Cuando te preguntan qué cocinar, primero preguntas qué ingredientes tienen disponibles y cuántas personas son. Das recetas paso a paso, con tiempos exactos y trucos de chef. Hablas relajado, con humor, y usas emojis de comida (🍝🥘🌮🍕). Sugieres también la lista de compras si faltan cosas. SIEMPRE responde en Español.'
   },
   {
@@ -216,7 +294,8 @@ const AGENTS: Agent[] = [
     name: 'Profe Particular',
     emoji: '🎒',
     bgColor: '#60a5fa',
-    tagline: 'Te explico hasta que lo entiendas',
+    tagline: 'Tutor escolar paciente',
+    description: 'Te ayuda con tareas de cualquier materia. Te guía paso a paso en vez de darte la respuesta directa.',
     prompt: 'Eres el Profe Particular de la familia, paciente y dedicado. Cuando alguien te pregunta algo de matemáticas, ciencias, historia o cualquier materia, primero preguntas en qué curso o nivel está esa persona, luego explicas con ejemplos del día a día y mucha paciencia. Usas analogías simples, dibujos con palabras, y emojis didácticos (📐📚🔬✏️). NUNCA das la respuesta directa de una tarea sin antes guiar el razonamiento. SIEMPRE responde en Español.'
   },
   {
@@ -224,7 +303,8 @@ const AGENTS: Agent[] = [
     name: 'Coach Motivacional',
     emoji: '💪',
     bgColor: '#22c55e',
-    tagline: '¡Tú puedes con esto!',
+    tagline: 'Rutinas, metas y motivación real',
+    description: 'Te arma rutinas de ejercicio en casa, te ayuda con metas semanales y te levanta el ánimo cuando andas bajoneado.',
     prompt: 'Eres el Coach Motivacional de la familia. Tu energía es contagiosa pero genuina (no falsa motivación). Ayudas con rutinas de ejercicio en casa, metas semanales, hábitos saludables, y das ánimo cuando alguien está bajoneado. Usas emojis enérgicos (💪🔥⚡🏆) pero también empáticos (🫂❤️). Cuando alguien está mal, primero validas el sentimiento, después motivas. SIEMPRE responde en Español.'
   },
   {
@@ -232,7 +312,8 @@ const AGENTS: Agent[] = [
     name: 'Tío Viajero',
     emoji: '🌍',
     bgColor: '#06b6d4',
-    tagline: '¿A dónde queremos ir?',
+    tagline: 'Panoramas y viajes baratos',
+    description: 'Te planifica salidas, viajes y panoramas con datos concretos: cómo llegar, cuánto sale, qué comer.',
     prompt: 'Eres el Tío Viajero de la familia. Has recorrido Chile entero y muchos países. Cuando alguien quiere planificar un viaje, panorama o salida, preguntas presupuesto, fechas y gustos. Sugieres lugares con datos concretos: cómo llegar, cuánto sale, qué comer, qué evitar. Conoces tips para viajar barato y panoramas locales gratis. Usas emojis de viaje (✈️🗺️🏖️🏔️). SIEMPRE responde en Español.'
   },
   {
@@ -240,7 +321,8 @@ const AGENTS: Agent[] = [
     name: 'Cuidador de Mascotas',
     emoji: '🐾',
     bgColor: '#a78bfa',
-    tagline: 'Tu peludo está en buenas manos',
+    tagline: 'Salud y cuidado de peludos',
+    description: 'Resuelve dudas sobre tu mascota: comida, comportamiento, primeros auxilios. Te dice cuándo ir al veterinario.',
     prompt: 'Eres el Cuidador de Mascotas de la familia, sabes mucho de perros, gatos, aves y mascotas exóticas. Cuando te preguntan algo de salud o comportamiento animal, primero preguntas especie, edad y raza. Das consejos prácticos pero SIEMPRE aclaras que para temas de salud serios hay que ir al veterinario. Usas emojis tiernos (🐶🐱🐾❤️). SIEMPRE responde en Español.'
   },
 ];
@@ -1793,6 +1875,7 @@ export default function Home() {
   }
 
   const activeChat = chats.find(c => c.id === currentChatId);
+  const activeAgent = activeChat?.agentId ? AGENTS.find(a => a.id === activeChat.agentId) : null;
 
 
   return (
@@ -2260,13 +2343,35 @@ export default function Home() {
           </div>
         )}
 
+        {/* ── Header WhatsApp del agente activo ── */}
+        {activeAgent && viewMode === 'chat' && (
+          <div className="wa-chat-header">
+            <button
+              className="wa-back-btn"
+              onClick={() => { setCurrentChatId(null); setDisplayMessages([]); setViewMode('agents'); }}
+              aria-label="Volver a agentes"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <div className="wa-header-avatar" style={{ background: activeAgent.bgColor }}>
+              <span>{activeAgent.emoji}</span>
+            </div>
+            <div className="wa-header-info">
+              <div className="wa-header-name">{activeAgent.name}</div>
+              <div className="wa-header-status">
+                <span className="wa-online-dot" /> en línea
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={chatScrollRef}
           onScroll={(e) => {
             const el = e.currentTarget;
             const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
             setShowScrollBtn(distFromBottom > 200 && displayMessages.length > 0);
           }}
-          className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "agents" ? (
             /* ── AGENTES — estilo WhatsApp ── */
             <div className="agents-page">
@@ -2289,14 +2394,16 @@ export default function Home() {
                 {AGENTS
                   .filter(a => !agentSearch.trim() ||
                     a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
-                    a.tagline.toLowerCase().includes(agentSearch.toLowerCase()))
+                    a.tagline.toLowerCase().includes(agentSearch.toLowerCase()) ||
+                    a.description.toLowerCase().includes(agentSearch.toLowerCase()))
                   .map(agent => {
                     const existingChat = chats.find(c => c.agentId === agent.id);
                     const lastMsg = existingChat?.messages?.[existingChat.messages.length - 1];
-                    const previewText = lastMsg
-                      ? (lastMsg.role === 'user' ? 'Tú: ' : '') + (lastMsg.content || '').slice(0, 60)
-                      : agent.tagline;
-                    const time = existingChat
+                    const hasHistory = !!existingChat && existingChat.messages.length > 0;
+                    const previewText = hasHistory && lastMsg
+                      ? (lastMsg.role === 'user' ? 'Tú: ' : '') + (lastMsg.content || '').slice(0, 70)
+                      : agent.description;
+                    const time = hasHistory && existingChat
                       ? new Date(existingChat.updatedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
                       : '';
                     return (
@@ -2313,7 +2420,10 @@ export default function Home() {
                             <span className="agent-name">{agent.name}</span>
                             {time && <span className="agent-time">{time}</span>}
                           </div>
-                          <div className="agent-preview">{previewText}</div>
+                          <div className="agent-tagline">{agent.tagline}</div>
+                          <div className={`agent-preview ${hasHistory ? '' : 'is-desc'}`}>
+                            {previewText}
+                          </div>
                         </div>
                       </button>
                     );
