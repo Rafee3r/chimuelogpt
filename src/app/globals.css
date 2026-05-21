@@ -5141,3 +5141,271 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
               0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   AGENTES — Página estilo WhatsApp (familia)
+   ═══════════════════════════════════════════════════════════════ */
+.agents-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 6rem;
+  animation: settingsSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.agents-page-header {
+  margin-bottom: 1.25rem;
+}
+
+.agents-page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  background: linear-gradient(to right, var(--text-primary), #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.agents-page-sub {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.agents-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.agents-search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.agents-search-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.agents-search-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.agent-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  transition: background 0.2s ease;
+  animation: agentRowEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.agent-row:nth-child(1) { animation-delay: 0.04s; }
+.agent-row:nth-child(2) { animation-delay: 0.10s; }
+.agent-row:nth-child(3) { animation-delay: 0.16s; }
+.agent-row:nth-child(4) { animation-delay: 0.22s; }
+.agent-row:nth-child(5) { animation-delay: 0.28s; }
+.agent-row:nth-child(6) { animation-delay: 0.34s; }
+
+@keyframes agentRowEnter {
+  0%   { opacity: 0; transform: translateX(-12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.agent-row:hover {
+  background: var(--sidebar-hover);
+}
+.agent-row:active {
+  background: var(--border-color);
+  transform: scale(0.99);
+  transition: transform 0.08s ease;
+}
+
+.agent-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.agent-row:hover .agent-avatar {
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.agent-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  padding-top: 2px;
+}
+.agent-row:last-child .agent-info {
+  border-bottom: none;
+}
+
+.agent-info-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.agent-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.agent-preview {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MASCOTA — Gatito negro animado
+   Se pasea por una "repisa" arriba del input. Cambia de pose
+   cada 6-10s (caminar, sentarse, estirarse, dormir).
+   ═══════════════════════════════════════════════════════════════ */
+.cat-mascot-shelf {
+  position: relative;
+  height: 36px;
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.cat-mascot {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  transform: translateX(-50%);
+  transition: left 5s cubic-bezier(0.45, 0.05, 0.55, 0.95),
+              transform 0.3s ease;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+  z-index: 5;
+}
+
+/* Idle breathing (sentado) */
+.cat-mascot.pose-sit svg {
+  animation: catBreathe 2.5s ease-in-out infinite;
+}
+@keyframes catBreathe {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(1.04); }
+}
+
+/* Caminando: bobbing arriba/abajo + alternar patas */
+.cat-mascot.pose-walk-right svg,
+.cat-mascot.pose-walk-left svg {
+  animation: catWalkBob 0.4s ease-in-out infinite;
+}
+@keyframes catWalkBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* Patas alternando al caminar */
+.cat-mascot.pose-walk-right .cat-leg-1,
+.cat-mascot.pose-walk-left .cat-leg-1 {
+  animation: catLegStep 0.4s ease-in-out infinite;
+}
+.cat-mascot.pose-walk-right .cat-leg-2,
+.cat-mascot.pose-walk-left .cat-leg-2 {
+  animation: catLegStep 0.4s ease-in-out 0.2s infinite;
+}
+.cat-mascot.pose-walk-right .cat-leg-3,
+.cat-mascot.pose-walk-left .cat-leg-3 {
+  animation: catLegStep 0.4s ease-in-out 0.1s infinite;
+}
+@keyframes catLegStep {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+/* Cola moviéndose suave */
+.cat-tail {
+  transform-origin: 14px 28px;
+  animation: catTailSwish 2s ease-in-out infinite;
+}
+@keyframes catTailSwish {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(8deg); }
+}
+
+/* Z's flotantes al dormir */
+.cat-z {
+  animation: catZFloat 2s ease-in-out infinite;
+}
+.cat-z1 { animation-delay: 0s; }
+.cat-z2 { animation-delay: 0.7s; }
+@keyframes catZFloat {
+  0%   { opacity: 0; transform: translate(0, 0); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-3px, -8px); }
+}
+
+/* Estirándose: pequeña animación de expansión */
+.cat-mascot.pose-stretch svg {
+  animation: catStretch 1.5s ease-in-out infinite;
+}
+@keyframes catStretch {
+  0%, 100% { transform: scaleX(1); }
+  50%      { transform: scaleX(1.08); }
+}
+
+/* En móvil, mascota más pequeña */
+@media (max-width: 768px) {
+  .cat-mascot-shelf {
+    height: 30px;
+  }
+  .cat-mascot svg {
+    width: 38px;
+    height: 26px;
+  }
+}
+

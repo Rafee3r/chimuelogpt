@@ -48,6 +48,120 @@ function CodeBlock({ inline, className, children, ...props }: any) {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+/* ─────────── Mascota: gatito negro con poses ───────────
+   4 poses: walking, sitting, sleeping, stretching.
+   Cambia cada 6-10s. SVG inline para tener control de cada pose. */
+function CatMascot() {
+  const [pose, setPose] = useState<'walk-right' | 'walk-left' | 'sit' | 'sleep' | 'stretch'>('sit');
+  const [pos, setPos] = useState(20); // posición horizontal en %
+
+  useEffect(() => {
+    let cancelled = false;
+    const cycle = () => {
+      if (cancelled) return;
+      const states: Array<{ pose: typeof pose; duration: number; target?: number }> = [
+        { pose: 'sit', duration: 4000 },
+        { pose: 'walk-right', duration: 5000, target: 80 },
+        { pose: 'sit', duration: 2500 },
+        { pose: 'stretch', duration: 3500 },
+        { pose: 'walk-left', duration: 5000, target: 15 },
+        { pose: 'sit', duration: 2000 },
+        { pose: 'sleep', duration: 7000 },
+      ];
+      let i = 0;
+      const next = () => {
+        if (cancelled) return;
+        const s = states[i % states.length];
+        setPose(s.pose);
+        if (s.target !== undefined) setPos(s.target);
+        i++;
+        setTimeout(next, s.duration);
+      };
+      next();
+    };
+    cycle();
+    return () => { cancelled = true; };
+  }, []);
+
+  // SVG del gatito negro — orientado a la derecha por defecto
+  // Cuando camina a la izquierda, lo volteamos con scaleX(-1)
+  const flip = pose === 'walk-left';
+
+  return (
+    <div
+      className={`cat-mascot pose-${pose}`}
+      style={{ left: `${pos}%`, transform: `translateX(-50%) ${flip ? 'scaleX(-1)' : ''}` }}
+    >
+      <svg viewBox="0 0 60 40" width="46" height="32" xmlns="http://www.w3.org/2000/svg">
+        {/* Cuerpo + cabeza */}
+        {pose === 'sleep' ? (
+          <>
+            {/* Durmiendo: acostado */}
+            <ellipse cx="30" cy="30" rx="22" ry="7" fill="#1a1a1a" />
+            <circle cx="48" cy="26" r="7" fill="#1a1a1a" />
+            <path d="M44 21 L46 17 L48 20 Z" fill="#1a1a1a" />
+            <path d="M50 21 L52 17 L54 20 Z" fill="#1a1a1a" />
+            {/* Ojos cerrados */}
+            <path d="M45 26 Q47 27 49 26" stroke="#444" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+            {/* Z's flotando */}
+            <text x="12" y="14" fontSize="9" fill="#888" fontWeight="bold" className="cat-z cat-z1">z</text>
+            <text x="6" y="20" fontSize="7" fill="#888" fontWeight="bold" className="cat-z cat-z2">z</text>
+          </>
+        ) : pose === 'stretch' ? (
+          <>
+            {/* Estirándose: cuerpo alargado */}
+            <ellipse cx="30" cy="28" rx="22" ry="6" fill="#1a1a1a" />
+            <circle cx="52" cy="24" r="6" fill="#1a1a1a" />
+            {/* Orejas */}
+            <path d="M48 19 L49 15 L52 18 Z" fill="#1a1a1a" />
+            <path d="M53 18 L55 15 L57 19 Z" fill="#1a1a1a" />
+            {/* Ojos cerrados (placer) */}
+            <path d="M50 23 Q51 24 52.5 23" stroke="#222" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+            <path d="M53 23 Q54 24 55 23" stroke="#222" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+            {/* Cola levantada */}
+            <path d="M8 26 Q2 22 4 14" stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+            {/* Patas adelante extendidas */}
+            <rect x="42" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+            <rect x="14" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+          </>
+        ) : (
+          <>
+            {/* Sentado / caminando: postura standard */}
+            <ellipse cx="28" cy="26" rx="16" ry="8" fill="#1a1a1a" />
+            <circle cx="44" cy="20" r="8" fill="#1a1a1a" />
+            {/* Orejas */}
+            <path d="M38 14 L39 9 L43 13 Z" fill="#1a1a1a" />
+            <path d="M45 13 L48 9 L50 14 Z" fill="#1a1a1a" />
+            {/* Ojos amarillos */}
+            <circle cx="41.5" cy="19.5" r="1.4" fill="#fde047" />
+            <circle cx="47" cy="19.5" r="1.4" fill="#fde047" />
+            <circle cx="41.5" cy="19.5" r="0.5" fill="#000" />
+            <circle cx="47" cy="19.5" r="0.5" fill="#000" />
+            {/* Nariz rosada */}
+            <path d="M43.5 22 L45.5 22 L44.5 23.2 Z" fill="#fda4af" />
+            {/* Bigotes */}
+            <line x1="36" y1="22" x2="40" y2="22" stroke="#666" strokeWidth="0.3" />
+            <line x1="48" y1="22" x2="52" y2="22" stroke="#666" strokeWidth="0.3" />
+            {/* Cola */}
+            <path
+              className="cat-tail"
+              d={pose === 'sit' ? 'M14 28 Q8 24 12 18' : 'M14 28 Q6 22 10 14'}
+              stroke="#1a1a1a"
+              strokeWidth="3.5"
+              fill="none"
+              strokeLinecap="round"
+            />
+            {/* Patas - alternan al caminar */}
+            <rect className="cat-leg cat-leg-1" x="20" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+            <rect className="cat-leg cat-leg-2" x="28" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+            <rect className="cat-leg cat-leg-3" x="36" y="30" width="3" height="6" fill="#1a1a1a" rx="1" />
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 type BaseMessage = {
   id: string;
   role: "user" | "assistant";
@@ -66,8 +180,70 @@ type Chat = {
   updatedAt: number;
   systemPrompt?: string;
   subjectId?: string;
+  agentId?: string;
   pinned?: boolean;
 };
+
+/* ─────────── Agentes (estilo WhatsApp — familia) ─────────── */
+type Agent = {
+  id: string;
+  name: string;
+  emoji: string;
+  bgColor: string;
+  tagline: string;
+  prompt: string;
+};
+
+const AGENTS: Agent[] = [
+  {
+    id: 'abuela',
+    name: 'Abuela Chimuela',
+    emoji: '👵',
+    bgColor: '#f9a8d4',
+    tagline: 'Mijito/a, ¿qué necesitas?',
+    prompt: 'Eres la Abuela Chimuela, la abuela cariñosa de la familia. Tratas siempre a quien te habla como "mijito" o "mijita". Sabes mucho de recetas tradicionales chilenas (cazuela, pastel de choclo, sopaipillas, mote con huesillos, etc.), remedios caseros de la abuela, y das consejos de la vida con mucha ternura. Hablas en español chileno, usas modismos suaves ("po", "fíjate", "no más"), y agregas emojis tiernos (🤱❤️🍵🧉). Cuando alguien te cuenta un problema, primero das un abrazo virtual antes de dar consejos. SIEMPRE responde en Español.'
+  },
+  {
+    id: 'chef',
+    name: 'Tío Chef',
+    emoji: '🍳',
+    bgColor: '#fb923c',
+    tagline: '¿Qué cocinamos hoy?',
+    prompt: 'Eres el Tío Chef de la familia. Tu especialidad es cocinar rico con lo que haya en la casa. Cuando te preguntan qué cocinar, primero preguntas qué ingredientes tienen disponibles y cuántas personas son. Das recetas paso a paso, con tiempos exactos y trucos de chef. Hablas relajado, con humor, y usas emojis de comida (🍝🥘🌮🍕). Sugieres también la lista de compras si faltan cosas. SIEMPRE responde en Español.'
+  },
+  {
+    id: 'profe',
+    name: 'Profe Particular',
+    emoji: '🎒',
+    bgColor: '#60a5fa',
+    tagline: 'Te explico hasta que lo entiendas',
+    prompt: 'Eres el Profe Particular de la familia, paciente y dedicado. Cuando alguien te pregunta algo de matemáticas, ciencias, historia o cualquier materia, primero preguntas en qué curso o nivel está esa persona, luego explicas con ejemplos del día a día y mucha paciencia. Usas analogías simples, dibujos con palabras, y emojis didácticos (📐📚🔬✏️). NUNCA das la respuesta directa de una tarea sin antes guiar el razonamiento. SIEMPRE responde en Español.'
+  },
+  {
+    id: 'coach',
+    name: 'Coach Motivacional',
+    emoji: '💪',
+    bgColor: '#22c55e',
+    tagline: '¡Tú puedes con esto!',
+    prompt: 'Eres el Coach Motivacional de la familia. Tu energía es contagiosa pero genuina (no falsa motivación). Ayudas con rutinas de ejercicio en casa, metas semanales, hábitos saludables, y das ánimo cuando alguien está bajoneado. Usas emojis enérgicos (💪🔥⚡🏆) pero también empáticos (🫂❤️). Cuando alguien está mal, primero validas el sentimiento, después motivas. SIEMPRE responde en Español.'
+  },
+  {
+    id: 'viajero',
+    name: 'Tío Viajero',
+    emoji: '🌍',
+    bgColor: '#06b6d4',
+    tagline: '¿A dónde queremos ir?',
+    prompt: 'Eres el Tío Viajero de la familia. Has recorrido Chile entero y muchos países. Cuando alguien quiere planificar un viaje, panorama o salida, preguntas presupuesto, fechas y gustos. Sugieres lugares con datos concretos: cómo llegar, cuánto sale, qué comer, qué evitar. Conoces tips para viajar barato y panoramas locales gratis. Usas emojis de viaje (✈️🗺️🏖️🏔️). SIEMPRE responde en Español.'
+  },
+  {
+    id: 'mascotas',
+    name: 'Cuidador de Mascotas',
+    emoji: '🐾',
+    bgColor: '#a78bfa',
+    tagline: 'Tu peludo está en buenas manos',
+    prompt: 'Eres el Cuidador de Mascotas de la familia, sabes mucho de perros, gatos, aves y mascotas exóticas. Cuando te preguntan algo de salud o comportamiento animal, primero preguntas especie, edad y raza. Das consejos prácticos pero SIEMPRE aclaras que para temas de salud serios hay que ir al veterinario. Usas emojis tiernos (🐶🐱🐾❤️). SIEMPRE responde en Español.'
+  },
+];
 
 type Subject = {
   id: string;
@@ -91,7 +267,8 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "university" | "settings">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "agents">("chat");
+  const [agentSearch, setAgentSearch] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [uniInput, setUniInput] = useState('');
@@ -151,7 +328,7 @@ export default function Home() {
   const prevMaxScrollTop = useRef<number>(0);
   const forceScrollNext = useRef<boolean>(true);
   const skipAutoScrollRef = useRef<boolean>(false);
-  const prevViewMode = useRef<"chat" | "university">("chat");
+  const prevViewMode = useRef<"chat" | "university" | "agents">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
@@ -1296,6 +1473,40 @@ export default function Home() {
     }
   };
 
+  /* ─────────── Abrir chat con un Agente (estilo WhatsApp) ─────────── */
+  const openAgent = (agent: Agent) => {
+    stopGeneration();
+    try { (navigator as any).vibrate?.(8); } catch {}
+    // 1. Busca un chat existente con este agente
+    const existing = chats.find(c => c.agentId === agent.id);
+    if (existing) {
+      setCurrentChatId(existing.id);
+      localStorage.setItem("chimuelo_current_chat", existing.id);
+      setDisplayMessages(existing.messages);
+    } else {
+      // 2. Crea un chat nuevo asociado al agente
+      const newId = Date.now().toString();
+      const newChat: Chat = {
+        id: newId,
+        title: agent.name,
+        messages: [],
+        updatedAt: Date.now(),
+        agentId: agent.id,
+        systemPrompt: agent.prompt
+      };
+      setChats(prev => {
+        const updated = [newChat, ...prev];
+        try { localStorage.setItem("chimuelo_chats", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      setCurrentChatId(newId);
+      localStorage.setItem("chimuelo_current_chat", newId);
+      setDisplayMessages([]);
+    }
+    setViewMode('chat');
+    setSidebarOpen(false);
+  };
+
   const handleSwitchChat = (chatId: string | null) => {
     stopGeneration();
     try { navigator.vibrate?.(8); } catch {}
@@ -1696,6 +1907,13 @@ export default function Home() {
               <GraduationCap size={15} />
               <span>Modo Universitario</span>
             </button>
+            <button
+              className={`sb-row ${viewMode === 'agents' ? 'active' : ''}`}
+              onClick={() => { prevViewMode.current = 'chat'; setViewMode('agents'); setSidebarOpen(false); }}
+            >
+              <Sparkles size={15} />
+              <span>Agentes</span>
+            </button>
           </div>
 
           {/* CHATS */}
@@ -1787,7 +2005,7 @@ export default function Home() {
           <button
             className="sb-row"
             onClick={() => {
-              prevViewMode.current = viewMode as "chat" | "university";
+              prevViewMode.current = viewMode as "chat" | "university" | "agents";
               setViewMode('settings');
               setSidebarOpen(false);
             }}
@@ -2049,7 +2267,60 @@ export default function Home() {
             setShowScrollBtn(distFromBottom > 200 && displayMessages.length > 0);
           }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
-          {viewMode === "university" ? (
+          {viewMode === "agents" ? (
+            /* ── AGENTES — estilo WhatsApp ── */
+            <div className="agents-page">
+              <div className="agents-page-header">
+                <h1 className="agents-page-title">Agentes</h1>
+                <p className="agents-page-sub">Tu familia ChimueloGPT lista para ayudarte.</p>
+                <div className="agents-search-wrap">
+                  <Search size={16} className="agents-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Buscar agente..."
+                    value={agentSearch}
+                    onChange={(e) => setAgentSearch(e.target.value)}
+                    className="agents-search-input"
+                  />
+                </div>
+              </div>
+
+              <div className="agents-list">
+                {AGENTS
+                  .filter(a => !agentSearch.trim() ||
+                    a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
+                    a.tagline.toLowerCase().includes(agentSearch.toLowerCase()))
+                  .map(agent => {
+                    const existingChat = chats.find(c => c.agentId === agent.id);
+                    const lastMsg = existingChat?.messages?.[existingChat.messages.length - 1];
+                    const previewText = lastMsg
+                      ? (lastMsg.role === 'user' ? 'Tú: ' : '') + (lastMsg.content || '').slice(0, 60)
+                      : agent.tagline;
+                    const time = existingChat
+                      ? new Date(existingChat.updatedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+                    return (
+                      <button
+                        key={agent.id}
+                        className="agent-row"
+                        onClick={() => openAgent(agent)}
+                      >
+                        <div className="agent-avatar" style={{ background: agent.bgColor }}>
+                          <span>{agent.emoji}</span>
+                        </div>
+                        <div className="agent-info">
+                          <div className="agent-info-top">
+                            <span className="agent-name">{agent.name}</span>
+                            {time && <span className="agent-time">{time}</span>}
+                          </div>
+                          <div className="agent-preview">{previewText}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : viewMode === "university" ? (
             /* ── CEREBRO ACADÉMICO v2 — chat-first ── */
             <div className="uni-v2-shell">
               <div className="uni-v2-header">
@@ -2572,6 +2843,10 @@ export default function Home() {
 
         {viewMode === "chat" && (
           <div className="v2-input-area">
+            {/* Mascota Chimuelo paseando arriba del input */}
+            <div className="cat-mascot-shelf" aria-hidden="true">
+              <CatMascot />
+            </div>
             <div className="v2-model-selector">
               <button
                 className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
