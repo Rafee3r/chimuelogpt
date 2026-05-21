@@ -1748,9 +1748,24 @@ export default function Home() {
     // 1. Busca un chat existente con este agente
     const existing = chats.find(c => c.agentId === agent.id);
     if (existing) {
+      // Si el chat está vacío (ej. creado antes del feature), inyectar saludo
+      let messages = existing.messages;
+      if (messages.length === 0) {
+        const greetingMsg: BaseMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: agent.greeting
+        };
+        messages = [greetingMsg];
+        setChats(prev => {
+          const updated = prev.map(c => c.id === existing.id ? { ...c, messages, updatedAt: Date.now() } : c);
+          try { localStorage.setItem("chimuelo_chats", JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      }
       setCurrentChatId(existing.id);
       localStorage.setItem("chimuelo_current_chat", existing.id);
-      setDisplayMessages(existing.messages);
+      setDisplayMessages(messages);
     } else {
       // 2. Crea un chat nuevo con el saludo del agente como primer mensaje
       const newId = Date.now().toString();
@@ -2777,7 +2792,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          ) : displayMessages.length === 0 ? (
+          ) : displayMessages.length === 0 && !activeAgent ? (
             <div className="v2-empty-state">
               <div className="v2-orb-container">
                 <div className="glowing-orb"></div>
@@ -3139,25 +3154,25 @@ export default function Home() {
               </div>
             </div>
           )}
+          {/* Sugerencias del agente como respuestas rápidas dentro del chat */}
+          {activeAgent && displayMessages.length === 1 && displayMessages[0]?.role === 'assistant' && !isThinking && (
+            <div className="wa-quick-replies">
+              {activeAgent.suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  className="wa-quick-reply-bubble"
+                  onClick={() => handleSendMessage(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
         {viewMode === "chat" && (
           <div className="v2-input-area">
-            {/* Sugerencias del agente (solo al inicio del chat) */}
-            {activeAgent && displayMessages.length <= 1 && (
-              <div className="agent-suggestions">
-                {activeAgent.suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    className="agent-suggestion-chip"
-                    onClick={() => handleSendMessage(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
             {/* Mascota Chimuelo paseando arriba del input (oculta en chat de agente) */}
             {!activeAgent && (
               <div className="cat-mascot-shelf" aria-hidden="true">
@@ -3222,34 +3237,39 @@ export default function Home() {
                   rows={1}
                 />
 
-                {!isThinking && (
-                  <button
-                    className={`v2-mic-btn ${isRecording ? 'recording' : ''}`}
-                    onClick={toggleVoiceInput}
-                    title={isRecording ? 'Detener grabación' : 'Mensaje de voz'}
-                    type="button"
-                  >
-                    {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
-                  </button>
-                )}
-
-                {isThinking ? (
-                  <button
-                    className="v2-send-btn stop active"
-                    onClick={stopGeneration}
-                    title="Detener generación"
-                  >
-                    <Square size={16} fill="currentColor" />
-                  </button>
-                ) : (
-                  <button
-                    className={`v2-send-btn ${inputMessage.trim() || attachedImage || attachedDoc ? 'active' : ''}`}
-                    onClick={() => handleSendMessage()}
-                    disabled={!inputMessage.trim() && !attachedImage && !attachedDoc}
-                  >
-                    <Send size={18} />
-                  </button>
-                )}
+                {(() => {
+                  const hasInput = !!(inputMessage.trim() || attachedImage || attachedDoc);
+                  if (isThinking) {
+                    return (
+                      <button
+                        className="v2-send-btn stop active"
+                        onClick={stopGeneration}
+                        title="Detener generación"
+                      >
+                        <Square size={16} fill="currentColor" />
+                      </button>
+                    );
+                  }
+                  // Sin texto: solo mic. Con texto: solo send.
+                  return hasInput ? (
+                    <button
+                      className="v2-send-btn active"
+                      onClick={() => handleSendMessage()}
+                      title="Enviar mensaje"
+                    >
+                      <Send size={18} />
+                    </button>
+                  ) : (
+                    <button
+                      className={`v2-mic-btn solo ${isRecording ? 'recording' : ''}`}
+                      onClick={toggleVoiceInput}
+                      title={isRecording ? 'Detener grabación' : 'Mensaje de voz'}
+                      type="button"
+                    >
+                      {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
             

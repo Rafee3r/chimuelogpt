@@ -1,11 +1,11 @@
 {
-  "version": "5.0",
-  "date": "2026-05-11",
+  "version": "21.05",
+  "date": "2026-05-21",
   "changes": [
-    { "icon": "⌘", "title": "Paleta de comandos", "desc": "Cmd/Ctrl+K abre un buscador unificado de chats y acciones." },
-    { "icon": "⏹", "title": "Detener generación", "desc": "Corta la respuesta a mitad de stream y guarda lo que se alcanzó." },
-    { "icon": "🔍", "title": "Buscar en chats", "desc": "Encuentra cualquier conversación por título o contenido desde el sidebar." },
-    { "icon": "⚡", "title": "Render más rápido", "desc": "Mensajes memoizados: la conversación ya no se redibuja entera mientras Chimuelo escribe." },
-    { "icon": "📋", "title": "Copiar código", "desc": "Botón directo en cada bloque de código para llevarlo al portapapeles." }
+    { "icon": "🤖", "title": "Agentes — tu familia digital", "desc": "Nueva sección con 6 personajes listos para ayudarte: Abuela, Tío Chef, Profe, Coach, Tío Viajero y Cuidador de Mascotas. Cada uno especializado en lo suyo." },
+    { "icon": "💬", "title": "Chat estilo WhatsApp", "desc": "Cuando hablas con un agente, ahora es como un chat de WhatsApp: header con su foto, burbujas verdes y blancas, fondo con patrón." },
+    { "icon": "🐈‍⬛", "title": "Conoce a Chimuelo, el gatito", "desc": "Un gatito negro vive arriba del input. Camina, duerme, juega con bolitas, se lame la pata. Tócalo para que maúlle." },
+    { "icon": "✨", "title": "Animaciones más fluidas", "desc": "Mensajes que entran suaves, botones que reaccionan al tocar, transiciones de tema más bonitas. Se siente como una app premium." },
+    { "icon": "🎤", "title": "Botones más limpios", "desc": "El micrófono aparece cuando no escribes. Al escribir, se transforma en el botón de enviar. Más simple, más claro." }
   ]
 }
