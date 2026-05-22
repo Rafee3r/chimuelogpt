@@ -335,6 +335,43 @@ type BaseMessage = {
   model?: string;
 };
 
+/* ─────────── Helper: sanitizar chats antes de localStorage ───────────
+   Quita imageData (base64 enorme) que revienta la cuota.
+   Mantiene imagePlaceholder (solo el nombre) para que el usuario vea
+   "[imagen.jpg]" en el historial. */
+function sanitizeChatsForStorage(chats: any[]): any[] {
+  return chats.map(c => ({
+    ...c,
+    messages: (c.messages || []).map((m: any) => {
+      if (m.imageData) {
+        const { imageData, ...rest } = m;
+        return rest;
+      }
+      return m;
+    })
+  }));
+}
+
+function safeSetChats(chats: any[]): void {
+  try {
+    localStorage.setItem("chimuelo_chats", JSON.stringify(sanitizeChatsForStorage(chats)));
+  } catch (e) {
+    // Si igual revienta la cuota, intentar sin attachments del todo
+    try {
+      const stripped = chats.map(c => ({
+        ...c,
+        messages: (c.messages || []).map((m: any) => {
+          const { imageData, docPlaceholder, ...rest } = m;
+          return rest;
+        })
+      }));
+      localStorage.setItem("chimuelo_chats", JSON.stringify(stripped));
+    } catch {
+      console.warn('localStorage lleno — chats no guardados en este turno.');
+    }
+  }
+}
+
 type Chat = {
   id: string;
   title: string;
@@ -541,7 +578,7 @@ export default function Home() {
       const pending = localStorageQueueRef.current.chats;
       localStorageQueueRef.current.timer = null;
       if (pending) {
-        try { localStorage.setItem("chimuelo_chats", JSON.stringify(pending)); } catch {}
+        safeSetChats(pending);
       }
     }, 500);
   }, []);
@@ -551,7 +588,7 @@ export default function Home() {
       clearTimeout(localStorageQueueRef.current.timer);
       localStorageQueueRef.current.timer = null;
     }
-    try { localStorage.setItem("chimuelo_chats", JSON.stringify(chats)); } catch {}
+    safeSetChats(chats);
     try { localStorage.setItem("chimuelo_last_active", Date.now().toString()); } catch {}
   }, []);
 
@@ -634,7 +671,7 @@ export default function Home() {
       const updated = prev.map(c =>
         c.id === id ? { ...c, pinned: !c.pinned } : c
       );
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
   }, []);
@@ -643,7 +680,7 @@ export default function Home() {
     if (!window.confirm('¿Eliminar esta conversación? Esta acción no se puede deshacer.')) return;
     setChats(prev => {
       const updated = prev.filter(c => c.id !== id);
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
     if (currentChatId === id) {
@@ -662,7 +699,7 @@ export default function Home() {
       const updated = prev.map(c =>
         c.id === id ? { ...c, title: next.trim() } : c
       );
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
   }, [chats]);
@@ -1046,7 +1083,7 @@ export default function Home() {
     };
     setChats(prev => {
       const updated = [newChat, ...prev];
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
     setCurrentChatId(newChat.id);
@@ -1179,7 +1216,7 @@ export default function Home() {
     };
     setChats(prev => {
       const updated = [newChat, ...prev];
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
     setCurrentChatId(newChatId);
@@ -1303,7 +1340,7 @@ export default function Home() {
           title: updated[chatIndex].messages.length === 0 ? (messageText ? messageText.slice(0, 30) : "Imagen adjunta") : updated[chatIndex].title
         };
       }
-      localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+      safeSetChats(updated);
       return updated;
     });
 
@@ -1576,7 +1613,7 @@ export default function Home() {
           }
           return chat;
         });
-        localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+        safeSetChats(updated);
         return updated;
       });
 
@@ -1622,7 +1659,7 @@ export default function Home() {
             }
             return chat;
           });
-          localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+          safeSetChats(updated);
           return updated;
         });
       }
@@ -1674,7 +1711,7 @@ export default function Home() {
         messages = [greetingMsg];
         setChats(prev => {
           const updated = prev.map(c => c.id === existing.id ? { ...c, messages, updatedAt: Date.now() } : c);
-          try { localStorage.setItem("chimuelo_chats", JSON.stringify(updated)); } catch {}
+          safeSetChats(updated);
           return updated;
         });
       }
@@ -1699,7 +1736,7 @@ export default function Home() {
       };
       setChats(prev => {
         const updated = [newChat, ...prev];
-        try { localStorage.setItem("chimuelo_chats", JSON.stringify(updated)); } catch {}
+        safeSetChats(updated);
         return updated;
       });
       setCurrentChatId(newId);
@@ -2249,7 +2286,7 @@ export default function Home() {
                     const updated = prev.map(c => c.id === currentChatId
                       ? { ...c, messages: c.messages.filter(m => m.id !== msgMenu.msgId), updatedAt: Date.now() }
                       : c);
-                    localStorage.setItem("chimuelo_chats", JSON.stringify(updated));
+                    safeSetChats(updated);
                     return updated;
                   });
                 }
