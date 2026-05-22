@@ -4322,45 +4322,73 @@ a {
 .sb-scroll::-webkit-scrollbar-track { background: transparent; }
 .sb-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
-/* Más espacio entre secciones para balance visual estilo Gemini */
-.sb-section { padding: 14px 0 4px; }
-.sb-section + .sb-section { padding-top: 18px; }
-.sb-section-chats { flex: 1; display: flex; flex-direction: column; padding-top: 16px; }
+/* ── Sidebar sections balance estilo Gemini ─────────────────
+   Espacio, jerarquía y estados — sin líneas decorativas */
+.sb-section { padding: 20px 0 2px; }
+.sb-section:first-child { padding-top: 12px; }
+.sb-section-chats { flex: 1; display: flex; flex-direction: column; padding-top: 24px; }
 
+/* Section labels: con icono pequeño + texto uppercase espaciado */
 .sb-section-label {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  opacity: 0.55;
-  padding: 4px 18px 8px;
+  opacity: 0.75;
+  padding: 6px 18px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.sb-section-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-color);
-  opacity: 0.6;
+.sb-section-label svg {
+  color: var(--accent-color);
+  opacity: 0.9;
 }
 
-/* Separador sutil entre el primary action y las secciones */
+/* Espacio respiratorio bajo "Nuevo chat" — sin línea, solo padding */
 .sb-row-primary {
-  position: relative;
-  margin-bottom: 6px !important;
+  margin-bottom: 12px !important;
 }
-.sb-row-primary::after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 18px;
-  right: 18px;
-  height: 1px;
-  background: var(--border-color);
-  opacity: 0.5;
+
+/* Filas más altas para mejor toque + jerarquía */
+.sb-row {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 12px;
+  margin: 1px 8px;
+  width: calc(100% - 16px);
+  letter-spacing: -0.005em;
+}
+
+/* Estados de hover/active más refinados */
+.sb-row:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+.sb-row.active {
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px -2px var(--accent-glow-strong);
+}
+.sb-row.active svg { color: #fff; }
+
+/* Day labels (Hoy, Ayer, etc.) — más sutiles, integrados al flow */
+.sb-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 12px 18px 4px;
+  opacity: 0.7;
+  letter-spacing: 0;
+}
+
+/* Primer day-label sin padding-top extra */
+.sb-section-chats > div:first-child > .sb-group-label,
+.sb-section-chats > div:first-of-type .sb-group-label:first-child {
+  padding-top: 4px;
 }
 
 .sb-group-label {

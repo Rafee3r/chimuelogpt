@@ -2192,7 +2192,7 @@ export default function Home() {
             if (filteredSubjects.length === 0) return null;
             return (
               <div className="sb-section">
-                <div className="sb-section-label">Materias</div>
+                <div className="sb-section-label"><Book size={11} />Materias</div>
                 {filteredSubjects.map(s => (
                   <button
                     key={s.id}
@@ -2215,7 +2215,7 @@ export default function Home() {
 
           {/* MODO UNIVERSITARIO (entrada sin subject seleccionado) */}
           <div className="sb-section">
-            {subjects.length === 0 && <div className="sb-section-label">Modos</div>}
+            {subjects.length === 0 && <div className="sb-section-label"><Zap size={11} />Modos</div>}
             <button
               className={`sb-row ${viewMode === 'university' && !activeSubjectId ? 'active' : ''}`}
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('university'); setSidebarOpen(false); }}
@@ -2234,7 +2234,7 @@ export default function Home() {
 
           {/* CHATS */}
           <div className="sb-section sb-section-chats">
-            <div className="sb-section-label">Chats</div>
+            <div className="sb-section-label"><MessageSquare size={11} />Chats</div>
             {(() => {
               const q = sidebarSearch.trim().toLowerCase();
               const filtered = q
