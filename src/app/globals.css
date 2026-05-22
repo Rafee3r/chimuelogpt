@@ -5951,19 +5951,32 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 
 /* Fondo del chat estilo WhatsApp (patrón sutil) */
-.chat-area.whatsapp-mode {
-  background-color: #e5ddd5;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(0,0,0,0.025) 1px, transparent 1px),
-    radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02) 1px, transparent 1px);
-  background-size: 40px 40px, 60px 60px;
+/* ── Fondo de chat WhatsApp con variables (cubre TODOS los temas) ── */
+:root {
+  --wa-chat-bg: #e5ddd5;
+  --wa-chat-dot: rgba(0, 0, 0, 0.04);
+  --wa-chat-dot-2: rgba(0, 0, 0, 0.03);
 }
-[data-theme="dark"] .chat-area.whatsapp-mode,
-[data-theme="oled"] .chat-area.whatsapp-mode {
-  background-color: #0b141a;
+:root[data-theme="dark"],
+:root[data-theme="oled"] {
+  --wa-chat-bg: #0b141a;
+  --wa-chat-dot: rgba(255, 255, 255, 0.04);
+  --wa-chat-dot-2: rgba(255, 255, 255, 0.03);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --wa-chat-bg: #0b141a;
+    --wa-chat-dot: rgba(255, 255, 255, 0.04);
+    --wa-chat-dot-2: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.chat-area.whatsapp-mode {
+  background-color: var(--wa-chat-bg) !important;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.025) 1px, transparent 1px),
-    radial-gradient(circle at 80% 60%, rgba(255,255,255,0.02) 1px, transparent 1px);
+    radial-gradient(circle at 20% 30%, var(--wa-chat-dot) 1px, transparent 1px),
+    radial-gradient(circle at 80% 60%, var(--wa-chat-dot-2) 1px, transparent 1px);
+  background-size: 40px 40px, 60px 60px;
 }
 
 /* Burbuja de usuario: verde WhatsApp */
