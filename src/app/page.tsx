@@ -2752,6 +2752,39 @@ export default function Home() {
             </div>
             <div className="settings-page-body">
 
+              {/* ── PLAN FAMILIA (siempre primero) ── */}
+              <div className="fp-card-v2">
+                <div className="fp-glow"></div>
+                <div className="fp-content">
+                  <div className="fp-header-row">
+                    <div className="fp-badge">
+                      <Sparkles size={11} strokeWidth={2.5} />
+                      <span>PLAN ACTIVO</span>
+                    </div>
+                    <div className="fp-emoji-v2">💛</div>
+                  </div>
+                  <h2 className="fp-title-v2">Plan Familia</h2>
+                  <p className="fp-sub-v2">Todas las funciones de Chimuelo, sin restricciones.</p>
+                  <div className="fp-price-block">
+                    <div className="fp-price-strike">
+                      <span className="fp-old-price">$20.000</span>
+                      <span className="fp-old-period">/mes</span>
+                    </div>
+                    <div className="fp-now-row">
+                      <span className="fp-now-price">GRATIS</span>
+                      <span className="fp-now-period">para siempre</span>
+                    </div>
+                  </div>
+                  <div className="fp-features-v2">
+                    <div className="fp-feature"><span className="fp-check">✓</span>20 agentes especialistas</div>
+                    <div className="fp-feature"><span className="fp-check">✓</span>Modo Universitario completo</div>
+                    <div className="fp-feature"><span className="fp-check">✓</span>Imágenes y música ilimitadas</div>
+                    <div className="fp-feature"><span className="fp-check">✓</span>Respaldo automático en la nube local</div>
+                    <div className="fp-feature"><span className="fp-check">✓</span>Sin anuncios, nunca</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Apariencia */}
               <div className="settings-card">
                 <h3 className="settings-card-title">Apariencia</h3>
@@ -2861,26 +2894,6 @@ export default function Home() {
               </div>
 
               {/* Cuenta y Datos */}
-              <div className="settings-card family-plan-card">
-                <div className="fp-ribbon">ACTIVO</div>
-                <div className="fp-emoji">✨</div>
-                <h3 className="fp-title">Plan Familia</h3>
-                <p className="fp-sub">Acceso completo a todos los agentes, modos y funciones</p>
-                <div className="fp-price-row">
-                  <span className="fp-price-old">$20.000</span>
-                  <span className="fp-price-new">GRATIS</span>
-                  <span className="fp-price-unit">para siempre</span>
-                </div>
-                <ul className="fp-features">
-                  <li>✓ Los 20 agentes especialistas</li>
-                  <li>✓ Modo Universitario completo</li>
-                  <li>✓ Generación ilimitada de imágenes y música</li>
-                  <li>✓ Respaldo automático de datos</li>
-                  <li>✓ Sin anuncios, nunca</li>
-                </ul>
-                <div className="fp-thanks">Hecho con cariño para la familia 💛</div>
-              </div>
-
               <div className="settings-card">
                 <h3 className="settings-card-title">🛡️ Respaldo de tus datos</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 12px' }}>

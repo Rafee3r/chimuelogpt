@@ -6601,88 +6601,168 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 .agent-info-top { gap: 6px; }
 
-/* ── Plan Familia card ── */
-.family-plan-card {
+/* ══════════════════════════════════════════════════════════
+   PLAN FAMILIA — Card premium (rediseño v2)
+   ══════════════════════════════════════════════════════════ */
+.fp-card-v2 {
   position: relative;
-  background: linear-gradient(135deg, rgba(161, 140, 209, 0.08), rgba(99, 102, 241, 0.05)) !important;
-  border: 1.5px solid var(--accent-color) !important;
-  padding: 24px 22px !important;
-  text-align: center;
+  border-radius: 20px;
+  padding: 0;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
   overflow: hidden;
+  box-shadow:
+    0 20px 50px -15px rgba(76, 29, 149, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  isolation: isolate;
 }
-.fp-ribbon {
+
+/* Glow animado en el fondo */
+.fp-glow {
   position: absolute;
-  top: 14px;
-  right: -28px;
-  background: #22c55e;
+  inset: -50%;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(236, 72, 153, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(99, 102, 241, 0.4) 0%, transparent 50%);
+  animation: fpGlowMove 8s ease-in-out infinite alternate;
+  z-index: 0;
+  pointer-events: none;
+}
+@keyframes fpGlowMove {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, -20px) scale(1.15); }
+}
+
+.fp-content {
+  position: relative;
+  z-index: 1;
+  padding: 24px 22px 22px;
+  color: #fff;
+}
+
+/* Header con badge + emoji */
+.fp-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.fp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff;
   font-size: 0.65rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
-  padding: 3px 32px;
-  transform: rotate(35deg);
-  box-shadow: 0 2px 8px rgba(34,197,94,0.4);
+  letter-spacing: 0.12em;
+  padding: 5px 10px 5px 8px;
+  border-radius: 20px;
 }
-.fp-emoji {
-  font-size: 2.5rem;
-  margin-bottom: 4px;
+
+.fp-emoji-v2 {
+  font-size: 2rem;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
-.fp-title {
-  font-size: 1.4rem !important;
+
+/* Título */
+.fp-title-v2 {
+  font-size: 1.8rem !important;
   font-weight: 800 !important;
-  margin: 0 0 6px !important;
-  background: linear-gradient(135deg, var(--accent-color), #a18cd1, #ec4899);
+  margin: 0 0 4px !important;
+  color: #fff !important;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 30%, #fbcfe8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-.fp-sub {
-  margin: 0 0 16px;
-  color: var(--text-secondary);
-  font-size: 0.88rem;
+
+.fp-sub-v2 {
+  margin: 0 0 18px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
-.fp-price-row {
+
+/* Bloque de precio */
+.fp-price-block {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
 }
-.fp-price-old {
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  text-decoration: line-through;
-  opacity: 0.7;
-}
-.fp-price-new {
-  font-size: 2rem;
-  font-weight: 900;
-  color: #22c55e;
-  letter-spacing: -0.02em;
-}
-.fp-price-unit {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-.fp-features {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 16px;
-  text-align: left;
+
+.fp-price-strike {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
 }
-.fp-features li {
+.fp-old-price {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+  font-weight: 600;
+}
+.fp-old-period {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: -2px;
+}
+
+.fp-now-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.fp-now-price {
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #22c55e;
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 12px rgba(34, 197, 94, 0.5);
+  line-height: 1;
+}
+.fp-now-period {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Features list */
+.fp-features-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fp-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.88rem;
-  color: var(--text-primary);
+  color: rgba(255, 255, 255, 0.92);
 }
-.fp-thanks {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  font-style: italic;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-color);
+.fp-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
 }
