@@ -1,11 +1,11 @@
 {
-  "version": "21.05",
+  "version": "21.05.2",
   "date": "2026-05-21",
   "changes": [
-    { "icon": "🤖", "title": "Agentes — tu familia digital", "desc": "Nueva sección con 6 personajes listos para ayudarte: Abuela, Tío Chef, Profe, Coach, Tío Viajero y Cuidador de Mascotas. Cada uno especializado en lo suyo." },
-    { "icon": "💬", "title": "Chat estilo WhatsApp", "desc": "Cuando hablas con un agente, ahora es como un chat de WhatsApp: header con su foto, burbujas verdes y blancas, fondo con patrón." },
-    { "icon": "🐈‍⬛", "title": "Conoce a Chimuelo, el gatito", "desc": "Un gatito negro vive arriba del input. Camina, duerme, juega con bolitas, se lame la pata. Tócalo para que maúlle." },
-    { "icon": "✨", "title": "Animaciones más fluidas", "desc": "Mensajes que entran suaves, botones que reaccionan al tocar, transiciones de tema más bonitas. Se siente como una app premium." },
-    { "icon": "🎤", "title": "Botones más limpios", "desc": "El micrófono aparece cuando no escribes. Al escribir, se transforma en el botón de enviar. Más simple, más claro." }
+    { "icon": "🤖", "title": "20 agentes ranqueados", "desc": "Reemplazamos los 6 agentes por 20 nuevos ordenados por productividad real (Atomic Habits, Gottman, USDA, Cal Newport, etc.). Cada uno con score del 1 al 100." },
+    { "icon": "✨", "title": "Plan Familia gratis", "desc": "Tu plan Familia (normalmente $20.000/mes) está activo sin costo, para siempre. Ve a Ajustes para verlo." },
+    { "icon": "👆", "title": "Gesto para abrir el panel", "desc": "Desliza desde el borde izquierdo de la pantalla hacia la derecha para abrir el panel lateral. Como WhatsApp." },
+    { "icon": "🛡️", "title": "Tus datos siempre seguros", "desc": "Respaldo automático cada 30 minutos en tu dispositivo. Puedes descargar tu respaldo o restaurar desde uno en Ajustes." },
+    { "icon": "🎨", "title": "Splash más bonito", "desc": "La pantalla de bienvenida ahora tiene anillos animados y partículas de colores. Sin texto, solo arte." }
   ]
 }

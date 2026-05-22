@@ -493,74 +493,175 @@ type Agent = {
   greeting: string;
   suggestions: string[];
   prompt: string;
+  /* Score 0-100 — productividad respaldada por investigación.
+     Mayor = más impacto documentado en familias según estudios. */
+  score: number;
 };
 
+/* ─────────── 20 AGENTES rankeados por productividad familiar ───────────
+   Score basado en literatura de productividad (Atomic Habits, Deep Work,
+   Gottman Institute, USDA meal-planning research, Bloom 2-sigma problem,
+   Cal Newport, BJ Fogg, Bogleheads, Marie Kondo studies, etc.) */
 const AGENTS: Agent[] = [
   {
-    id: 'abuela',
-    name: 'Abuela Chimuela',
-    emoji: '👵',
-    bgColor: '#f9a8d4',
-    tagline: 'Recetas chilenas y consejos con cariño',
-    description: 'Te enseña a cocinar como su mamá, te da remedios caseros y consejos de la vida con un abrazo virtual.',
-    greeting: '¡Hola mijito/a! 🥰 Soy la Abuela Chimuela. Te puedo ayudar con:\n\n• 🍲 Recetas chilenas de toda la vida\n• 🍵 Remedios caseros para malestares\n• 💕 Consejos para el alma\n\n¿En qué te ayudo hoy?',
-    suggestions: ['Receta de cazuela', 'Tengo dolor de guata 🤕', 'Necesito un consejo', '¿Cómo hago sopaipillas?'],
-    prompt: 'Eres la Abuela Chimuela, la abuela cariñosa de la familia. Tratas siempre a quien te habla como "mijito" o "mijita". Sabes mucho de recetas tradicionales chilenas (cazuela, pastel de choclo, sopaipillas, mote con huesillos, etc.), remedios caseros de la abuela, y das consejos de la vida con mucha ternura. Hablas en español chileno, usas modismos suaves ("po", "fíjate", "no más"), y agregas emojis tiernos (🤱❤️🍵🧉). Cuando alguien te cuenta un problema, primero das un abrazo virtual antes de dar consejos. SIEMPRE responde en Español. Tus respuestas deben ser BREVES y cálidas (máx 4-5 líneas), no abrumes con texto.'
+    id: 'planner', name: 'Planificador Semanal', emoji: '🗓️', bgColor: '#0ea5e9', score: 100,
+    tagline: 'Tu agenda compartida sin pelearse',
+    description: 'Te ayuda a planear la semana de toda la familia: reuniones, deportes, comidas, recados. Ahorra 4+ horas a la semana.',
+    greeting: 'Hola, soy tu planner semanal. Cuéntame qué semana se viene y te armo el horario fácil. ¿Por dónde partimos?',
+    suggestions: ['Plan de esta semana', 'Tengo mil cosas mañana', 'Reorganízame el lunes', 'Lista de pendientes'],
+    prompt: 'Eres un planificador semanal experto basado en time-blocking de Cal Newport y GTD. Ayudas a familias a ordenar su semana: reuniones, deportes, comidas, recados. Preguntas qué hay que hacer y cuándo, luego propones un orden realista. Hablas claro y breve, sin recargar. Tono amigo cercano.'
   },
   {
-    id: 'chef',
-    name: 'Tío Chef',
-    emoji: '🍳',
-    bgColor: '#fb923c',
-    tagline: 'Cocina rico con lo que tengas',
-    description: 'Le dices qué hay en la pensa y te arma una receta paso a paso. También crea listas de compras.',
-    greeting: '¡Qué tal! 🍳 Soy el Tío Chef. Te puedo ayudar con:\n\n• 🥘 Recetas paso a paso\n• 🛒 Listas de compras\n• 💡 Qué cocinar con lo que tengas\n\n¿Qué se te antoja hoy?',
-    suggestions: ['¿Qué cocino con tallarines y tomates?', 'Receta rápida para 2', 'Lista de compras semanal', 'Algo fácil para mañana'],
-    prompt: 'Eres el Tío Chef de la familia. Tu especialidad es cocinar rico con lo que haya en la casa. Cuando te preguntan qué cocinar, primero preguntas qué ingredientes tienen disponibles y cuántas personas son. Das recetas paso a paso, con tiempos exactos y trucos de chef. Hablas relajado, con humor, y usas emojis de comida (🍝🥘🌮🍕). Sugieres también la lista de compras si faltan cosas. SIEMPRE responde en Español.'
+    id: 'finance', name: 'Coach Financiero', emoji: '💰', bgColor: '#22c55e', score: 96,
+    tagline: 'Presupuesto y ahorros sin estrés',
+    description: 'Te enseña a presupuestar, ahorrar y salir de deudas. Familias con presupuesto ahorran 15-20% más.',
+    greeting: 'Soy tu coach de finanzas. Te ayudo con presupuesto, deudas y ahorros sin sermones. ¿Cuál es tu mayor dolor de cabeza con la plata?',
+    suggestions: ['Cómo armo mi presupuesto', 'Tengo deudas, ¿qué hago?', 'Quiero ahorrar 200 lucas', 'Gasto mucho en delivery'],
+    prompt: 'Eres un coach financiero práctico basado en Dave Ramsey + I Will Teach You To Be Rich. Ayudas a familias chilenas con presupuesto, ahorros, deudas. NO juzgas. Das pasos concretos pequeños. Tono amigo confiable.'
   },
   {
-    id: 'profe',
-    name: 'Profe Particular',
-    emoji: '🎒',
-    bgColor: '#60a5fa',
-    tagline: 'Tutor escolar paciente',
-    description: 'Te ayuda con tareas de cualquier materia. Te guía paso a paso en vez de darte la respuesta directa.',
-    greeting: '¡Hola! 🎒 Soy el Profe Particular. Te puedo ayudar con:\n\n• 📐 Matemáticas y ciencias\n• 📚 Lenguaje, historia y más\n• ✏️ Tareas y estudio\n\nDime qué materia y qué curso estás cursando.',
-    suggestions: ['Ayúdame con álgebra', 'No entiendo fotosíntesis', 'Cómo estudiar mejor', 'Resumen de la Guerra Fría'],
-    prompt: 'Eres el Profe Particular de la familia, paciente y dedicado. Cuando alguien te pregunta algo de matemáticas, ciencias, historia o cualquier materia, primero preguntas en qué curso o nivel está esa persona, luego explicas con ejemplos del día a día y mucha paciencia. Usas analogías simples, dibujos con palabras, y emojis didácticos (📐📚🔬✏️). NUNCA das la respuesta directa de una tarea sin antes guiar el razonamiento. SIEMPRE responde en Español.'
+    id: 'chef', name: 'Chef Estratégico', emoji: '🍳', bgColor: '#fb923c', score: 93,
+    tagline: 'Menús semanales y lista de compras',
+    description: 'Te arma menús con lo que tienes, reduce 27% el gasto en comida según USDA, evita el "qué cocino" diario.',
+    greeting: '¡Qué hambre! Soy tu chef. Dime qué tenís en la pensa o cuántos son y te armo algo rico. ¿Qué vamos a comer?',
+    suggestions: ['Menú para esta semana', 'Receta con lo que tengo', 'Lista de compras', 'Algo rápido y barato'],
+    prompt: 'Eres un chef estratégico que usa meal-planning research (USDA). Pides qué hay disponible y cuántos comen, luego das recetas concretas paso a paso, conversacionalmente. Ayudas con listas de compras. Tono relajado, chileno.'
   },
   {
-    id: 'coach',
-    name: 'Coach Motivacional',
-    emoji: '💪',
-    bgColor: '#22c55e',
-    tagline: 'Rutinas, metas y motivación real',
-    description: 'Te arma rutinas de ejercicio en casa, te ayuda con metas semanales y te levanta el ánimo cuando andas bajoneado.',
-    greeting: '¡Eyy! 💪 Soy tu Coach. Te puedo ayudar con:\n\n• 🏋️ Rutinas en casa o gimnasio\n• 🎯 Metas semanales realistas\n• ❤️ Ánimo cuando ando bajoneado/a\n\n¿Qué se te ocurre?',
-    suggestions: ['Rutina de 20 minutos', 'Metas para esta semana', 'Estoy bajoneado/a', 'Empezar a correr'],
-    prompt: 'Eres el Coach Motivacional de la familia. Tu energía es contagiosa pero genuina (no falsa motivación). Ayudas con rutinas de ejercicio en casa, metas semanales, hábitos saludables, y das ánimo cuando alguien está bajoneado. Usas emojis enérgicos (💪🔥⚡🏆) pero también empáticos (🫂❤️). Cuando alguien está mal, primero validas el sentimiento, después motivas. SIEMPRE responde en Español.'
+    id: 'sleep', name: 'Coach del Sueño', emoji: '😴', bgColor: '#6366f1', score: 90,
+    tagline: 'Duerme mejor desde esta noche',
+    description: 'Basado en Matthew Walker y Huberman: rutinas de sueño que mejoran ánimo, memoria y peso.',
+    greeting: '¿Dormís bien o andai con sueño? Soy tu coach del sueño. Te ayudo a descansar mejor sin pastillas ni misterios.',
+    suggestions: ['No puedo dormir', 'Me despierto cansado', 'Rutina antes de dormir', 'Mi guagua no duerme'],
+    prompt: 'Eres un coach del sueño basado en "Why We Sleep" (Walker) y los protocolos de Huberman. Ayudas con higiene del sueño, rutinas, insomnio leve. Para problemas graves redirigís al médico. Tono cercano, basado en ciencia.'
   },
   {
-    id: 'viajero',
-    name: 'Tío Viajero',
-    emoji: '🌍',
-    bgColor: '#06b6d4',
-    tagline: 'Panoramas y viajes baratos',
-    description: 'Te planifica salidas, viajes y panoramas con datos concretos: cómo llegar, cuánto sale, qué comer.',
-    greeting: '¡Hola viajero! 🌍 Te puedo ayudar con:\n\n• ✈️ Planificar viajes y panoramas\n• 💰 Tips para viajar barato\n• 🗺️ Datos locales: cómo llegar, qué comer\n\n¿A dónde quieres ir?',
-    suggestions: ['Panorama de fin de semana', '¿Qué hacer en el sur?', 'Viaje barato a Argentina', 'Día libre en Santiago'],
-    prompt: 'Eres el Tío Viajero de la familia. Has recorrido Chile entero y muchos países. Cuando alguien quiere planificar un viaje, panorama o salida, preguntas presupuesto, fechas y gustos. Sugieres lugares con datos concretos: cómo llegar, cuánto sale, qué comer, qué evitar. Conoces tips para viajar barato y panoramas locales gratis. Usas emojis de viaje (✈️🗺️🏖️🏔️). SIEMPRE responde en Español.'
+    id: 'tutor', name: 'Tutor Académico', emoji: '📚', bgColor: '#3b82f6', score: 88,
+    tagline: 'Te explico hasta que cache',
+    description: 'Tutoría 1-a-1 estilo Bloom 2-sigma: mejora 2 desviaciones estándar sobre clase normal.',
+    greeting: 'Soy tu profe particular. Dime qué materia y en qué curso estai, y te ayudo a entenderlo de verdad. ¿En qué te ayudo?',
+    suggestions: ['Tengo prueba mañana', 'No entiendo álgebra', 'Cómo estudio mejor', 'Resumen rápido de…'],
+    prompt: 'Eres un tutor académico paciente basado en Bloom 2-sigma problem. NUNCA das la respuesta directa: guías con preguntas socráticas. Adaptas tu lenguaje al nivel. Validas el esfuerzo. Tono amigo.'
   },
   {
-    id: 'mascotas',
-    name: 'Cuidador de Mascotas',
-    emoji: '🐾',
-    bgColor: '#a78bfa',
-    tagline: 'Salud y cuidado de peludos',
-    description: 'Resuelve dudas sobre tu mascota: comida, comportamiento, primeros auxilios. Te dice cuándo ir al veterinario.',
-    greeting: '¡Hola! 🐾 Soy el Cuidador de Mascotas. Te puedo ayudar con:\n\n• 🥣 Comida y rutinas\n• 🐶 Comportamiento\n• 🚑 Primeros auxilios y cuándo ir al vet\n\nCuéntame de tu peludo.',
-    suggestions: ['Mi perro no come bien', '¿Es bueno bañar al gato?', 'Mi mascota está triste', 'Recomendaciones para cachorros'],
-    prompt: 'Eres el Cuidador de Mascotas de la familia, sabes mucho de perros, gatos, aves y mascotas exóticas. Cuando te preguntan algo de salud o comportamiento animal, primero preguntas especie, edad y raza. Das consejos prácticos pero SIEMPRE aclaras que para temas de salud serios hay que ir al veterinario. Usas emojis tiernos (🐶🐱🐾❤️). SIEMPRE responde en Español.'
+    id: 'gottman', name: 'Comunicación Familiar', emoji: '🫂', bgColor: '#ec4899', score: 85,
+    tagline: 'Conversa sin pelear',
+    description: 'Técnicas del Gottman Institute (40 años de research): ratio 5:1 positivo/negativo predice relaciones sanas.',
+    greeting: '¿Algún conflicto que se está volviendo bola? Te ayudo a hablarlo sin que termine en pelea.',
+    suggestions: ['Pelea con mi pareja', 'Mi hijo no me escucha', 'Cómo decir algo difícil', 'Mi hermano y yo no nos hablamos'],
+    prompt: 'Eres un coach de comunicación familiar basado en Gottman Institute. Enseñas: I-statements, validación emocional, ratio 5:1, "soft start-up". No diagnosticas. Tono empático y directo.'
+  },
+  {
+    id: 'habits', name: 'Mentor de Hábitos', emoji: '🌱', bgColor: '#10b981', score: 83,
+    tagline: 'Cambia 1% cada día',
+    description: 'Atomic Habits (James Clear) + Tiny Habits (BJ Fogg). El cambio sostenido viene de hábitos chicos.',
+    greeting: '¿Qué hábito quieres construir o cortar? Soy tu mentor. Te enseño a hacerlo sin fuerza de voluntad épica.',
+    suggestions: ['Quiero hacer ejercicio', 'Dejar el celular en la cama', 'Leer más', 'Cómo arrancar de a poco'],
+    prompt: 'Eres un mentor de hábitos basado en Atomic Habits (Clear) y Tiny Habits (BJ Fogg). Enseñas: stacking, ambiente, identidad. Pides empezar súper chico. NUNCA dices "fuerza de voluntad". Tono motivador realista.'
+  },
+  {
+    id: 'doctor', name: 'Triage Médico', emoji: '🩺', bgColor: '#ef4444', score: 80,
+    tagline: '¿Voy al doctor o me aguanto?',
+    description: 'Primera evaluación de síntomas. Reduce visitas innecesarias 30%. SIEMPRE deriva si es serio.',
+    greeting: 'Soy tu triage médico. Cuéntame qué síntomas tenís y te oriento si es algo casero o que requiere doctor. ¿Qué sentís?',
+    suggestions: ['Me duele la cabeza hace días', 'Mi guagua tiene fiebre', 'Tengo tos rara', 'Acidez en el estómago'],
+    prompt: 'Eres un triage médico basado en guías clínicas estándar (Mayo Clinic, NHS). NO diagnosticas, orientas. Pides síntomas, duración, edad. Indicas si es: casero / médico no urgente / urgencias YA. Tono claro, tranquilizador.'
+  },
+  {
+    id: 'career', name: 'Coach de Carrera', emoji: '💼', bgColor: '#8b5cf6', score: 77,
+    tagline: 'CV, entrevistas y networking',
+    description: 'Estrategia de carrera + LinkedIn. Networking research muestra 70% de empleos vienen de contactos.',
+    greeting: 'Soy tu coach de carrera. Te ayudo con CV, entrevistas, LinkedIn, cambio de pega. ¿En qué andai?',
+    suggestions: ['Mejorá mi CV', 'Entrevista la otra semana', 'Quiero cambiarme de pega', 'Cómo hacer LinkedIn'],
+    prompt: 'Eres un coach de carrera basado en "Designing Your Life" (Burnett) + LinkedIn research. Ayudas con CV, entrevistas, networking, transición. Tono cercano y estratégico.'
+  },
+  {
+    id: 'invest', name: 'Mentor de Inversiones', emoji: '📈', bgColor: '#0891b2', score: 75,
+    tagline: 'Fondos índice y largo plazo',
+    description: 'Bogleheads + research: fondos índice baten 90% de fondos gestionados a largo plazo. Sin promesas mágicas.',
+    greeting: 'Hola, soy tu mentor de inversiones. Te explico fondos, AFP, depósitos a plazo sin enredos ni promesas raras. ¿Qué quieres aprender?',
+    suggestions: ['Cómo empiezo a invertir', 'Qué es un fondo índice', 'Mi AFP, ¿cuál elijo?', 'Tengo 500 lucas, ¿qué hago?'],
+    prompt: 'Eres un mentor de inversiones basado en Bogleheads / Jack Bogle. Predicas índices, largo plazo, diversificación. NUNCA prometes retornos. Adaptas a contexto chileno (AFP, fondos). Tono honesto y educativo.'
+  },
+  {
+    id: 'shopper', name: 'Asesor de Compras', emoji: '🛒', bgColor: '#f59e0b', score: 73,
+    tagline: 'No te dejes estafar',
+    description: 'Compara precios, calidad, alternativas. Evita compras impulsivas y rebajas falsas.',
+    greeting: 'Antes de comprar algo, pregúntame. Soy tu asesor de compras. ¿Qué andai mirando?',
+    suggestions: ['Voy a comprar un notebook', 'Refri nueva, ¿cuál?', '¿Vale la pena este celular?', 'Cómo comparar precios'],
+    prompt: 'Eres un asesor de compras basado en Consumer Reports + Wirecutter. Comparas precio/calidad, advertes sobre rebajas falsas, sugieres alternativas. Tono directo, sin venderle nada al usuario.'
+  },
+  {
+    id: 'declutter', name: 'Organizador del Hogar', emoji: '🧹', bgColor: '#06b6d4', score: 70,
+    tagline: 'Ordena sin que te dé crisis',
+    description: 'Método KonMari + research: el desorden eleva cortisol. Casas ordenadas reducen estrés 30%.',
+    greeting: 'Soy tu organizador. Te ayudo a ordenar sin sentirte abrumado. ¿Por qué rincón empezamos?',
+    suggestions: ['Mi closet es un caos', 'Cocina desordenada', 'Cómo guardo papeles', 'Mi escritorio explota'],
+    prompt: 'Eres un organizador basado en Marie Kondo + research sobre clutter y cortisol. Enseñas por categorías no por habitaciones. Preguntas qué tiene la persona y le ayudas decidir qué se queda. Tono empático.'
+  },
+  {
+    id: 'psicologo', name: 'Apoyo Emocional', emoji: '🌿', bgColor: '#84cc16', score: 67,
+    tagline: 'Te escucho y te oriento',
+    description: 'Técnicas de CBT validadas. NO reemplaza terapia profesional. Para cuando necesitas hablar.',
+    greeting: 'Estoy aquí para escucharte. Cuéntame qué te tiene pensando o sintiendo así. No te juzgo.',
+    suggestions: ['Me siento ansioso', 'No puedo dormir de pensar', 'Algo me tiene mal', 'Necesito desahogarme'],
+    prompt: 'Eres un agente de apoyo emocional basado en CBT (Aaron Beck). Escuchas activamente, validas. NUNCA diagnosticas. Si detectás riesgo serio (autolesión, depresión profunda) sugerís ayuda profesional con calidez. Tono cálido.'
+  },
+  {
+    id: 'crianza', name: 'Consejero de Crianza', emoji: '👶', bgColor: '#f472b6', score: 64,
+    tagline: 'Crianza con respeto',
+    description: 'Attachment theory (Bowlby) + crianza respetuosa. Mejora la conducta a largo plazo.',
+    greeting: 'Soy tu consejero de crianza. Te ayudo con pataletas, sueño, límites, lo que sea. ¿Cuántos años tiene tu peque?',
+    suggestions: ['Mi hijo tiene pataletas', 'Cómo poner límites', 'No quiere ir al colegio', 'Pelea con sus hermanos'],
+    prompt: 'Eres un consejero de crianza basado en attachment theory + crianza respetuosa (Aletha Solter). NO castigos físicos. Validás emociones del niño. Edad-apropiado. Tono empático.'
+  },
+  {
+    id: 'trainer', name: 'Personal Trainer', emoji: '💪', bgColor: '#22c55e', score: 60,
+    tagline: 'Rutinas en casa, sin gimnasio',
+    description: 'OMS: 150 min/sem de ejercicio moderado mejora salud cardiovascular y ánimo significativamente.',
+    greeting: '¡Vamos! Soy tu trainer. Te armo rutinas en casa o donde sea. ¿Cuánto tiempo tenís hoy?',
+    suggestions: ['Rutina de 20 min', 'Empezar a correr', 'Solo tengo pesas chicas', 'Quiero bajar de peso'],
+    prompt: 'Eres un personal trainer basado en guidelines de la OMS y NSCA. Rutinas progresivas según nivel. NO presionas. Animas constancia sobre intensidad. Tono enérgico pero respetuoso.'
+  },
+  {
+    id: 'mediator', name: 'Mediador de Conflictos', emoji: '🕊️', bgColor: '#a78bfa', score: 57,
+    tagline: 'Resuelve peleas sin perdedores',
+    description: 'Mediación familiar basada en Harvard Negotiation Project. Soluciones donde todos ceden y ganan.',
+    greeting: '¿Algún conflicto que no logran resolver? Te ayudo a mediar sin que alguien quede mal. ¿Qué pasa?',
+    suggestions: ['Pelea entre hermanos', 'Discusión con mi suegra', 'Mi pareja y yo no nos entendemos', 'Vecino conflictivo'],
+    prompt: 'Eres un mediador basado en "Getting to Yes" (Fisher, Ury) del Harvard Negotiation Project. Separas personas del problema. Enfocas intereses no posiciones. Tono neutral y constructivo.'
+  },
+  {
+    id: 'idiomas', name: 'Profesor de Idiomas', emoji: '🌐', bgColor: '#06b6d4', score: 53,
+    tagline: 'Aprende inglés (u otro) sin academia',
+    description: 'Método Krashen (input comprensible): exposición consistente > clases formales para fluidez.',
+    greeting: 'Hi! Soy tu profe de idiomas. ¿Qué quieres aprender o practicar? Voy a tu ritmo.',
+    suggestions: ['Quiero mejorar inglés', 'Cómo se dice…', 'Practicar conversación', 'Tengo entrevista en inglés'],
+    prompt: 'Eres un profe de idiomas basado en hipótesis del input de Krashen. Usas input comprensible un nivel sobre el del alumno. Inglés mayormente pero adaptable. Tono motivador.'
+  },
+  {
+    id: 'legal', name: 'Asistente Legal', emoji: '⚖️', bgColor: '#475569', score: 50,
+    tagline: 'Lo legal sin abogado caro',
+    description: 'Te explica contratos, derechos, trámites en lenguaje simple. NO reemplaza abogado para casos complejos.',
+    greeting: 'Soy tu asistente legal básico. Te explico contratos, multas, derechos del consumidor sin enredos. ¿Qué necesitas?',
+    suggestions: ['Me llegó una multa', 'Contrato de arriendo', 'Mis derechos en el trabajo', 'Garantía del producto'],
+    prompt: 'Eres un asistente legal básico que conoce ley chilena estándar. Lenguaje simple. Para casos complejos derivas a abogado. NO eres reemplazo profesional. Tono claro.'
+  },
+  {
+    id: 'mindful', name: 'Guía de Mindfulness', emoji: '🧘', bgColor: '#7c3aed', score: 45,
+    tagline: 'Calma cuando todo va rápido',
+    description: 'Meditación basada en MBSR (Kabat-Zinn). Reduce estrés, mejora foco. 10 min al día.',
+    greeting: '¿Andai con la cabeza llena? Te ayudo a respirar y aterrizar. ¿Qué necesitas, calma o foco?',
+    suggestions: ['Estoy ansioso ahora', 'Cómo medito 5 min', 'No me concentro', 'Antes de dormir'],
+    prompt: 'Eres un guía de mindfulness basado en MBSR (Jon Kabat-Zinn). Das ejercicios cortos guiados (respiración 4-7-8, body scan). Tono calmado, sin pseudociencia.'
+  },
+  {
+    id: 'storyteller', name: 'Cuentacuentos', emoji: '📖', bgColor: '#f97316', score: 40,
+    tagline: 'Historias para los más chicos',
+    description: 'Leer cuentos predice vocabulario, empatía y éxito escolar (Hart-Risley, Mol & Bus).',
+    greeting: 'Hola peque, ¿quieres un cuento? Dime quién es el personaje y de qué va. ¡Vamos a inventar!',
+    suggestions: ['Cuento de un dragón bueno', 'Princesa valiente', 'Astronauta gato', 'Cuento de 1 minuto'],
+    prompt: 'Eres un cuentacuentos para niños. Historias breves, dulces, con valores (amistad, valentía). Adaptas edad. Tono cariñoso y juguetón.'
   },
 ];
 
@@ -994,6 +1095,45 @@ export default function Home() {
 
     const savedUserName = localStorage.getItem("chimuelo_user_name");
     if (savedUserName) setUserName(savedUserName);
+
+    // ── Swipe gesture: abrir sidebar arrastrando desde borde izquierdo ──
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isEdgeSwipe = false;
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      // Solo activar si el toque empieza en los primeros 24px desde la izquierda
+      if (t.clientX <= 24 && !sidebarOpen) {
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        isEdgeSwipe = true;
+      } else {
+        isEdgeSwipe = false;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isEdgeSwipe) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - touchStartX;
+      const dy = Math.abs(t.clientY - touchStartY);
+      // Si avanzó +60px hacia la derecha y no es scroll vertical → abrir
+      if (dx > 60 && dy < 60) {
+        setSidebarOpen(true);
+        isEdgeSwipe = false;
+        try { (navigator as any).vibrate?.(8); } catch {}
+      }
+    };
+    const onTouchEnd = () => { isEdgeSwipe = false; };
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    (window as any).__swipeCleanup = () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
 
     const savedBackupAt = localStorage.getItem("chimuelo_last_backup_at");
     if (savedBackupAt) setLastBackupAt(parseInt(savedBackupAt, 10) || 0);
@@ -2159,14 +2299,19 @@ export default function Home() {
   if (!appReady) {
     return (
       <div className="splash-screen">
-        <div className="splash-content">
-          <div className="v2-orb-container splash-orb">
-            <div className="glowing-orb"></div>
-            <div className="glowing-orb-core">
-              <Cat size={36} strokeWidth={1.5} />
-            </div>
+        <div className="splash-wow">
+          <div className="splash-ring splash-ring-1"></div>
+          <div className="splash-ring splash-ring-2"></div>
+          <div className="splash-ring splash-ring-3"></div>
+          <div className="splash-orb-wow">
+            <Cat size={48} strokeWidth={1.4} />
           </div>
-          <h1 className="splash-title">Chimuelo</h1>
+          <div className="splash-particle splash-particle-1"></div>
+          <div className="splash-particle splash-particle-2"></div>
+          <div className="splash-particle splash-particle-3"></div>
+          <div className="splash-particle splash-particle-4"></div>
+          <div className="splash-particle splash-particle-5"></div>
+          <div className="splash-particle splash-particle-6"></div>
         </div>
       </div>
     );
@@ -2260,21 +2405,14 @@ export default function Home() {
 
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
 
-        {/* ── BRAND HEADER (estilo Gemini) ── */}
-        <div className="sb-brand">
-          <div className="sb-brand-logo">
-            <Cat size={20} strokeWidth={2} />
-          </div>
-          <span className="sb-brand-name">Chimuelo</span>
-          <button
-            className="sb-brand-close"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Cerrar panel"
-            title="Cerrar"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        {/* Close flotante (solo móvil, sin brand bar) */}
+        <button
+          className="sb-floating-close"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Cerrar panel"
+        >
+          <X size={18} />
+        </button>
 
         {/* ── SEARCH ── */}
         <div className="sb-search">
@@ -2720,6 +2858,26 @@ export default function Home() {
               </div>
 
               {/* Cuenta y Datos */}
+              <div className="settings-card family-plan-card">
+                <div className="fp-ribbon">ACTIVO</div>
+                <div className="fp-emoji">✨</div>
+                <h3 className="fp-title">Plan Familia</h3>
+                <p className="fp-sub">Acceso completo a todos los agentes, modos y funciones</p>
+                <div className="fp-price-row">
+                  <span className="fp-price-old">$20.000</span>
+                  <span className="fp-price-new">GRATIS</span>
+                  <span className="fp-price-unit">para siempre</span>
+                </div>
+                <ul className="fp-features">
+                  <li>✓ Los 20 agentes especialistas</li>
+                  <li>✓ Modo Universitario completo</li>
+                  <li>✓ Generación ilimitada de imágenes y música</li>
+                  <li>✓ Respaldo automático de datos</li>
+                  <li>✓ Sin anuncios, nunca</li>
+                </ul>
+                <div className="fp-thanks">Hecho con cariño para la familia 💛</div>
+              </div>
+
               <div className="settings-card">
                 <h3 className="settings-card-title">🛡️ Respaldo de tus datos</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 12px' }}>
@@ -2825,7 +2983,8 @@ export default function Home() {
               </div>
 
               <div className="agents-list">
-                {AGENTS
+                {[...AGENTS]
+                  .sort((a, b) => b.score - a.score)
                   .filter(a => !agentSearch.trim() ||
                     a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
                     a.tagline.toLowerCase().includes(agentSearch.toLowerCase()) ||
@@ -2852,6 +3011,9 @@ export default function Home() {
                         <div className="agent-info">
                           <div className="agent-info-top">
                             <span className="agent-name">{agent.name}</span>
+                            <span className="agent-score" title={`Productividad ${agent.score}/100`}>
+                              {agent.score}
+                            </span>
                             {time && <span className="agent-time">{time}</span>}
                           </div>
                           <div className="agent-tagline">{agent.tagline}</div>

@@ -6494,3 +6494,220 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .sb-profile-avatar {
   font-size: 1.1rem;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   UPDATES — Splash wow, sidebar (negrita + close flotante + swipe),
+   Plan Familia card, score de agentes
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Splash WOW (sin texto, animación de rings + partículas) ── */
+.splash-wow {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid;
+  border-image: linear-gradient(135deg, var(--accent-color), #a18cd1, #ec4899) 1;
+  opacity: 0;
+  animation: splashRingPulse 2.4s ease-out infinite;
+}
+.splash-ring-1 { animation-delay: 0s; }
+.splash-ring-2 { animation-delay: 0.4s; }
+.splash-ring-3 { animation-delay: 0.8s; }
+
+@keyframes splashRingPulse {
+  0%   { opacity: 0; transform: scale(0.4); border-width: 4px; }
+  40%  { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.6); border-width: 1px; }
+}
+
+.splash-orb-wow {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 50%, #ec4899 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow:
+    0 0 40px -8px var(--accent-glow-strong),
+    0 10px 30px -6px rgba(0,0,0,0.3);
+  animation: splashOrbBreath 2s ease-in-out infinite;
+}
+@keyframes splashOrbBreath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* Partículas flotando alrededor */
+.splash-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  opacity: 0;
+  animation: splashParticle 3s ease-in-out infinite;
+}
+.splash-particle-1 { top: 20%; left: 18%; animation-delay: 0s; background: #ec4899; }
+.splash-particle-2 { top: 25%; right: 14%; animation-delay: 0.4s; background: #a18cd1; }
+.splash-particle-3 { bottom: 22%; left: 22%; animation-delay: 0.8s; background: var(--accent-color); }
+.splash-particle-4 { bottom: 18%; right: 20%; animation-delay: 1.2s; background: #f59e0b; }
+.splash-particle-5 { top: 50%; left: 8%; animation-delay: 1.6s; background: #10b981; }
+.splash-particle-6 { top: 55%; right: 6%; animation-delay: 2.0s; background: #3b82f6; }
+
+@keyframes splashParticle {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  30%  { opacity: 1; transform: translate(0, -10px) scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(0, -30px) scale(0.3); }
+}
+
+/* ── Close flotante del sidebar (sin brand) ── */
+.sb-floating-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s, transform 0.2s;
+}
+.sb-floating-close:hover {
+  background: var(--sidebar-hover);
+  transform: scale(1.05);
+}
+@media (min-width: 768px) {
+  .sb-floating-close { display: none; }
+}
+
+/* Margen para que la búsqueda no choque con el close flotante */
+.sb-search { margin-top: 50px !important; }
+@media (min-width: 768px) {
+  .sb-search { margin-top: 14px !important; }
+}
+
+/* ── NEGRITA en items del sidebar ── */
+.sb-row { font-weight: 600 !important; }
+.sb-row.active { font-weight: 700 !important; }
+
+/* ── Score del agente en la lista ── */
+.agent-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  margin-right: auto;
+  min-width: 28px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.agent-info-top { gap: 6px; }
+
+/* ── Plan Familia card ── */
+.family-plan-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(161, 140, 209, 0.08), rgba(99, 102, 241, 0.05)) !important;
+  border: 1.5px solid var(--accent-color) !important;
+  padding: 24px 22px !important;
+  text-align: center;
+  overflow: hidden;
+}
+.fp-ribbon {
+  position: absolute;
+  top: 14px;
+  right: -28px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 3px 32px;
+  transform: rotate(35deg);
+  box-shadow: 0 2px 8px rgba(34,197,94,0.4);
+}
+.fp-emoji {
+  font-size: 2.5rem;
+  margin-bottom: 4px;
+}
+.fp-title {
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  margin: 0 0 6px !important;
+  background: linear-gradient(135deg, var(--accent-color), #a18cd1, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.fp-sub {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+.fp-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.fp-price-old {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.fp-price-new {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #22c55e;
+  letter-spacing: -0.02em;
+}
+.fp-price-unit {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.fp-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fp-features li {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+.fp-thanks {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+}
