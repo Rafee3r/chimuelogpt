@@ -2,7 +2,7 @@ export const maxDuration = 90;
 
 export async function POST(req: Request) {
   try {
-    const { messages, imageBase64, persona, customInstructions, model } = await req.json();
+    const { messages, imageBase64, persona, customInstructions, model, isAgent } = await req.json();
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
@@ -98,7 +98,18 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
 
     const customInstructionsPrompt = customInstructions ? `\nINSTRUCCIONES PERSONALIZADAS (PRIORIDAD MÁXIMA):\n${customInstructions}\n` : '';
 
-    const systemPrompt = `${personaPrompt}${customInstructionsPrompt}
+    // ── Modo AGENTE: respuesta WhatsApp casual sobre la imagen ──
+    const agentSystemPrompt = `${customInstructionsPrompt}
+ESTÁS POR WHATSAPP. Eres un amigo cercano que está viendo la foto que te mandó la persona.
+- Mensajes CORTOS (3-4 líneas máximo), conversacionales, como un amigo real.
+- PROHIBIDO usar formato markdown: ni # títulos, ni **negritas**, ni listas con -, ni tablas, ni separadores.
+- Tono casual, chileno, tutea ("oye mira", "fíjate que", "po").
+- Reacciona primero a lo que ves antes de dar info ("ahh, sí lo conozco", "qué rico se ve eso").
+- Emojis muy selectivos (1 cada 2-3 mensajes máximo, solo si calza).
+- Si te piden info nutricional o detalles, dilos conversacional ("tiene como 200 calorías por porción, no es tanto") no en lista.
+SIEMPRE responde en Español.`;
+
+    const systemPrompt = isAgent ? agentSystemPrompt : `${personaPrompt}${customInstructionsPrompt}
 FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
 - COMIENZA con un título # H1 grande que resuma el tema cuando estés analizando una imagen (ej. "# Análisis de lo que estás consumiendo 🥩" o "# Información del producto").
 - Usa ## para subsecciones principales y ### para detalles

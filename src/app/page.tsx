@@ -1400,13 +1400,16 @@ export default function Home() {
         finalSystemPrompt += `\n\n[MEMORIA PERSISTENTE DEL USUARIO — PRIORIDAD ALTA]\nConoces estos datos del usuario de conversaciones anteriores. Úsalos para personalizar tus respuestas sin que te lo repita:\n${userMemory.map(m => `• ${m.content}`).join('\n')}\n[FIN DE MEMORIA PERSISTENTE]`;
       }
 
+      // Flag para estilo WhatsApp (sin formato, casual, mensajes cortos)
+      const isAgent = !!(chatForApi?.agentId);
+
       let res: Response;
       if (imagePayload) {
         // Use Claude Haiku vision endpoint
         res = await fetch('/api/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model }),
+          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model, isAgent }),
           signal: controller.signal,
         });
       } else {
@@ -1414,7 +1417,7 @@ export default function Home() {
         res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt }),
+          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt, isAgent }),
           signal: controller.signal,
         });
       }
@@ -3073,6 +3076,19 @@ export default function Home() {
                                 </div>
                                 <MemoizedMarkdown content={webBadgeBody} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
                               </>
+                            ) : currentBody.match(/<sticker>([^<]+)<\/sticker>/) ? (
+                              /* Sticker: emoji grande estilo WhatsApp */
+                              (() => {
+                                const match = currentBody.match(/<sticker>([^<]+)<\/sticker>/);
+                                const stickerEmoji = match?.[1]?.trim() || '';
+                                const restText = currentBody.replace(/<sticker>[^<]*<\/sticker>/, '').trim();
+                                return (
+                                  <>
+                                    {restText && <MemoizedMarkdown content={restText} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />}
+                                    <div className="wa-sticker">{stickerEmoji}</div>
+                                  </>
+                                );
+                              })()
                             ) : (
                               <MemoizedMarkdown
                                 content={currentBody}
@@ -3178,18 +3194,32 @@ export default function Home() {
           )}
 
           {isThinking && (displayMessages.length === 0 || displayMessages[displayMessages.length - 1]?.role !== 'assistant') && (
-            <div className="message assistant">
-              <div className="message-content-wrapper">
-                <div className="avatar assistant">
-                  <Cat size={24} />
-                </div>
-                <div className="message-text">
-                  <div className="thinking-v2">
-                    <div className="thinking-v2-pill" />
+            activeAgent ? (
+              /* Indicador "Escribiendo..." estilo WhatsApp para agentes */
+              <div className="message assistant">
+                <div className="message-content-wrapper">
+                  <div className="message-text wa-typing-bubble">
+                    <span className="wa-typing-text">Escribiendo</span>
+                    <span className="wa-typing-dots">
+                      <span></span><span></span><span></span>
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="message assistant">
+                <div className="message-content-wrapper">
+                  <div className="avatar assistant">
+                    <Cat size={24} />
+                  </div>
+                  <div className="message-text">
+                    <div className="thinking-v2">
+                      <div className="thinking-v2-pill" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
           )}
           {/* Sugerencias del agente como respuestas rápidas dentro del chat */}
           {activeAgent && displayMessages.length === 1 && displayMessages[0]?.role === 'assistant' && !isThinking && (
