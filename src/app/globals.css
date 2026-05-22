@@ -4322,73 +4322,115 @@ a {
 .sb-scroll::-webkit-scrollbar-track { background: transparent; }
 .sb-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
-/* ── Sidebar sections balance estilo Gemini ─────────────────
-   Espacio, jerarquía y estados — sin líneas decorativas */
-.sb-section { padding: 20px 0 2px; }
-.sb-section:first-child { padding-top: 12px; }
-.sb-section-chats { flex: 1; display: flex; flex-direction: column; padding-top: 24px; }
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR REDISEÑO — polish real estilo Gemini
+   ════════════════════════════════════════════════════════════ */
 
-/* Section labels: con icono pequeño + texto uppercase espaciado */
+/* ── Secciones con buen ritmo vertical ── */
+.sb-section { padding: 18px 0 4px; }
+.sb-section:first-of-type { padding-top: 8px; }
+.sb-section-chats { flex: 1; display: flex; flex-direction: column; padding-top: 18px; }
+
+/* ── Section labels con icono visible + tipografía clara ── */
 .sb-section-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  opacity: 0.75;
-  padding: 6px 18px 10px;
+  opacity: 0.85;
+  padding: 4px 18px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 .sb-section-label svg {
   color: var(--accent-color);
-  opacity: 0.9;
+  opacity: 1;
+  flex-shrink: 0;
 }
 
-/* Espacio respiratorio bajo "Nuevo chat" — sin línea, solo padding */
+/* ── "Nuevo chat" como botón destacado (no plano) ── */
 .sb-row-primary {
-  margin-bottom: 12px !important;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  margin: 4px 12px 8px !important;
+  width: calc(100% - 24px) !important;
+  padding: 10px 14px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  border-radius: 14px !important;
 }
+.sb-row-primary:hover {
+  background: var(--sidebar-hover) !important;
+  border-color: var(--accent-color) !important;
+}
+[data-theme="dark"] .sb-row-primary,
+[data-theme="oled"] .sb-row-primary {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.sb-row-primary svg { color: var(--accent-color); }
 
-/* Filas más altas para mejor toque + jerarquía */
+/* ── Filas regulares con mejor padding + radius ── */
 .sb-row {
-  padding: 10px 14px;
+  padding: 9px 14px;
   font-size: 0.9rem;
   font-weight: 500;
-  border-radius: 12px;
-  margin: 1px 8px;
-  width: calc(100% - 16px);
-  letter-spacing: -0.005em;
+  border-radius: 10px;
+  margin: 1px 10px;
+  width: calc(100% - 20px);
+  gap: 12px;
 }
+.sb-row svg { color: var(--text-secondary); flex-shrink: 0; }
 
-/* Estados de hover/active más refinados */
 .sb-row:hover {
   background: var(--sidebar-hover);
   color: var(--text-primary);
 }
+.sb-row:hover svg { color: var(--text-primary); }
+
 .sb-row.active {
   background: var(--accent-color);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 2px 8px -2px var(--accent-glow-strong);
+  box-shadow: 0 4px 14px -4px var(--accent-glow-strong);
 }
-.sb-row.active svg { color: #fff; }
+.sb-row.active svg { color: #fff !important; opacity: 1; }
 
-/* Day labels (Hoy, Ayer, etc.) — más sutiles, integrados al flow */
+/* ── Day labels (Hoy, Ayer): pequeños y sutiles ── */
 .sb-group-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-secondary);
-  padding: 12px 18px 4px;
-  opacity: 0.7;
-  letter-spacing: 0;
+  padding: 10px 18px 2px;
+  opacity: 0.55;
+  letter-spacing: 0.02em;
 }
 
-/* Primer day-label sin padding-top extra */
-.sb-section-chats > div:first-child > .sb-group-label,
-.sb-section-chats > div:first-of-type .sb-group-label:first-child {
-  padding-top: 4px;
+/* ── Brand: cat icon container más prominente ── */
+.sb-brand {
+  padding: 16px 16px 10px;
+}
+.sb-brand-logo {
+  width: 36px;
+  height: 36px;
+}
+.sb-brand-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.sb-brand-close {
+  width: 36px;
+  height: 36px;
+}
+.sb-brand-close svg { opacity: 0.7; }
+.sb-brand-close:hover svg { opacity: 1; }
+
+/* ── Search más prominente ── */
+.sb-search {
+  margin: 2px 12px 6px !important;
 }
 
 .sb-group-label {
