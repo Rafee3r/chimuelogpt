@@ -1096,36 +1096,48 @@ export default function Home() {
     const savedUserName = localStorage.getItem("chimuelo_user_name");
     if (savedUserName) setUserName(savedUserName);
 
-    // ── Swipe gesture: abrir sidebar arrastrando desde borde izquierdo ──
+    // ── Swipe gestures: abrir desde borde izq + cerrar arrastrando a la izq ──
     let touchStartX = 0;
     let touchStartY = 0;
-    let isEdgeSwipe = false;
+    let gesture: 'none' | 'open' | 'close' = 'none';
+
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!t) return;
-      // Solo activar si el toque empieza en los primeros 24px desde la izquierda
-      if (t.clientX <= 24 && !sidebarOpen) {
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-        isEdgeSwipe = true;
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      const sidebarIsOpen = document.querySelector('.sidebar')?.classList.contains('sidebar-mobile-hidden') === false;
+      if (!sidebarIsOpen && t.clientX <= 40) {
+        // Borde izquierdo + sidebar cerrado → gesto de abrir
+        gesture = 'open';
+      } else if (sidebarIsOpen) {
+        // Cualquier toque con sidebar abierto → posible cierre
+        gesture = 'close';
       } else {
-        isEdgeSwipe = false;
+        gesture = 'none';
       }
     };
+
     const onTouchMove = (e: TouchEvent) => {
-      if (!isEdgeSwipe) return;
+      if (gesture === 'none') return;
       const t = e.touches[0];
       if (!t) return;
       const dx = t.clientX - touchStartX;
       const dy = Math.abs(t.clientY - touchStartY);
-      // Si avanzó +60px hacia la derecha y no es scroll vertical → abrir
-      if (dx > 60 && dy < 60) {
+      if (dy > 60) { gesture = 'none'; return; } // es scroll vertical
+
+      if (gesture === 'open' && dx > 35) {
         setSidebarOpen(true);
-        isEdgeSwipe = false;
+        gesture = 'none';
         try { (navigator as any).vibrate?.(8); } catch {}
+      } else if (gesture === 'close' && dx < -50) {
+        setSidebarOpen(false);
+        gesture = 'none';
+        try { (navigator as any).vibrate?.(6); } catch {}
       }
     };
-    const onTouchEnd = () => { isEdgeSwipe = false; };
+
+    const onTouchEnd = () => { gesture = 'none'; };
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -2404,15 +2416,6 @@ export default function Home() {
       )}
 
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
-
-        {/* Close flotante (solo móvil, sin brand bar) */}
-        <button
-          className="sb-floating-close"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Cerrar panel"
-        >
-          <X size={18} />
-        </button>
 
         {/* ── SEARCH ── */}
         <div className="sb-search">

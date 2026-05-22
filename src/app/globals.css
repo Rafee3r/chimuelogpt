@@ -6573,33 +6573,8 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   100% { opacity: 0; transform: translate(0, -30px) scale(0.3); }
 }
 
-/* ── Close flotante del sidebar (sin brand) ── */
-.sb-floating-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: background 0.2s, transform 0.2s;
-}
-.sb-floating-close:hover {
-  background: var(--sidebar-hover);
-  transform: scale(1.05);
-}
-@media (min-width: 768px) {
-  .sb-floating-close { display: none; }
-}
-
-/* Margen para que la búsqueda no choque con el close flotante */
-.sb-search { margin-top: 50px !important; }
+/* Search con margen normal (sin close flotante arriba) */
+.sb-search { margin-top: 14px !important; }
 @media (min-width: 768px) {
   .sb-search { margin-top: 14px !important; }
 }
