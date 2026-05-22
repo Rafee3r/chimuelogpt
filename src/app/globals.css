@@ -6456,3 +6456,41 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   box-shadow: none !important;
   padding: 0 !important;
 }
+
+/* ── Nombre de usuario editable inline en el sidebar ── */
+.sb-profile-name-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.sb-profile-name-btn:hover {
+  color: var(--accent-color);
+}
+
+.sb-profile-name-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--accent-color);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* Avatar muestra emoji 🐾 cuando no hay nombre */
+.sb-profile-avatar {
+  font-size: 1.1rem;
+}

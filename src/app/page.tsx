@@ -372,6 +372,105 @@ function safeSetChats(chats: any[]): void {
   }
 }
 
+/* ─────────── SISTEMA DE BACKUP LOCAL ───────────
+   Captura TODO el estado de la app y permite:
+   1. Auto-respaldo rotativo (3 versiones, 1 cada 30 min)
+   2. Export a archivo JSON descargable
+   3. Import desde archivo JSON (restaura todo)
+   Las 3 versiones rotativas viven en localStorage como un cinturón
+   de seguridad: si las claves principales se corrompen o se borran
+   accidentalmente, la app puede recuperarse desde la última válida.
+   ─────────────────────────────────────────────── */
+
+const BACKUP_KEYS_TO_CAPTURE = [
+  'chimuelo_chats',
+  'chimuelo_subjects',
+  'chimuelo_active_subject',
+  'chimuelo_current_chat',
+  'chimuelo_memory',
+  'chimuelo_memoryEnabled',
+  'chimuelo_user_name',
+  'chimuelo_model',
+  'chimuelo_theme',
+  'chimuelo_persona',
+  'chimuelo_custom_instructions',
+  'chimuelo_bubble_style',
+  'chimuelo_message_density',
+];
+
+function captureAppSnapshot(): Record<string, string> {
+  const snapshot: Record<string, string> = {};
+  for (const key of BACKUP_KEYS_TO_CAPTURE) {
+    const v = localStorage.getItem(key);
+    if (v !== null) snapshot[key] = v;
+  }
+  return snapshot;
+}
+
+function performAutoBackup() {
+  try {
+    const snapshot = captureAppSnapshot();
+    if (Object.keys(snapshot).length === 0) return;
+    const payload = JSON.stringify({
+      version: 1,
+      savedAt: Date.now(),
+      data: snapshot
+    });
+    // Rotación: backup_v1 (más reciente), v2, v3 (más antiguo)
+    const v2 = localStorage.getItem('chimuelo_backup_v1');
+    const v1 = localStorage.getItem('chimuelo_backup_v2');
+    if (v1) localStorage.setItem('chimuelo_backup_v3', v1);
+    if (v2) localStorage.setItem('chimuelo_backup_v2', v2);
+    localStorage.setItem('chimuelo_backup_v1', payload);
+    localStorage.setItem('chimuelo_last_backup_at', Date.now().toString());
+  } catch (e) {
+    console.warn('Auto-backup falló:', e);
+  }
+}
+
+function downloadBackupFile() {
+  const snapshot = captureAppSnapshot();
+  const payload = {
+    app: 'Chimuelo',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: snapshot
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fecha = new Date().toISOString().split('T')[0];
+  a.download = `chimuelo-backup-${fecha}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function importBackupFile(file: File): Promise<{ok: boolean; msg: string}> {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!parsed.data || typeof parsed.data !== 'object') {
+      return { ok: false, msg: 'Archivo no válido (estructura incorrecta).' };
+    }
+    // Backup actual antes de sobrescribir
+    performAutoBackup();
+    // Restaurar
+    let restored = 0;
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (BACKUP_KEYS_TO_CAPTURE.includes(key) && typeof value === 'string') {
+        localStorage.setItem(key, value);
+        restored++;
+      }
+    }
+    return { ok: true, msg: `Restauradas ${restored} claves. Recargando…` };
+  } catch (e: any) {
+    return { ok: false, msg: 'Error: ' + (e?.message || 'archivo dañado') };
+  }
+}
+
 type Chat = {
   id: string;
   title: string;
@@ -510,6 +609,9 @@ export default function Home() {
   const [messageDensity, setMessageDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
   const [userMemory, setUserMemory] = useState<{id: string; content: string; createdAt: number}[]>([]);
   const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
+  const [userName, setUserName] = useState<string>("");
+  const [editingName, setEditingName] = useState<boolean>(false);
+  const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
@@ -889,6 +991,23 @@ export default function Home() {
 
     const savedMemoryEnabled = localStorage.getItem("chimuelo_memoryEnabled");
     if (savedMemoryEnabled !== null) setMemoryEnabled(savedMemoryEnabled === "true");
+
+    const savedUserName = localStorage.getItem("chimuelo_user_name");
+    if (savedUserName) setUserName(savedUserName);
+
+    const savedBackupAt = localStorage.getItem("chimuelo_last_backup_at");
+    if (savedBackupAt) setLastBackupAt(parseInt(savedBackupAt, 10) || 0);
+
+    // ── Auto-backup cada 30 minutos + uno al cargar si no hay ninguno ──
+    const lastBackup = parseInt(localStorage.getItem("chimuelo_last_backup_at") || "0", 10);
+    if (Date.now() - lastBackup > 30 * 60 * 1000) {
+      setTimeout(() => { performAutoBackup(); setLastBackupAt(Date.now()); }, 8000);
+    }
+    const backupInterval = setInterval(() => {
+      performAutoBackup();
+      setLastBackupAt(Date.now());
+    }, 30 * 60 * 1000);
+    (window as any).__chimueloBackupInterval = backupInterval;
 
     const savedSubjects = localStorage.getItem("chimuelo_subjects");
     if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
@@ -2322,9 +2441,40 @@ export default function Home() {
         {/* ── FOOTER ── */}
         <div className="sb-footer sb-footer-profile">
           <div className="sb-profile-card">
-            <div className="sb-profile-avatar">R</div>
+            <div className="sb-profile-avatar">
+              {userName ? userName.charAt(0).toUpperCase() : '🐾'}
+            </div>
             <div className="sb-profile-info">
-              <div className="sb-profile-name">Rafael</div>
+              {editingName ? (
+                <input
+                  className="sb-profile-name-input"
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  onBlur={() => {
+                    setEditingName(false);
+                    const trimmed = userName.trim().slice(0, 20);
+                    setUserName(trimmed);
+                    if (trimmed) localStorage.setItem("chimuelo_user_name", trimmed);
+                    else localStorage.removeItem("chimuelo_user_name");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  placeholder="Tu nombre"
+                  autoFocus
+                  maxLength={20}
+                />
+              ) : (
+                <button
+                  className="sb-profile-name sb-profile-name-btn"
+                  onClick={() => setEditingName(true)}
+                  title="Toca para cambiar tu nombre"
+                >
+                  {userName || 'Tú'}
+                </button>
+              )}
               <div className="sb-profile-plan">
                 <Sparkles size={10} /> Familia
               </div>
@@ -2570,6 +2720,44 @@ export default function Home() {
               </div>
 
               {/* Cuenta y Datos */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">🛡️ Respaldo de tus datos</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 12px' }}>
+                  Tus chats se respaldan automáticamente cada 30 minutos en tu dispositivo. También puedes descargar un archivo de respaldo o restaurar desde uno.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', padding: '8px 12px', background: 'var(--input-bg)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    Último respaldo automático: <strong style={{ color: 'var(--text-primary)' }}>
+                      {lastBackupAt ? new Date(lastBackupAt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : 'aún ninguno'}
+                    </strong>
+                  </div>
+                  <button onClick={() => { performAutoBackup(); setLastBackupAt(Date.now()); }} className="settings-action-btn">
+                    <Download size={16} /> Crear respaldo ahora
+                  </button>
+                  <button onClick={() => { downloadBackupFile(); }} className="settings-action-btn">
+                    <Download size={16} /> Descargar respaldo (.json)
+                  </button>
+                  <label className="settings-action-btn" style={{ cursor: 'pointer' }}>
+                    <Plus size={16} /> Restaurar desde archivo
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const ok = confirm('Esto reemplazará TODOS tus datos actuales con los del archivo. Antes de hacerlo se crea un respaldo automático de seguridad. ¿Continuar?');
+                        if (!ok) { e.target.value = ''; return; }
+                        const result = await importBackupFile(f);
+                        alert(result.msg);
+                        if (result.ok) setTimeout(() => window.location.reload(), 600);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="settings-card danger">
                 <h3 className="settings-card-title">Cuenta y Datos</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
