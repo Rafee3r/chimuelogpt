@@ -5362,7 +5362,10 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   overflow: visible;
 }
 
-/* ── Capa 1: wrapper con posición ── */
+/* ── Capa 1: wrapper con posición ──
+   z-index: 20 para que la burbuja Miau quede ENCIMA del gradient
+   del v2-input-area::before (z-index: 11). Antes era 5 y la burbuja
+   se veía cortada por el fade del chat. */
 .cat-mascot-wrapper {
   position: absolute;
   bottom: 0;
@@ -5370,7 +5373,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   transform: translateX(-50%);
   transition: left 5.5s cubic-bezier(0.45, 0.05, 0.55, 0.95);
   pointer-events: none;
-  z-index: 5;
+  z-index: 20;
 }
 
 /* ── Capa 2: flip horizontal cuando camina a la izquierda ── */
