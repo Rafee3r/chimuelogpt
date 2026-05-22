@@ -1620,6 +1620,19 @@ export default function Home() {
       // Extract persistent memory facts (fire-and-forget)
       tryExtractMemory(messageText, cleanContent);
 
+      // Generar título con DeepSeek Flash si es chat nuevo sin agente
+      setChats(prevChats => {
+        const ch = prevChats.find(c => c.id === targetChatId);
+        if (ch && !ch.agentId && ch.messages.length <= 2 && cleanContent && messageText) {
+          const looksAutoTitle = ch.title === messageText.slice(0, 30) || ch.title === 'Nuevo Chat' || ch.title === 'Imagen adjunta';
+          if (looksAutoTitle) {
+            // Fire-and-forget — actualiza el título cuando esté listo
+            generateChatTitle(targetChatId, messageText, cleanContent);
+          }
+        }
+        return prevChats;
+      });
+
     } catch (e: any) {
       // v2.0 — user-triggered stop: persist whatever streamed so far, no error UI
       if (e?.name === 'AbortError' || controller.signal.aborted) {
@@ -1745,6 +1758,52 @@ export default function Home() {
     }
     setViewMode('chat');
     setSidebarOpen(false);
+  };
+
+  /* ─────────── Generar título con DeepSeek Flash ───────────
+     Después del primer intercambio (1 user + 1 assistant), llama
+     a la IA para crear un título corto (3-5 palabras). Solo aplica
+     a chats nuevos sin agente. */
+  const generateChatTitle = async (chatId: string, userMsg: string, assistantMsg: string) => {
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: `Pregunta del usuario: "${userMsg.slice(0, 200)}"\n\nRespuesta de la IA: "${assistantMsg.slice(0, 300)}"\n\nGenera un título MUY CORTO (máximo 5 palabras, sin comillas, sin emojis, sin punto final) que resuma el tema de esta conversación en español. Responde ÚNICAMENTE con el título, nada más.` }
+          ],
+          model: 'deepseek-v4-flash',
+          persona: 'directo',
+          customInstructions: 'Responde con el título EXACTO. Sin explicaciones, sin formato markdown, sin comillas, máximo 5 palabras.'
+        })
+      });
+      if (!res.ok) return;
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let title = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        title += decoder.decode(value, { stream: true });
+      }
+      // Limpiar: quitar think tags, comillas, puntos finales, saltos
+      title = title.replace(/<think>[\s\S]*?<\/think>/g, '')
+                   .replace(/["'`]/g, '')
+                   .replace(/\.$/, '')
+                   .trim()
+                   .split('\n')[0]
+                   .slice(0, 50);
+      if (!title) return;
+      // Actualizar chat
+      setChats(prev => {
+        const updated = prev.map(c => c.id === chatId ? { ...c, title } : c);
+        safeSetChats(updated);
+        return updated;
+      });
+    } catch (e) {
+      console.warn('No se pudo generar título:', e);
+    }
   };
 
   const handleSwitchChat = (chatId: string | null) => {
@@ -1985,7 +2044,7 @@ export default function Home() {
               <Cat size={36} strokeWidth={1.5} />
             </div>
           </div>
-          <h1 className="splash-title">ChimueloGPT</h1>
+          <h1 className="splash-title">Chimuelo</h1>
         </div>
       </div>
     );
@@ -2001,7 +2060,7 @@ export default function Home() {
               <Cat size={32} strokeWidth={1.6} />
             </div>
           </div>
-          <h1 className="auth-title-v2">ChimueloGPT</h1>
+          <h1 className="auth-title-v2">Chimuelo</h1>
           <p className="auth-subtitle-v2">Un gato que te regala 20 mil pesos de valor mensual por un churu.</p>
           <p className="auth-hint-v2">Ingresa la clave familiar para entrar</p>
 
@@ -2043,7 +2102,7 @@ export default function Home() {
           <div className="modal-content version-modal" onClick={e => e.stopPropagation()}>
             <div className="version-modal-header">
               <div className="version-modal-badge">✨ Novedad</div>
-              <h2 className="version-modal-title">ChimueloGPT <span className="version-modal-num">v{versionData.version}</span></h2>
+              <h2 className="version-modal-title">Chimuelo <span className="version-modal-num">v{versionData.version}</span></h2>
               <p className="version-modal-date">{versionData.date}</p>
             </div>
             <div className="version-modal-changes">
@@ -2084,7 +2143,7 @@ export default function Home() {
           <div className="sb-brand-logo">
             <Cat size={20} strokeWidth={2} />
           </div>
-          <span className="sb-brand-name">ChimueloGPT</span>
+          <span className="sb-brand-name">Chimuelo</span>
           <button
             className="sb-brand-close"
             onClick={() => setSidebarOpen(false)}
@@ -2377,7 +2436,7 @@ export default function Home() {
           </div>
           
           <div className="d-none d-md-flex" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'flex' : 'none', alignItems: 'center', gap: '8px' }}>
-            <span>ChimueloGPT</span>
+            <span>Chimuelo</span>
           </div>
 
           {!(currentChatId && displayMessages.length === 0) ? (
@@ -2561,7 +2620,7 @@ export default function Home() {
             <div className="agents-page">
               <div className="agents-page-header">
                 <h1 className="agents-page-title">Agentes</h1>
-                <p className="agents-page-sub">Tu familia ChimueloGPT lista para ayudarte.</p>
+                <p className="agents-page-sub">Tu familia Chimuelo lista para ayudarte.</p>
                 <div className="agents-search-wrap">
                   <Search size={16} className="agents-search-icon" />
                   <input
@@ -3095,7 +3154,7 @@ export default function Home() {
                               
                               <button className="action-btn hover-bg" title="Compartir" onClick={() => {
                                 if (navigator.share) {
-                                  navigator.share({ title: 'ChimueloGPT', text: displayContent }).catch(() => {});
+                                  navigator.share({ title: 'Chimuelo', text: displayContent }).catch(() => {});
                                 } else {
                                   navigator.clipboard.writeText(displayContent);
                                   showToast('Copiado al portapapeles');
@@ -3270,7 +3329,7 @@ export default function Home() {
             
             <div style={{ marginTop: '1rem' }}>
               <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                Puedes instalar ChimueloGPT como una app en tu teléfono para entrar más rápido, como si fuera WhatsApp. ¡Es muy fácil!
+                Puedes instalar Chimuelo como una app en tu teléfono para entrar más rápido, como si fuera WhatsApp. ¡Es muy fácil!
               </p>
               
               <div style={{ backgroundColor: 'var(--input-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem' }}>
