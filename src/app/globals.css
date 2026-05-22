@@ -3975,30 +3975,39 @@ a {
   color: #ef4444;
   animation: mic-pulse 1.2s ease-in-out infinite;
 }
-/* Mic destacado cuando es el único botón (sin texto escrito) */
+/* Mic neutro cuando es el único botón (sin texto escrito) — color discreto */
 .v2-mic-btn.solo {
-  background: var(--accent-color);
-  color: #fff;
+  background: var(--input-bg);
+  color: var(--text-secondary);
   width: 36px;
   height: 36px;
   margin-bottom: 4px;
   margin-right: 4px;
-  box-shadow: 0 4px 14px -4px var(--accent-glow-strong);
+  border: 1px solid var(--border-color);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background 0.2s, color 0.2s;
+              background 0.2s, color 0.2s, border-color 0.2s;
 }
 .v2-mic-btn.solo:hover {
-  background: var(--accent-color);
-  color: #fff;
-  transform: scale(1.08);
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  transform: scale(1.06);
 }
 .v2-mic-btn.solo:active {
-  transform: scale(0.85);
+  transform: scale(0.88);
   transition: transform 0.08s ease-in;
 }
+/* Solo al GRABAR se pone rojo (alerta visual de que está activo) */
 .v2-mic-btn.solo.recording {
   background: #ef4444;
   color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 4px 14px -4px rgba(239, 68, 68, 0.5);
+}
+[data-theme="dark"] .v2-mic-btn.solo,
+[data-theme="oled"] .v2-mic-btn.solo {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 @keyframes mic-pulse {
   0%, 100% { opacity: 1; }
@@ -6105,3 +6114,162 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   opacity: 0.6;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR — Brand header + Profile footer (estilo Gemini)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Brand header ── */
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  flex-shrink: 0;
+}
+
+.sb-brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px -4px var(--accent-glow-strong);
+  flex-shrink: 0;
+}
+
+.sb-brand-name {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.sb-brand-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.sb-brand-close:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+
+/* En desktop ocultamos el close (sidebar fijo) */
+@media (min-width: 768px) {
+  .sb-brand-close { display: none; }
+}
+
+/* ── Profile footer (reemplaza el footer viejo) ── */
+.sb-footer-profile {
+  border-top: 1px solid var(--border-color);
+  padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+.sb-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  transition: background 0.2s;
+}
+.sb-profile-card:hover {
+  background: var(--sidebar-hover);
+}
+
+.sb-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+}
+
+.sb-profile-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sb-profile-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-profile-plan {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sb-profile-plan svg { color: var(--accent-color); }
+
+.sb-profile-settings {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sb-profile-settings:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+  transform: rotate(30deg);
+}
+.sb-profile-settings:active {
+  transform: scale(0.9) rotate(30deg);
+  transition: transform 0.08s;
+}
+.sb-profile-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Ajustar el search para que tenga menos margen arriba (ya está el brand) */
+.sb-search { margin-top: 4px !important; }

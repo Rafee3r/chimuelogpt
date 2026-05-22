@@ -2079,6 +2079,22 @@ export default function Home() {
 
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
 
+        {/* ── BRAND HEADER (estilo Gemini) ── */}
+        <div className="sb-brand">
+          <div className="sb-brand-logo">
+            <Cat size={20} strokeWidth={2} />
+          </div>
+          <span className="sb-brand-name">ChimueloGPT</span>
+          <button
+            className="sb-brand-close"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar panel"
+            title="Cerrar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
         {/* ── SEARCH ── */}
         <div className="sb-search">
           <Search size={14} className="sb-search-icon" />
@@ -2242,21 +2258,31 @@ export default function Home() {
         </div>
 
         {/* ── FOOTER ── */}
-        <div className="sb-footer">
-          <button
-            className="sb-row"
-            onClick={() => {
-              prevViewMode.current = viewMode as "chat" | "university" | "agents";
-              setViewMode('settings');
-              setSidebarOpen(false);
-            }}
-          >
-            <Settings size={15} />
-            <span>Ajustes</span>
-            {memoryEnabled && userMemory.length > 0 && (
-              <span className="sb-badge">{userMemory.length}</span>
-            )}
-          </button>
+        <div className="sb-footer sb-footer-profile">
+          <div className="sb-profile-card">
+            <div className="sb-profile-avatar">R</div>
+            <div className="sb-profile-info">
+              <div className="sb-profile-name">Rafael</div>
+              <div className="sb-profile-plan">
+                <Sparkles size={10} /> Familia
+              </div>
+            </div>
+            <button
+              className="sb-profile-settings"
+              onClick={() => {
+                prevViewMode.current = viewMode as "chat" | "university" | "agents";
+                setViewMode('settings');
+                setSidebarOpen(false);
+              }}
+              aria-label="Ajustes"
+              title="Ajustes"
+            >
+              <Settings size={16} />
+              {memoryEnabled && userMemory.length > 0 && (
+                <span className="sb-profile-badge">{userMemory.length}</span>
+              )}
+            </button>
+          </div>
         </div>
       </aside>
 
