@@ -893,12 +893,29 @@ a {
   max-width: 80%;
 }
 
+/* User message bubble: gris neutral del tema (NO destaca, no compite con la IA) */
 .chat-area.style-bubbles .message.user .message-text {
-  background: linear-gradient(135deg, var(--user-bubble-start) 0%, var(--user-bubble-end) 100%);
-  color: #fff;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
-.chat-area.style-bubbles .message.user .message-text a { color: rgba(255,255,255,0.85); text-decoration: underline; }
-.chat-area.style-bubbles .message.user .message-text code { background: rgba(255,255,255,0.18); color: #fff; }
+[data-theme="dark"] .chat-area.style-bubbles .message.user .message-text,
+[data-theme="oled"] .chat-area.style-bubbles .message.user .message-text {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .chat-area.style-bubbles .message.user .message-text {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+.chat-area.style-bubbles .message.user .message-text code {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
 
 .message.assistant .message-text {
   padding-top: 0;
