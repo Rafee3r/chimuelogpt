@@ -2900,6 +2900,50 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* ── Stats personales: "Tus números" ── */}
+              {(() => {
+                if (chats.length === 0) return null;
+                const totalMsgs = chats.reduce((acc, c) => acc + (c.messages?.length || 0), 0);
+                const agentCounts: Record<string, number> = {};
+                chats.forEach(c => {
+                  if (c.agentId) agentCounts[c.agentId] = (agentCounts[c.agentId] || 0) + (c.messages?.length || 0);
+                });
+                const topAgentEntry = Object.entries(agentCounts).sort((a, b) => b[1] - a[1])[0];
+                const topAgent = topAgentEntry ? AGENTS.find(a => a.id === topAgentEntry[0]) : null;
+                const oldestChat = chats.reduce((min, c) => (c.updatedAt < min ? c.updatedAt : min), Date.now());
+                const daysActive = Math.max(1, Math.ceil((Date.now() - oldestChat) / 86400000));
+                return (
+                  <div className="settings-card">
+                    <h3 className="settings-card-title">📊 Tus números</h3>
+                    <div className="stats-grid">
+                      <div className="stat-cell">
+                        <div className="stat-value">{chats.length}</div>
+                        <div className="stat-label">{chats.length === 1 ? 'conversación' : 'conversaciones'}</div>
+                      </div>
+                      <div className="stat-cell">
+                        <div className="stat-value">{totalMsgs}</div>
+                        <div className="stat-label">{totalMsgs === 1 ? 'mensaje total' : 'mensajes totales'}</div>
+                      </div>
+                      <div className="stat-cell">
+                        <div className="stat-value">{daysActive}</div>
+                        <div className="stat-label">{daysActive === 1 ? 'día con Chimuelo' : 'días con Chimuelo'}</div>
+                      </div>
+                      {topAgent && (
+                        <div className="stat-cell stat-cell-agent">
+                          <div className="stat-agent-avatar" style={{ background: topAgent.bgColor }}>
+                            <span>{topAgent.emoji}</span>
+                          </div>
+                          <div className="stat-cell-text">
+                            <div className="stat-value-small">{topAgent.name}</div>
+                            <div className="stat-label">tu agente favorito</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Apariencia */}
               <div className="settings-card">
                 <h3 className="settings-card-title">Apariencia</h3>
