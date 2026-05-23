@@ -7262,3 +7262,41 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* ── Quick action pills bajo mensajes del asistente ── */
+.quick-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  animation: fadeUpStagger 0.3s ease both;
+}
+
+.quick-action-pill {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s,
+              transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.quick-action-pill:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+.quick-action-pill:active {
+  transform: scale(0.94);
+  transition: transform 0.08s;
+}
+
+[data-theme="dark"] .quick-action-pill,
+[data-theme="oled"] .quick-action-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}

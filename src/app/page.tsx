@@ -3807,6 +3807,21 @@ export default function Home() {
                             </div>
                           )}
 
+                          {/* Quick actions — solo en el último mensaje del asistente y NO en chat de agente */}
+                          {showActions && !activeAgent && displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && !isThinking && (
+                            <div className="quick-actions-row">
+                              <button className="quick-action-pill" onClick={() => handleSendMessage('Hacelo más corto, en menos palabras.')}>
+                                ✂️ Más corto
+                              </button>
+                              <button className="quick-action-pill" onClick={() => handleSendMessage('Explícalo más simple, como si tuviera 10 años.')}>
+                                🌱 Más simple
+                              </button>
+                              <button className="quick-action-pill" onClick={() => handleSendMessage('Dame más ejemplos concretos.')}>
+                                💡 Más ejemplos
+                              </button>
+                            </div>
+                          )}
+
                         </div>
                       );
                     })()}
