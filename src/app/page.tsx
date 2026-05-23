@@ -725,10 +725,10 @@ export default function Home() {
 
   type SmartPill = { icon: string; label: string; message: string };
   const defaultPills: SmartPill[] = [
-    { icon: '🎨', label: 'Crear Imagen', message: 'Genera una imagen de un paisaje cyberpunk en formato ultra realista' },
-    { icon: '✉️', label: 'Redactar Correo', message: 'Escribe un correo formal para solicitar una reunión con un cliente' },
-    { icon: '🧠', label: 'Explicar Concepto', message: 'Explícame de forma sencilla cómo funciona la gravedad cuántica' },
-    { icon: '👋', label: 'Preséntate', message: 'Preséntate y cuéntame qué puedes hacer por mí. ¿Cómo funciona todo esto?' },
+    { icon: '🍳', label: 'Idea de cena', message: 'Tengo poco tiempo, dime una cena rica y rápida con ingredientes simples.' },
+    { icon: '✉️', label: 'Redactar mensaje', message: 'Ayúdame a redactar un mensaje claro y amable para enviar.' },
+    { icon: '🧠', label: 'Explicar algo', message: 'Explícame de forma sencilla, como si tuviera 10 años, lo que te pregunte.' },
+    { icon: '👋', label: 'Conóceme a Chimuelo', message: 'Preséntate y cuéntame qué podemos hacer juntos. ¿Cómo funciona todo esto?' },
   ];
   const [smartPills, setSmartPills] = useState<SmartPill[]>(defaultPills);
 
