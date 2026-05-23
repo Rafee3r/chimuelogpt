@@ -3082,13 +3082,31 @@ export default function Home() {
               </div>
 
               <div className="agents-list">
-                {[...AGENTS]
-                  .sort((a, b) => b.score - a.score)
-                  .filter(a => !agentSearch.trim() ||
-                    a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
-                    a.tagline.toLowerCase().includes(agentSearch.toLowerCase()) ||
-                    a.description.toLowerCase().includes(agentSearch.toLowerCase()))
-                  .map(agent => {
+                {(() => {
+                  const filtered = [...AGENTS]
+                    .sort((a, b) => b.score - a.score)
+                    .filter(a => !agentSearch.trim() ||
+                      a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
+                      a.tagline.toLowerCase().includes(agentSearch.toLowerCase()) ||
+                      a.description.toLowerCase().includes(agentSearch.toLowerCase()));
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="agents-empty">
+                        <div className="agents-empty-icon">🔎</div>
+                        <p className="agents-empty-title">No encontré agentes</p>
+                        <small className="agents-empty-sub">
+                          Probá con otra palabra. Tenemos {AGENTS.length} agentes en total.
+                        </small>
+                        <button
+                          className="agents-empty-clear"
+                          onClick={() => setAgentSearch('')}
+                        >
+                          Limpiar búsqueda
+                        </button>
+                      </div>
+                    );
+                  }
+                  return filtered.map(agent => {
                     const existingChat = chats.find(c => c.agentId === agent.id);
                     const lastMsg = existingChat?.messages?.[existingChat.messages.length - 1];
                     const hasHistory = !!existingChat && existingChat.messages.length > 0;
@@ -3122,7 +3140,8 @@ export default function Home() {
                         </div>
                       </button>
                     );
-                  })}
+                  });
+                })()}
               </div>
             </div>
           ) : viewMode === "university" ? (

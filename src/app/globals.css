@@ -6965,3 +6965,50 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   margin-top: 4px;
   max-width: 220px;
 }
+
+/* ── Empty state: agentes sin resultados de búsqueda ── */
+.agents-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px 32px;
+  gap: 8px;
+}
+.agents-empty-icon {
+  font-size: 3rem;
+  opacity: 0.8;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+}
+.agents-empty-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.agents-empty-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 2px 0 12px;
+}
+.agents-empty-clear {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.agents-empty-clear:hover {
+  background: var(--sidebar-hover);
+  border-color: var(--accent-color);
+}
+.agents-empty-clear:active {
+  transform: scale(0.95);
+}
