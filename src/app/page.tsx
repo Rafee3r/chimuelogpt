@@ -1218,7 +1218,15 @@ export default function Home() {
     };
     checkVersion();
 
-    setTimeout(() => setAppReady(true), 1400);
+    const splashTimer = setTimeout(() => setAppReady(true), 1400);
+
+    // Cleanup: limpia intervals/listeners al unmount (evita duplicados en strict mode)
+    return () => {
+      clearInterval(backupInterval);
+      clearTimeout(splashTimer);
+      const cleanup = (window as any).__swipeCleanup;
+      if (typeof cleanup === 'function') cleanup();
+    };
   }, []);
 
   /* Fetch personalized smart pills — refresca cada vez que se vuelve al welcome
