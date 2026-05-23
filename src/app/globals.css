@@ -4362,8 +4362,8 @@ a {
   gap: 7px;
 }
 .sb-section-label svg {
-  color: var(--accent-color);
-  opacity: 1;
+  color: var(--text-secondary);
+  opacity: 0.85;
   flex-shrink: 0;
 }
 
@@ -4411,9 +4411,9 @@ a {
   background: var(--accent-color);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 4px 14px -4px var(--accent-glow-strong);
+  box-shadow: 0 2px 8px -3px var(--accent-glow);
 }
-.sb-row.active svg { color: #fff !important; opacity: 1; }
+.sb-row.active svg { color: #fff !important; opacity: 0.95; }
 
 /* ── Day labels (Hoy, Ayer): pequeños y sutiles ── */
 .sb-group-label {
@@ -6596,9 +6596,15 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   .sb-search { margin-top: 14px !important; }
 }
 
-/* ── NEGRITA en items del sidebar ── */
-.sb-row { font-weight: 600 !important; }
-.sb-row.active { font-weight: 700 !important; }
+/* ── Pesos tipográficos balanceados ──
+   - Items de navegación (Modos, Materias, Ajustes): peso normal (500)
+   - Chats: 600 (semibold, como pidió el user — los chats son contenido)
+   - Activo: 700 (claramente destacado)
+   - Section labels: weight 700 + uppercase = jerarquía clara sin saturar */
+.sb-row { font-weight: 500; }
+.sb-row-chat { font-weight: 600; }
+.sb-row.active { font-weight: 700; }
+.sb-row-primary { font-weight: 600 !important; }
 
 /* ── Score del agente en la lista ── */
 .agent-score {
