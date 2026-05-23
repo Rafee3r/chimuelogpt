@@ -6310,7 +6310,8 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  /* Respeta el tema: usa accent-color gradient en vez de verde fijo */
+  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
   color: #fff;
   font-weight: 700;
   font-size: 0.95rem;
@@ -6318,7 +6319,8 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+  /* Sombra suave neutral en vez de verde colorido */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .sb-profile-info {
@@ -6343,7 +6345,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   align-items: center;
   gap: 4px;
 }
-.sb-profile-plan svg { color: var(--accent-color); }
+.sb-profile-plan svg { color: var(--text-secondary); opacity: 0.7; }
 
 .sb-profile-settings {
   background: transparent;
