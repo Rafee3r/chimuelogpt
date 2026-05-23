@@ -3360,6 +3360,29 @@ export default function Home() {
               <h2 className="greeting-text-gradient">
                 {getGreeting()}
               </h2>
+              {/* Tip del día — rota cada día, ayuda a descubrir features */}
+              {(() => {
+                const tips = [
+                  '💡 Desliza desde el borde izquierdo para abrir el panel.',
+                  '🐈‍⬛ Toca al gatito arriba del input. Maúlla.',
+                  '✨ Probá los 20 agentes especialistas en Modos.',
+                  '📚 En Cerebro Académico, agregá tus materias y Chimuelo recuerda contexto.',
+                  '🎤 Tocá el micrófono para dictar tu mensaje en vez de escribir.',
+                  '🎨 Pedíme una imagen y la creo (di "genera una imagen de...").',
+                  '🎵 Pedíme una canción y la compongo con Lyria 2.',
+                  '🛡️ Tus chats viven solo en tu dispositivo. Nadie más los ve.',
+                  '⭐ Fijá un chat importante desde su menú (⋯).',
+                  '🌙 Cambiá el tema en Ajustes — hay 6 disponibles.',
+                  '💾 Descargá un respaldo en Ajustes y guárdalo en iCloud por si acaso.',
+                  '📎 Adjuntá imágenes o PDFs con el botón + del input.',
+                  '🔍 Buscá entre tus conversaciones desde el buscador del panel.',
+                  '⚡ El modelo "Rápido" es ideal para preguntas cotidianas; el "Pro" para análisis profundo.',
+                ];
+                const dayIdx = Math.floor(Date.now() / 86400000) % tips.length;
+                return (
+                  <div className="tip-of-day">{tips[dayIdx]}</div>
+                );
+              })()}
               <div className="smart-pills-container">
                 {smartPills.map((pill, i) => (
                   <button key={i} className="smart-pill" onClick={() => handleSendMessage(pill.message)}>

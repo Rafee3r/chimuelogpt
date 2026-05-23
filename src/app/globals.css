@@ -7160,3 +7160,25 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 [data-theme="oled"] .recent-agent-card:hover {
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* ── Tip del día — rota cada día, debajo del greeting ── */
+.tip-of-day {
+  display: inline-block;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  max-width: 480px;
+  margin: 0 0 18px;
+  text-align: center;
+  line-height: 1.45;
+  animation: fadeUpStagger 0.5s ease 0.15s both;
+}
+
+[data-theme="dark"] .tip-of-day,
+[data-theme="oled"] .tip-of-day {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
