@@ -2989,11 +2989,14 @@ export default function Home() {
                     </strong>
                   </div>
                   <button onClick={() => { performAutoBackup(); setLastBackupAt(Date.now()); }} className="settings-action-btn">
-                    <Download size={16} /> Crear respaldo ahora
+                    <Check size={16} /> Crear respaldo ahora
                   </button>
                   <button onClick={() => { downloadBackupFile(); }} className="settings-action-btn">
                     <Download size={16} /> Descargar respaldo (.json)
                   </button>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', padding: '0 4px', lineHeight: 1.45, opacity: 0.75 }}>
+                    ⚠️ El archivo .json contiene todas tus conversaciones y datos. No lo compartas con nadie ni lo subas a sitios públicos.
+                  </div>
                   <label className="settings-action-btn" style={{ cursor: 'pointer' }}>
                     <Plus size={16} /> Restaurar desde archivo
                     <input
