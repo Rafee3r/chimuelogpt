@@ -4326,7 +4326,7 @@ a {
   color: #fff;
   font-weight: 600;
 }
-.sb-row-primary { color: var(--text-primary); font-weight: 500; }
+/* sb-row-primary peso definido en bloque consolidado más abajo */
 
 .sb-scroll {
   flex: 1;
