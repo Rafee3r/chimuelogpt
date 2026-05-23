@@ -2822,6 +2822,27 @@ export default function Home() {
                 <SquarePen size={14} />
                 <span>Renombrar</span>
               </button>
+              <button onClick={() => {
+                // Export chat as markdown
+                const md = `# ${chat.title}\n\n_Exportado el ${new Date().toLocaleString('es-CL')}_\n\n---\n\n` +
+                  chat.messages.map((m: BaseMessage) => {
+                    const who = m.role === 'user' ? (userName || 'Tú') : 'Chimuelo';
+                    return `### ${who}\n\n${m.content || ''}\n`;
+                  }).join('\n');
+                const blob = new Blob([md], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${chat.title.slice(0, 40).replace(/[^a-z0-9áéíóúñ\s-]/gi, '').trim() || 'chat'}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                setChatMenu(null);
+              }}>
+                <Download size={14} />
+                <span>Exportar como .md</span>
+              </button>
               <div className="sb-menu-sep" />
               <button className="danger" onClick={() => { handleDeleteChat(chat.id); setChatMenu(null); }}>
                 <Trash2 size={14} />
