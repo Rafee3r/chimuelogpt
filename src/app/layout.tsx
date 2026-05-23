@@ -10,9 +10,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ChimueloGPT",
-  description: "Un gato que te regala 20 mil pesos de valor mensual por un churu",
+  title: "Chimuelo — Tu asistente personal",
+  description: "Asistente personal de IA para tu familia: 20 agentes especialistas, modo estudio, generación de imágenes y música. Plan Familia gratis para siempre.",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "Chimuelo",
+    description: "Tu asistente personal de IA para la familia.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -21,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#000000" />
