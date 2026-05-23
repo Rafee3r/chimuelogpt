@@ -390,6 +390,7 @@ const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_memory',
   'chimuelo_memoryEnabled',
   'chimuelo_user_name',
+  'chimuelo_onboarding_done',
   'chimuelo_model',
   'chimuelo_theme',
   'chimuelo_persona',
@@ -2584,14 +2585,21 @@ export default function Home() {
 
               if (chats.length === 0) {
                 return (
-                  <div className="sb-empty">
-                    <p>Aún no hay conversaciones</p>
-                    <small>Toca "Nuevo chat" para empezar</small>
+                  <div className="sb-empty sb-empty-v2">
+                    <div className="sb-empty-icon">💬</div>
+                    <p className="sb-empty-title">Tu primera conversación</p>
+                    <small className="sb-empty-sub">Toca "Nuevo chat" arriba para empezar, o prueba uno de los 20 agentes.</small>
                   </div>
                 );
               }
               if (filtered.length === 0) {
-                return <div className="sb-empty"><p>Sin coincidencias</p></div>;
+                return (
+                  <div className="sb-empty sb-empty-v2">
+                    <div className="sb-empty-icon">🔍</div>
+                    <p className="sb-empty-title">Sin coincidencias</p>
+                    <small className="sb-empty-sub">Prueba con otra palabra.</small>
+                  </div>
+                );
               }
 
               const g = groupChatsByDate(filtered);

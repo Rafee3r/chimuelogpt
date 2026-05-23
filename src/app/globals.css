@@ -6936,3 +6936,32 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
 }
+
+/* ── Sidebar empty state v2: más cálido y útil ── */
+.sb-empty-v2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px;
+  gap: 4px;
+}
+.sb-empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+  opacity: 0.75;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+}
+.sb-empty-title {
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  margin: 0 !important;
+}
+.sb-empty-sub {
+  font-size: 0.78rem !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.5;
+  margin-top: 4px;
+  max-width: 220px;
+}
