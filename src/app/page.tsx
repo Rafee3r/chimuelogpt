@@ -3538,7 +3538,8 @@ export default function Home() {
                 onTouchCancel={role === 'user' ? cancelMsgLongPress : undefined}
               >
                 <div className="message-content-wrapper">
-                  {role === 'assistant' && (
+                  {/* Avatar solo en el PRIMER mensaje de un bloque consecutivo del asistente */}
+                  {role === 'assistant' && displayMessages[i - 1]?.role !== 'assistant' && (
                     <div className="avatar assistant">
                       <Cat size={24} />
                     </div>
