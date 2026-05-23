@@ -3115,6 +3115,22 @@ export default function Home() {
               <div className="settings-card danger">
                 <h3 className="settings-card-title">Cuenta y Datos</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/version.json");
+                        if (res.ok) {
+                          const data = await res.json();
+                          setVersionData(data);
+                          setShowVersionModal(true);
+                          setViewMode('chat');
+                        }
+                      } catch {}
+                    }}
+                    className="settings-action-btn"
+                  >
+                    <Sparkles size={16} /> ¿Qué hay de nuevo?
+                  </button>
                   <button onClick={() => setPwaModalOpen(true)} className="settings-action-btn">
                     <Smartphone size={16} /> Instalar como App
                   </button>
