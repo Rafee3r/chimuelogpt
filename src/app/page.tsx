@@ -3368,6 +3368,46 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+
+              {/* ── Dock de agentes recientes (top 3 más activos) ── */}
+              {(() => {
+                const agentChats = chats
+                  .filter(c => c.agentId && c.messages.length > 0)
+                  .sort((a, b) => b.messages.length - a.messages.length)
+                  .slice(0, 3);
+                if (agentChats.length === 0) return null;
+                return (
+                  <div className="recent-agents-dock">
+                    <div className="recent-agents-label">
+                      <Sparkles size={12} /> Tus agentes favoritos
+                    </div>
+                    <div className="recent-agents-row">
+                      {agentChats.map(chat => {
+                        const agent = AGENTS.find(a => a.id === chat.agentId);
+                        if (!agent) return null;
+                        const msgCount = chat.messages.length;
+                        return (
+                          <button
+                            key={chat.id}
+                            className="recent-agent-card"
+                            onClick={() => openAgent(agent)}
+                            title={`${msgCount} mensajes con ${agent.name}`}
+                          >
+                            <div
+                              className="recent-agent-avatar"
+                              style={{ background: agent.bgColor }}
+                            >
+                              <span>{agent.emoji}</span>
+                            </div>
+                            <span className="recent-agent-name">{agent.name}</span>
+                            <span className="recent-agent-count">{msgCount} msgs</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             displayMessages.map((msg: any, i) => {
