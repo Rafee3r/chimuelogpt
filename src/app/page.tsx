@@ -391,6 +391,7 @@ const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_memoryEnabled',
   'chimuelo_user_name',
   'chimuelo_onboarding_done',
+  'chimuelo_version',
   'chimuelo_model',
   'chimuelo_theme',
   'chimuelo_persona',
