@@ -1679,6 +1679,10 @@ export default function Home() {
           }
         }
       }
+      // Inject user name (priority high — la IA debe saber a quién le habla)
+      if (userName && userName.trim()) {
+        finalSystemPrompt += `\n\n[NOMBRE DEL USUARIO]\nLa persona con quien hablas se llama "${userName.trim()}". Úsalo naturalmente en la conversación (no en cada mensaje, solo cuando suene natural). NUNCA te disculpes por no saber su nombre — ya lo sabes.\n[FIN NOMBRE]`;
+      }
       // Inject persistent user memory
       if (memoryEnabled && userMemory.length > 0) {
         finalSystemPrompt += `\n\n[MEMORIA PERSISTENTE DEL USUARIO — PRIORIDAD ALTA]\nConoces estos datos del usuario de conversaciones anteriores. Úsalos para personalizar tus respuestas sin que te lo repita:\n${userMemory.map(m => `• ${m.content}`).join('\n')}\n[FIN DE MEMORIA PERSISTENTE]`;
