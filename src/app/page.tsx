@@ -976,14 +976,17 @@ export default function Home() {
     }
   }, []);
 
-  /* Extrae nombre del usuario desde la memoria persistente (best-effort) */
+  /* Obtiene nombre: 1) state userName (del onboarding/edit) 2) extracción de memoria */
   const getUserName = useCallback((): string | null => {
+    // Prioridad 1: nombre puesto explícitamente (onboarding o click en sidebar)
+    if (userName && userName.trim()) return userName.trim();
+    // Prioridad 2: fallback — extraer de conversaciones pasadas
     for (const m of userMemory) {
       const match = m.content.match(/(?:se llama|llamado|nombre es|nombre[:]\s*)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i);
       if (match && match[1]) return match[1];
     }
     return null;
-  }, [userMemory]);
+  }, [userName, userMemory]);
 
   /* 30 variaciones de saludo (Claude/Gemini-style) divididos por hora del día */
   const greetingPool = useMemo(() => {
