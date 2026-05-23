@@ -1,12 +1,14 @@
 {
-  "version": "21.05.4",
+  "version": "21.05.5",
   "date": "2026-05-21",
   "changes": [
-    { "icon": "✨", "title": "Tus agentes favoritos", "desc": "Bajo el saludo, ahora ves tarjetas de los 3 agentes que más usas. Un toque y entras a su chat." },
-    { "icon": "💡", "title": "Tip del día", "desc": "Una pista rotativa que cambia cada día para descubrir gestos, atajos y funciones escondidas." },
-    { "icon": "📊", "title": "Tus números", "desc": "En Ajustes ahora ves tus stats: total de chats, mensajes, días con Chimuelo y tu agente favorito." },
-    { "icon": "⚡", "title": "Modificar respuestas con un toque", "desc": "Bajo cada respuesta hay 3 botones: 'Más corto', 'Más simple' y 'Más ejemplos'. Toca y la IA reformula." },
-    { "icon": "🤖", "title": "Chimuelo sabe tu nombre", "desc": "Antes solo se mostraba en el sidebar. Ahora la IA también lo usa naturalmente en las conversaciones." },
-    { "icon": "👋", "title": "Bienvenida personal", "desc": "La primera vez que abres la app, Chimuelo te pregunta cómo te llamas." }
+    { "icon": "✨", "title": "Tus agentes favoritos", "desc": "En el inicio aparecen tarjetas de los 3 agentes que más usas. Un toque y entras a su chat." },
+    { "icon": "💡", "title": "Tip del día", "desc": "Cada día Chimuelo te muestra una pista para descubrir un gesto o función escondida." },
+    { "icon": "📊", "title": "Tus números", "desc": "En Ajustes ves tus stats: conversaciones, mensajes, días con Chimuelo y tu agente favorito." },
+    { "icon": "⚡", "title": "Modifica respuestas con un toque", "desc": "Bajo cada respuesta: 'Más corto', 'Más simple', 'Más ejemplos'. Toca y la IA reformula al instante." },
+    { "icon": "📝", "title": "Instrucciones personalizadas", "desc": "En Ajustes podés decirle a Chimuelo cómo querés que te hable: 'usa bullets', 'sin emojis', etc." },
+    { "icon": "📥", "title": "Exportar chats", "desc": "Mantén presionado un chat en el panel y elige 'Exportar como .md' para descargarlo." },
+    { "icon": "🐈‍⬛", "title": "Gatito opcional", "desc": "Si te distrae el gatito sobre el input, podés ocultarlo en Ajustes > Apariencia." },
+    { "icon": "🔄", "title": "¿Qué hay de nuevo?", "desc": "Ahora podés volver a leer las novedades desde Ajustes cuando quieras." }
   ]
 }
