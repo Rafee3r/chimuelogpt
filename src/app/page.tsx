@@ -3162,7 +3162,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="settings-card danger">
+              <div className="settings-card">
                 <h3 className="settings-card-title">Cuenta y Datos</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <button
@@ -3184,7 +3184,7 @@ export default function Home() {
                   <button onClick={() => setPwaModalOpen(true)} className="settings-action-btn">
                     <Smartphone size={16} /> Instalar como App
                   </button>
-                  <button onClick={clearAllHistory} className="settings-action-btn">
+                  <button onClick={clearAllHistory} className="settings-action-btn danger">
                     <Trash2 size={16} /> Borrar todos los chats
                   </button>
                   <button onClick={() => { localStorage.removeItem("chimuelo_auth"); window.location.reload(); }} className="settings-action-btn logout">

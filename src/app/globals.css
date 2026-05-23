@@ -7364,3 +7364,13 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 @media (hover: none) {
   .message-actions-subtle { opacity: 0.55; }
 }
+
+/* ── Action buttons: variant danger (rojo) para acciones destructivas ── */
+.settings-action-btn.danger {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.settings-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.5);
+}
