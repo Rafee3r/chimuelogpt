@@ -714,6 +714,8 @@ export default function Home() {
   const [editingName, setEditingName] = useState<boolean>(false);
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
+  const [showWelcomeOnboarding, setShowWelcomeOnboarding] = useState<boolean>(false);
+  const [onboardingNameInput, setOnboardingNameInput] = useState<string>("");
   const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
@@ -1095,6 +1097,13 @@ export default function Home() {
 
     const savedUserName = localStorage.getItem("chimuelo_user_name");
     if (savedUserName) setUserName(savedUserName);
+
+    // ── Mostrar onboarding solo si NUNCA se ha completado y no hay nombre ──
+    const onboardingDone = localStorage.getItem("chimuelo_onboarding_done") === "true";
+    if (!savedUserName && !onboardingDone) {
+      // Pequeño delay para que la app respire antes de mostrar el modal
+      setTimeout(() => setShowWelcomeOnboarding(true), 800);
+    }
 
     // ── Swipe gestures: abrir desde borde izq + cerrar arrastrando a la izq ──
     let touchStartX = 0;
@@ -2376,6 +2385,69 @@ export default function Home() {
 
   return (
     <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
+
+      {/* ── ONBOARDING DE BIENVENIDA (primer uso) ── */}
+      {showWelcomeOnboarding && (
+        <div className="modal-overlay welcome-onb-overlay">
+          <div className="welcome-onb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="welcome-onb-glow"></div>
+            <div className="welcome-onb-content">
+              <div className="welcome-onb-emoji">🐈‍⬛</div>
+              <h2 className="welcome-onb-title">¡Hola! Soy Chimuelo</h2>
+              <p className="welcome-onb-sub">
+                Voy a estar acompañándote. ¿Cómo te llamo?
+              </p>
+              <input
+                type="text"
+                className="welcome-onb-input"
+                placeholder="Tu nombre"
+                value={onboardingNameInput}
+                onChange={(e) => setOnboardingNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && onboardingNameInput.trim()) {
+                    const name = onboardingNameInput.trim().slice(0, 20);
+                    setUserName(name);
+                    localStorage.setItem("chimuelo_user_name", name);
+                    localStorage.setItem("chimuelo_onboarding_done", "true");
+                    setShowWelcomeOnboarding(false);
+                  }
+                }}
+                maxLength={20}
+                autoFocus
+              />
+              <div className="welcome-onb-actions">
+                <button
+                  className="welcome-onb-btn-skip"
+                  onClick={() => {
+                    localStorage.setItem("chimuelo_onboarding_done", "true");
+                    setShowWelcomeOnboarding(false);
+                  }}
+                >
+                  Quizás después
+                </button>
+                <button
+                  className="welcome-onb-btn-primary"
+                  disabled={!onboardingNameInput.trim()}
+                  onClick={() => {
+                    const name = onboardingNameInput.trim().slice(0, 20);
+                    if (!name) return;
+                    setUserName(name);
+                    localStorage.setItem("chimuelo_user_name", name);
+                    localStorage.setItem("chimuelo_onboarding_done", "true");
+                    setShowWelcomeOnboarding(false);
+                  }}
+                >
+                  ¡Encantado!
+                </button>
+              </div>
+              <p className="welcome-onb-foot">
+                Tus datos solo viven en tu dispositivo. Nadie más los ve. 🔒
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showVersionModal && (
         <div className="modal-overlay" onClick={() => setShowVersionModal(false)}>
           <div className="modal-content version-modal" onClick={e => e.stopPropagation()}>

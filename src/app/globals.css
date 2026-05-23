@@ -6766,3 +6766,173 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   flex-shrink: 0;
   box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
 }
+
+/* ══════════════════════════════════════════════════════════
+   ONBOARDING DE BIENVENIDA — primer uso
+   ══════════════════════════════════════════════════════════ */
+.welcome-onb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: welcomeOnbFade 0.4s ease both;
+}
+@keyframes welcomeOnbFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.welcome-onb-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow:
+    0 30px 60px -15px rgba(76, 29, 149, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: welcomeOnbSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  isolation: isolate;
+}
+@keyframes welcomeOnbSlide {
+  from { opacity: 0; transform: translateY(40px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.welcome-onb-glow {
+  position: absolute;
+  inset: -50%;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(236, 72, 153, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(99, 102, 241, 0.4) 0%, transparent 50%);
+  animation: fpGlowMove 8s ease-in-out infinite alternate;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.welcome-onb-content {
+  position: relative;
+  z-index: 1;
+  padding: 32px 28px 24px;
+  text-align: center;
+  color: #fff;
+}
+
+.welcome-onb-emoji {
+  font-size: 3.5rem;
+  line-height: 1;
+  margin-bottom: 14px;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.4));
+  animation: welcomeOnbBounce 2s ease-in-out infinite;
+}
+@keyframes welcomeOnbBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+.welcome-onb-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 30%, #fbcfe8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-onb-sub {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 22px;
+  line-height: 1.4;
+}
+
+.welcome-onb-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.3s;
+  text-align: center;
+}
+.welcome-onb-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 400;
+}
+.welcome-onb-input:focus {
+  border-color: #ec4899;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.2);
+}
+
+.welcome-onb-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.welcome-onb-btn-skip {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.welcome-onb-btn-skip:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.welcome-onb-btn-skip:active {
+  transform: scale(0.96);
+}
+
+.welcome-onb-btn-primary {
+  flex: 1.4;
+  background: linear-gradient(135deg, #ec4899 0%, #a18cd1 100%);
+  border: none;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 6px 20px -4px rgba(236, 72, 153, 0.5);
+}
+.welcome-onb-btn-primary:hover:not(:disabled) {
+  transform: scale(1.03);
+}
+.welcome-onb-btn-primary:active:not(:disabled) {
+  transform: scale(0.94);
+  transition: transform 0.08s;
+}
+.welcome-onb-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.welcome-onb-foot {
+  margin: 20px 0 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
