@@ -7012,3 +7012,36 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .agents-empty-clear:active {
   transform: scale(0.95);
 }
+
+/* ── Onboarding hint en Cerebro Académico (0 materias) ── */
+.uni-v2-onboarding-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 8px 0 20px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(161, 140, 209, 0.05));
+  border: 1px dashed var(--accent-color);
+  border-radius: 14px;
+  animation: fadeUpStagger 0.4s ease both;
+}
+.uni-v2-hint-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  margin-top: -2px;
+}
+.uni-v2-hint-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.uni-v2-hint-text strong {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+.uni-v2-hint-text span {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}

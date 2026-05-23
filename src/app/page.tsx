@@ -3152,8 +3152,22 @@ export default function Home() {
             <div className="uni-v2-shell">
               <div className="uni-v2-header">
                 <div className="uni-v2-title">Cerebro Académico</div>
-                <div className="uni-v2-sub">Elige tu materia, escribe lo que necesitas y empieza al instante.</div>
+                <div className="uni-v2-sub">
+                  {subjects.length === 0
+                    ? 'Agrega tus materias y Chimuelo recordará el contexto de cada una.'
+                    : 'Elige tu materia, escribe lo que necesitas y empieza al instante.'}
+                </div>
               </div>
+
+              {subjects.length === 0 && (
+                <div className="uni-v2-onboarding-hint">
+                  <div className="uni-v2-hint-icon">📚</div>
+                  <div className="uni-v2-hint-text">
+                    <strong>Empieza con tu primera materia.</strong>
+                    <span>Por ejemplo: "Cálculo I", "Historia", "Química". Chimuelo recordará apuntes y contexto.</span>
+                  </div>
+                </div>
+              )}
 
               {/* ── MATERIAS ── */}
               <div className="uni-v2-subjects">
