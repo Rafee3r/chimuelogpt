@@ -2065,10 +2065,14 @@ export default function Home() {
      a la IA para crear un título corto (3-5 palabras). Solo aplica
      a chats nuevos sin agente. */
   const generateChatTitle = async (chatId: string, userMsg: string, assistantMsg: string) => {
+    // Timeout de 15s: si la API se cuelga, abortamos y mantenemos el título auto-generado.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: [
             { role: 'user', content: `Pregunta del usuario: "${userMsg.slice(0, 200)}"\n\nRespuesta de la IA: "${assistantMsg.slice(0, 300)}"\n\nGenera un título MUY CORTO (máximo 5 palabras, sin comillas, sin emojis, sin punto final) que resuma el tema de esta conversación en español. Responde ÚNICAMENTE con el título, nada más.` }
@@ -2103,6 +2107,8 @@ export default function Home() {
       });
     } catch (e) {
       console.warn('No se pudo generar título:', e);
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
