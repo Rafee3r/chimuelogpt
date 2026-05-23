@@ -2411,19 +2411,30 @@ export default function Home() {
 
       {/* ── ONBOARDING DE BIENVENIDA (primer uso) ── */}
       {showWelcomeOnboarding && (
-        <div className="modal-overlay welcome-onb-overlay">
+        <div
+          className="modal-overlay welcome-onb-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-onb-title"
+          aria-describedby="welcome-onb-sub"
+        >
           <div className="welcome-onb-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="welcome-onb-glow"></div>
+            <div className="welcome-onb-glow" aria-hidden="true"></div>
             <div className="welcome-onb-content">
-              <div className="welcome-onb-emoji">🐈‍⬛</div>
-              <h2 className="welcome-onb-title">¡Hola! Soy Chimuelo</h2>
-              <p className="welcome-onb-sub">
+              <div className="welcome-onb-emoji" aria-hidden="true">🐈‍⬛</div>
+              <h2 id="welcome-onb-title" className="welcome-onb-title">¡Hola! Soy Chimuelo</h2>
+              <p id="welcome-onb-sub" className="welcome-onb-sub">
                 Voy a estar acompañándote. ¿Cómo te llamo?
               </p>
+              <label htmlFor="welcome-onb-name-input" className="sr-only">
+                Tu nombre
+              </label>
               <input
+                id="welcome-onb-name-input"
                 type="text"
                 className="welcome-onb-input"
                 placeholder="Tu nombre"
+                aria-label="Escribe tu nombre"
                 value={onboardingNameInput}
                 onChange={(e) => setOnboardingNameInput(e.target.value)}
                 onKeyDown={(e) => {

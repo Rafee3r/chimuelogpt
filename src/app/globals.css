@@ -7045,3 +7045,16 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   color: var(--text-secondary);
   line-height: 1.4;
 }
+
+/* ── Utility: oculto visualmente pero leído por screen readers ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
