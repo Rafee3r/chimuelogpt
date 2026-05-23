@@ -2183,7 +2183,9 @@ export default function Home() {
         if (msgMenu) { setMsgMenu(null); e.preventDefault(); return; }
         if (chatMenu) { setChatMenu(null); e.preventDefault(); return; }
         if (paletteOpen) { setPaletteOpen(false); e.preventDefault(); return; }
+        if (showVersionModal) { setShowVersionModal(false); e.preventDefault(); return; }
         if (sidebarOpen) { setSidebarOpen(false); return; }
+        // welcome-onb intencionalmente NO se cierra con Escape (requiere decisión explícita)
       }
       if (!mod) return;
       if (e.key.toLowerCase() === 'k') {
@@ -2209,7 +2211,7 @@ export default function Home() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [paletteOpen, sidebarOpen, viewMode, chatMenu]);
+  }, [paletteOpen, sidebarOpen, viewMode, chatMenu, msgMenu, showVersionModal]);
 
   const ImageRenderer = ({ node, ...props }: any) => {
     return (
