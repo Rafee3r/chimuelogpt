@@ -717,6 +717,7 @@ export default function Home() {
   const [editingName, setEditingName] = useState<boolean>(false);
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [showCatMascot, setShowCatMascot] = useState<boolean>(true);
+  const [customInstructions, setCustomInstructions] = useState<string>("");
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [showWelcomeOnboarding, setShowWelcomeOnboarding] = useState<boolean>(false);
   const [onboardingNameInput, setOnboardingNameInput] = useState<string>("");
@@ -1107,6 +1108,9 @@ export default function Home() {
 
     const savedCatMascot = localStorage.getItem("chimuelo_show_cat");
     if (savedCatMascot === 'false') setShowCatMascot(false);
+
+    const savedCustomInst = localStorage.getItem("chimuelo_custom_instructions");
+    if (savedCustomInst) setCustomInstructions(savedCustomInst);
 
     // ── Mostrar onboarding solo si NUNCA se ha completado y no hay nombre ──
     const onboardingDone = localStorage.getItem("chimuelo_onboarding_done") === "true";
@@ -1696,6 +1700,10 @@ export default function Home() {
       // Inject user name (priority high — la IA debe saber a quién le habla)
       if (userName && userName.trim()) {
         finalSystemPrompt += `\n\n[NOMBRE DEL USUARIO]\nLa persona con quien hablas se llama "${userName.trim()}". Úsalo naturalmente en la conversación (no en cada mensaje, solo cuando suene natural). NUNCA te disculpes por no saber su nombre — ya lo sabes.\n[FIN NOMBRE]`;
+      }
+      // Inject custom instructions del usuario (priority alta — instrucciones explícitas)
+      if (customInstructions && customInstructions.trim()) {
+        finalSystemPrompt += `\n\n[INSTRUCCIONES PERSONALIZADAS DEL USUARIO — PRIORIDAD MÁXIMA]\nEl usuario te ha dado estas instrucciones específicas. RESPÉTALAS en cada respuesta:\n${customInstructions.trim()}\n[FIN INSTRUCCIONES]`;
       }
       // Inject persistent user memory
       if (memoryEnabled && userMemory.length > 0) {
@@ -3016,6 +3024,27 @@ export default function Home() {
                     <option value="profesional">Profesional (Corporativo, de usted)</option>
                   </select>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
+                </div>
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">Instrucciones personalizadas</label>
+                  <textarea
+                    className="settings-select"
+                    rows={3}
+                    placeholder="Ej: 'Siempre respóndeme en bullets', 'No uses emojis', 'Soy programador, sé técnico', 'Tengo 12 años'..."
+                    value={customInstructions}
+                    onChange={(e) => setCustomInstructions(e.target.value)}
+                    onBlur={() => {
+                      const v = customInstructions.trim().slice(0, 500);
+                      setCustomInstructions(v);
+                      if (v) localStorage.setItem('chimuelo_custom_instructions', v);
+                      else localStorage.removeItem('chimuelo_custom_instructions');
+                    }}
+                    maxLength={500}
+                    style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit', lineHeight: 1.4 }}
+                  />
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Reglas que Chimuelo seguirá en TODOS tus chats. Máx 500 caracteres ({customInstructions.length}/500).
+                  </p>
                 </div>
               </div>
 
