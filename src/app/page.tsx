@@ -391,6 +391,7 @@ const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_memoryEnabled',
   'chimuelo_user_name',
   'chimuelo_onboarding_done',
+  'chimuelo_show_cat',
   'chimuelo_version',
   'chimuelo_model',
   'chimuelo_theme',
@@ -715,6 +716,7 @@ export default function Home() {
   const [userName, setUserName] = useState<string>("");
   const [editingName, setEditingName] = useState<boolean>(false);
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
+  const [showCatMascot, setShowCatMascot] = useState<boolean>(true);
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [showWelcomeOnboarding, setShowWelcomeOnboarding] = useState<boolean>(false);
   const [onboardingNameInput, setOnboardingNameInput] = useState<string>("");
@@ -1102,6 +1104,9 @@ export default function Home() {
 
     const savedUserName = localStorage.getItem("chimuelo_user_name");
     if (savedUserName) setUserName(savedUserName);
+
+    const savedCatMascot = localStorage.getItem("chimuelo_show_cat");
+    if (savedCatMascot === 'false') setShowCatMascot(false);
 
     // ── Mostrar onboarding solo si NUNCA se ha completado y no hay nombre ──
     const onboardingDone = localStorage.getItem("chimuelo_onboarding_done") === "true";
@@ -2981,6 +2986,19 @@ export default function Home() {
                     <option value="large">Grande</option>
                   </select>
                 </div>
+                <div className="settings-group" style={{ marginTop: '1rem' }}>
+                  <label className="settings-label">🐈‍⬛ Mostrar al gatito Chimuelo</label>
+                  <div className="settings-toggle-row" style={{ marginTop: '6px' }}>
+                    <button
+                      className={`settings-toggle-btn ${showCatMascot ? 'active' : ''}`}
+                      onClick={() => { setShowCatMascot(true); localStorage.setItem('chimuelo_show_cat', 'true'); }}
+                    >Sí, lo quiero ahí</button>
+                    <button
+                      className={`settings-toggle-btn ${!showCatMascot ? 'active' : ''}`}
+                      onClick={() => { setShowCatMascot(false); localStorage.setItem('chimuelo_show_cat', 'false'); }}
+                    >Sin gatito</button>
+                  </div>
+                </div>
               </div>
 
               {/* Personalidad */}
@@ -3879,8 +3897,8 @@ export default function Home() {
 
         {viewMode === "chat" && (
           <div className="v2-input-area">
-            {/* Mascota Chimuelo paseando arriba del input (oculta en chat de agente) */}
-            {!activeAgent && (
+            {/* Mascota Chimuelo paseando arriba del input (oculta en chat de agente + si user la desactiva en Ajustes) */}
+            {!activeAgent && showCatMascot && (
               <div className="cat-mascot-shelf" aria-hidden="true">
                 <CatMascot />
               </div>
