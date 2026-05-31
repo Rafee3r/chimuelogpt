@@ -1396,9 +1396,6 @@ export default function Home() {
     setDisplayMessages([]);
     setSidebarOpen(false);
     setViewMode("chat");
-    // Nuevo chat siempre empieza en modelo rápido
-    setModel('deepseek-v4-flash');
-    localStorage.setItem('chimuelo_model', 'deepseek-v4-flash');
   };
 
   const compressImage = (base64Str: string): Promise<string> => {
