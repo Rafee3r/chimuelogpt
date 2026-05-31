@@ -3888,8 +3888,32 @@ export default function Home() {
                               }}><Copy size={16} /></button>
                             </div>
                           )}
-
-
+                          {isLastMsg && !isThinking && msg.role === 'assistant' && smartPills.length > 0 && (
+                            <div className="v2-quick-reply" style={{ marginTop: '12px', display: 'flex' }}>
+                              <button
+                                onClick={() => handleSendMessage(smartPills[0].message)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 16px',
+                                  background: 'var(--input-bg)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '20px',
+                                  color: 'var(--text-primary)',
+                                  fontSize: '0.9rem',
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                              >
+                                <span style={{ fontSize: '1rem' }}>{smartPills[0].icon}</span>
+                                <span>{smartPills[0].label}</span>
+                              </button>
+                            </div>
+                          )}
 
                         </div>
                       );
