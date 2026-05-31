@@ -11,6 +11,17 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
   imgRenderer: any;
   codeRenderer: any;
 }) {
+  // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets,
+  // allowing react-markdown parser to recognize them as valid anchor links instead of raw text
+  const processedContent = useMemo(() => {
+    if (!content) return '';
+    return content.replace(/\[([^\]]+)\]\((prompt:[^\)]+)\)/g, (match, label, promptPart) => {
+      const promptText = promptPart.slice(7);
+      const encodedPrompt = "prompt:" + encodeURIComponent(promptText);
+      return `[${label}](${encodedPrompt})`;
+    });
+  }, [content]);
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -20,10 +31,22 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
         a: ({ href, children, ...props }: any) => {
           const isPrompt = href?.startsWith('prompt:');
           if (isPrompt) {
-            let label = String(children).trim();
-            // Truncate overly long labels on prompt cards so they remain visual "quick pills" (max 50 chars)
-            if (label.length > 50) {
-              label = label.slice(0, 47) + "...";
+            // Helper to robustly extract plain text from React nodes / nested children
+            const extractText = (node: any): string => {
+              if (!node) return '';
+              if (typeof node === 'string') return node;
+              if (typeof node === 'number') return String(node);
+              if (Array.isArray(node)) return node.map(extractText).join('');
+              if (typeof node === 'object' && node.props && node.props.children) {
+                return extractText(node.props.children);
+              }
+              return '';
+            };
+
+            let label = extractText(children).trim();
+            // Truncate overly long labels on prompt cards so they remain visual "quick pills" (max 45 chars)
+            if (label.length > 45) {
+              label = label.slice(0, 42) + "...";
             }
             return (
               <a href={href} className="interactive-prompt-btn" {...props}>
@@ -35,7 +58,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
         }
       }}
     >
-      {content}
+      {processedContent}
     </ReactMarkdown>
   );
 }, (prev, next) => prev.content === next.content);
