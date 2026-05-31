@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     // Determine correct model mapping
     // Pro ALWAYS uses reasoner. Extended ALSO forces reasoner.
-    let actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-reasoner' : 'deepseek-chat';
+    let actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
     
     let extendedThinkingPrompt = '';
     if (thinkingLevel === 'extended') {
