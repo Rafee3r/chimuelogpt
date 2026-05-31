@@ -14,7 +14,26 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      components={{ img: imgRenderer, code: codeRenderer }}
+      components={{
+        img: imgRenderer,
+        code: codeRenderer,
+        a: ({ href, children, ...props }: any) => {
+          const isPrompt = href?.startsWith('prompt:');
+          if (isPrompt) {
+            let label = String(children).trim();
+            // Truncate overly long labels on prompt cards so they remain visual "quick pills" (max 50 chars)
+            if (label.length > 50) {
+              label = label.slice(0, 47) + "...";
+            }
+            return (
+              <a href={href} className="interactive-prompt-btn" {...props}>
+                <span>{label}</span>
+              </a>
+            );
+          }
+          return <a href={href} {...props}>{children}</a>;
+        }
+      }}
     >
       {content}
     </ReactMarkdown>
