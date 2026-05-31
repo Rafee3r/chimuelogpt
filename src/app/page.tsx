@@ -17,7 +17,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
     if (!content) return '';
     return content.replace(/\[([^\]]+)\]\((prompt:[^\)]+)\)/g, (match, label, promptPart) => {
       const promptText = promptPart.slice(7);
-      const encodedPrompt = "prompt:" + encodeURIComponent(promptText);
+      const encodedPrompt = "?prompt=" + encodeURIComponent(promptText);
       return `[${label}](${encodedPrompt})`;
     });
   }, [content]);
@@ -29,9 +29,9 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
         img: imgRenderer,
         code: codeRenderer,
         a: ({ href, children, ...props }: any) => {
-          const isPrompt = href?.startsWith('prompt:');
+          const isPrompt = href?.startsWith('?prompt=');
           if (isPrompt) {
-            const promptText = decodeURIComponent(href.slice(7));
+            const promptText = decodeURIComponent(href.slice(8));
 
             // Helper to robustly extract plain text from React nodes / nested children
             const extractText = (node: any): string => {
