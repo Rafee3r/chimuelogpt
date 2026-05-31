@@ -2,7 +2,7 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const { messages, model, persona, customInstructions, isAgent } = await req.json();
+    const { messages, model, persona, customInstructions, isAgent, thinkingLevel } = await req.json();
     const apiKey = process.env.DEEPSEEK_API_KEY;
 
     if (!apiKey) {
@@ -12,8 +12,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Use model names directly - deepseek-v4-pro or deepseek-v4-flash
-    const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    // Determine correct model mapping
+    let actualModel = model === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
+    if (thinkingLevel === 'extended') {
+      actualModel = 'deepseek-reasoner';
+    } else if (thinkingLevel === 'standard') {
+      actualModel = 'deepseek-chat';
+    }
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario. Si alguien te pide que te presentes o que expliques cómo funciona la app, menciona de forma natural y tranquilizadora que tus conversaciones se guardan únicamente en tu propio dispositivo (como un diario personal), que nadie más tiene acceso a ellas, y que Rafael tampoco puede verlas.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis ni lenguaje coloquial. Responde SIEMPRE en Español.";

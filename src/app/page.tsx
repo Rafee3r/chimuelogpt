@@ -1716,24 +1716,34 @@ export default function Home() {
       // Flag para estilo WhatsApp (sin formato, casual, mensajes cortos)
       const isAgent = !!(chatForApi?.agentId);
 
+      const fetchTimeoutId = setTimeout(() => {
+        controller.abort(new Error('TIMEOUT_NO_RESPONSE'));
+      }, 45000); // 45s para recibir la primera respuesta (headers)
+
       let res: Response;
-      if (imagePayload) {
-        // Use Claude Haiku vision endpoint
-        res = await fetch('/api/vision', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model, isAgent }),
-          signal: controller.signal,
-        });
-      } else {
-        // Use DeepSeek text endpoint
-        res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt, isAgent }),
-          signal: controller.signal,
-        });
+      try {
+        if (imagePayload) {
+          // Use Claude Haiku vision endpoint
+          res = await fetch('/api/vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model, isAgent, thinkingLevel }),
+            signal: controller.signal,
+          });
+        } else {
+          // Use DeepSeek text endpoint
+          res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: historyMsgs, model, persona, customInstructions: finalSystemPrompt, isAgent, thinkingLevel }),
+            signal: controller.signal,
+          });
+        }
+      } catch (err) {
+        clearTimeout(fetchTimeoutId);
+        throw err;
       }
+      clearTimeout(fetchTimeoutId);
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Error desconocido del servidor' }));
@@ -1782,9 +1792,15 @@ export default function Home() {
       }
 
       // Extract reasoning FIRST to avoid replacing tags inside the think block
-      const reasoningMatch = fullText.match(/<think>([\s\S]*?)<\/think>/);
-      const reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
-      let cleanContent = fullText.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+      const reasoningMatch = fullText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
+      let reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
+      let cleanContent = fullText.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
+
+      // If stream aborted midway inside reasoning block, or model only output reasoning
+      if (!cleanContent && reasoning) {
+        cleanContent = reasoning;
+        reasoning = undefined;
+      }
 
       // Post-process: intercept image generation tags on the clean content
       if (cleanContent.includes('<generate_image')) {
