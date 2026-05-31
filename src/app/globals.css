@@ -2494,13 +2494,16 @@ a {
 }
 
 .greeting-text-gradient {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 2.35rem;
+  font-weight: 400;
   margin-bottom: 3rem;
   text-align: center;
-  background: linear-gradient(to right, var(--text-primary), #a5b4fc);
+  color: var(--text-primary);
+  background: linear-gradient(135deg, #ffffff 30%, rgba(255,255,255,0.75) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.025em;
   animation: fadeUpStagger 0.6s ease both;
 }
 
@@ -2647,11 +2650,12 @@ a {
   max-width: 48rem;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
-  border-radius: 24px;
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  padding: 2px 6px;
 }
 
 .v2-input-container:focus-within {
@@ -2661,8 +2665,9 @@ a {
 
 .v2-input-row {
   display: flex;
-  align-items: flex-end;
-  padding: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  gap: 8px;
   gap: 8px;
 }
 
@@ -2705,17 +2710,18 @@ a {
 }
 
 .v2-attach-icon-wrapper {
-  background: var(--sidebar-hover);
+  background: transparent;
   border-radius: 50%;
   padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  color: var(--text-secondary);
 }
 
 .v2-attach-btn:hover .v2-attach-icon-wrapper {
-  background: var(--border-color);
+  background: var(--sidebar-hover);
   color: var(--text-primary);
 }
 
@@ -2727,7 +2733,7 @@ a {
   font-family: inherit;
   font-size: 16px; /* iOS: prevents zoom on focus (must be ≥16px) */
   resize: none;
-  padding: 12px 4px;
+  padding: 10px 4px;
   min-height: 24px;
   max-height: 200px;
   outline: none;
@@ -2751,8 +2757,8 @@ a {
   justify-content: center;
   transition: all 0.3s;
   cursor: not-allowed;
-  margin-bottom: 4px;
-  margin-right: 4px;
+  margin-bottom: 0;
+  margin-right: 0;
 }
 
 .v2-send-btn.active {
@@ -3982,7 +3988,7 @@ a {
   cursor: pointer;
   transition: color 0.2s, background 0.2s;
   flex-shrink: 0;
-  margin-bottom: 3px;
+  margin-bottom: 0;
 }
 .v2-mic-btn:hover {
   color: var(--text-primary);
@@ -7381,4 +7387,34 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .settings-action-btn.danger:hover {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* ── Interactive prompt markdown buttons ── */
+.markdown-body a[href^="prompt:"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 4px;
+  padding: 8px 16px;
+  background-color: var(--input-bg);
+  color: var(--accent-color) !important;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.markdown-body a[href^="prompt:"]:hover {
+  background-color: var(--active-bg);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.markdown-body a[href^="prompt:"]:active {
+  transform: translateY(0);
 }

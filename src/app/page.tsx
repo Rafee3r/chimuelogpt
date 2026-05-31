@@ -724,7 +724,7 @@ export default function Home() {
   const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
-  const [appReady, setAppReady] = useState(false);
+  const [appReady, setAppReady] = useState(true);
 
   type SmartPill = { icon: string; label: string; message: string };
   const defaultPills: SmartPill[] = [
@@ -993,60 +993,17 @@ export default function Home() {
     return null;
   }, [userName, userMemory]);
 
-  /* 30 variaciones de saludo (Claude/Gemini-style) divididos por hora del día */
-  const greetingPool = useMemo(() => {
-    const morning = [
-      (n: string) => `Buenos días${n}. ¿Qué planeas hoy?`,
-      (n: string) => `Buen día${n}. ¿Por dónde empezamos?`,
-      (n: string) => `Hola${n}. Listo para arrancar el día`,
-      (n: string) => `Buenos días${n}, ¿qué necesitas?`,
-      (n: string) => `Buenas mañanas${n}, ¿en qué piensas?`,
-      (n: string) => `Buen día${n}, ¿qué hay en la agenda?`,
-      (n: string) => `Buenos días${n}. ¿Café listo? Manos a la obra`,
-      (n: string) => `Hola${n}, ¿cómo amaneciste?`,
-      (n: string) => `Buenos días${n}, ¿qué resolvemos primero?`,
-      (n: string) => `${n ? n.replace(', ', '') + ', b' : 'B'}uen día. ¿Qué hacemos?`,
-    ];
-    const afternoon = [
-      (n: string) => `Buenas tardes${n}. ¿En qué te ayudo?`,
-      (n: string) => `Hola${n}, ¿cómo va la tarde?`,
-      (n: string) => `Buenas${n}, ¿qué necesitas?`,
-      (n: string) => `Hola${n}. ¿Dónde lo dejamos?`,
-      (n: string) => `Buenas tardes${n}, ¿en qué piensas hoy?`,
-      (n: string) => `¿Qué tal${n}? Cuéntame en qué te ayudo`,
-      (n: string) => `Hola${n}, ¿algo entre manos?`,
-      (n: string) => `Buenas tardes${n}, listo para lo que sigue`,
-      (n: string) => `Tarde productiva${n}, ¿empezamos?`,
-      (n: string) => `Hola${n}, ¿qué se cocina?`,
-    ];
-    const night = [
-      (n: string) => `Buenas noches${n}. ¿En qué te ayudo?`,
-      (n: string) => `Hola${n}, ¿cómo terminó tu día?`,
-      (n: string) => `Buenas noches${n}, ¿qué necesitas?`,
-      (n: string) => `Hola${n}, ¿algo antes de descansar?`,
-      (n: string) => `Buenas${n}, ¿en qué andas?`,
-      (n: string) => `Última hora del día${n}, ¿qué hacemos?`,
-      (n: string) => `Hola${n}. Aquí estamos otra vez`,
-      (n: string) => `Buenas noches${n}, ¿qué resuelvo?`,
-      (n: string) => `¿Quemando aceite de medianoche${n}?`,
-      (n: string) => `Buenas noches${n}. Cuéntame`,
-    ];
-    return { morning, afternoon, night };
-  }, []);
-
-  /* Índice aleatorio que se elige una sola vez por sesión */
-  const [greetingIdx] = useState(() => Math.floor(Math.random() * 10));
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     const name = getUserName();
     const suffix = name ? `, ${name}` : '';
-    const pool =
-      hour < 12 ? greetingPool.morning :
-      hour < 19 ? greetingPool.afternoon :
-      greetingPool.night;
-    const fn = pool[greetingIdx % pool.length];
-    return fn(suffix);
+    if (hour < 12) {
+      return `Buenos días${suffix}`;
+    } else if (hour < 19) {
+      return `Buenas tardes${suffix}`;
+    } else {
+      return `Buenas noches${suffix}`;
+    }
   };
 
   useEffect(() => {
@@ -2859,7 +2816,7 @@ export default function Home() {
             <Menu size={24} />
           </button>
           
-          <div className="mobile-segmented-control d-md-none" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'none' : 'flex' }}>
+          <div className="mobile-segmented-control d-md-none" style={{ display: 'none' }}>
             <button
               className={`segment-btn ${viewMode === 'chat' && !activeAgent ? 'active' : ''}`}
               onClick={() => {
@@ -2878,8 +2835,8 @@ export default function Home() {
             </button>
           </div>
           
-          <div className="d-none d-md-flex" style={{ display: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'flex' : 'none', alignItems: 'center', gap: '8px' }}>
-            <span>Chimuelo</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>ChimueloGPT</span>
           </div>
 
           {!(currentChatId && displayMessages.length === 0) ? (
@@ -3225,6 +3182,15 @@ export default function Home() {
             const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
             setShowScrollBtn(distFromBottom > 200 && displayMessages.length > 0);
           }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest('a');
+            if (anchor && anchor.getAttribute('href')?.startsWith('prompt:')) {
+              e.preventDefault();
+              const promptText = decodeURIComponent(anchor.getAttribute('href')!.slice(7));
+              handleSendMessage(promptText);
+            }
+          }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "agents" ? (
             /* ── AGENTES — estilo WhatsApp ── */
@@ -3488,36 +3454,7 @@ export default function Home() {
               <h2 className="greeting-text-gradient">
                 {getGreeting()}
               </h2>
-              <div className="smart-pills-container">
-                {smartPills.map((pill, i) => (
-                  <button key={i} className="smart-pill" onClick={() => handleSendMessage(pill.message)}>
-                    <span className="pill-icon">{pill.icon}</span>
-                    <span className="pill-text">{pill.label}</span>
-                  </button>
-                ))}
-              </div>
 
-              {/* Tip del día — sutil, solo una línea pequeña al pie */}
-              {(() => {
-                const tips = [
-                  'Desliza desde el borde izquierdo para abrir el panel.',
-                  'Toca al gatito arriba del input para que maúlle.',
-                  'Probá los 20 agentes especialistas en Modos.',
-                  'En Cerebro Académico, Chimuelo recuerda apuntes por materia.',
-                  'Tocá el micrófono para dictar en vez de escribir.',
-                  'Pedíme una imagen o canción y la creo.',
-                  'Tus chats viven solo en tu dispositivo.',
-                  'Fijá un chat importante desde su menú (⋯).',
-                  'Mantén presionado un chat para exportarlo como .md.',
-                  'Cambiá el tema, mascota y personalidad en Ajustes.',
-                ];
-                const dayIdx = Math.floor(Date.now() / 86400000) % tips.length;
-                return (
-                  <div className="tip-of-day-mini">
-                    <Sparkles size={10} /> {tips[dayIdx]}
-                  </div>
-                );
-              })()}
             </div>
           ) : (
             displayMessages.map((msg: any, i) => {
@@ -3851,20 +3788,7 @@ export default function Home() {
                             </div>
                           )}
 
-                          {/* Quick actions — solo en el último mensaje del asistente y NO en chat de agente */}
-                          {showActions && !activeAgent && displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && !isThinking && (
-                            <div className="quick-actions-row">
-                              <button className="quick-action-pill" onClick={() => handleSendMessage('Hacelo más corto, en menos palabras.')}>
-                                ✂️ Más corto
-                              </button>
-                              <button className="quick-action-pill" onClick={() => handleSendMessage('Explícalo más simple, como si tuviera 10 años.')}>
-                                🌱 Más simple
-                              </button>
-                              <button className="quick-action-pill" onClick={() => handleSendMessage('Dame más ejemplos concretos.')}>
-                                💡 Más ejemplos
-                              </button>
-                            </div>
-                          )}
+
 
                         </div>
                       );
@@ -3980,7 +3904,7 @@ export default function Home() {
                 <textarea
                   ref={textareaRef}
                   className="v2-input-textarea"
-                  placeholder="Escribe o pregunta..."
+                  placeholder="Pregunta a Chimuelo..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
