@@ -13,11 +13,12 @@ export async function POST(req: Request) {
     }
 
     // Determine correct model mapping
-    let actualModel = model === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
+    // Pro ALWAYS uses reasoner. Extended ALSO forces reasoner.
+    let actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-reasoner' : 'deepseek-chat';
+    
+    let extendedThinkingPrompt = '';
     if (thinkingLevel === 'extended') {
-      actualModel = 'deepseek-reasoner';
-    } else if (thinkingLevel === 'standard') {
-      actualModel = 'deepseek-chat';
+      extendedThinkingPrompt = '\n\n[INSTRUCCIÓN CRÍTICA DE RAZONAMIENTO EXTENDIDO]\nPara esta solicitud, DEBES realizar un razonamiento sumamente exhaustivo, pensar paso a paso en gran profundidad, prever casos límite y explorar múltiples ángulos antes de emitir tu respuesta final. Tómate todo el tiempo necesario en tu bloque de pensamiento.';
     }
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario. Si alguien te pide que te presentes o que expliques cómo funciona la app, menciona de forma natural y tranquilizadora que tus conversaciones se guardan únicamente en tu propio dispositivo (como un diario personal), que nadie más tiene acceso a ellas, y que Rafael tampoco puede verlas.";
@@ -66,8 +67,8 @@ NO uses stickers en respuestas largas/informativas. Solo cuando un emoji-reacci�
 
 RECUERDA: eres un AMIGO escribiendo por WhatsApp. No un asistente formal. No un escritor técnico. Solo un amigo.`;
 
-    const systemPrompt = isAgent ? agentSystemPrompt : `${personaPrompt}${customInstructionsPrompt}
-REGLAS DE PERSONALIDAD Y EVITAR SUPOSICIONES (MUY IMPORTANTE):
+    const systemPrompt = (isAgent ? agentSystemPrompt : `${personaPrompt}${customInstructionsPrompt}
+REGLAS DE PERSONALIDAD Y EVITAR SUPOSICIONES (MUY IMPORTANTE):`) + extendedThinkingPrompt;
 1. **Personalidad Funcional y Precisa**: Sé útil, directo y sumamente cuidadoso. Si el usuario te hace una pregunta técnica vaga o ambigua (ej. "el generador no funciona", "mi coche no prende", "cómo configuro esto"), **NUNCA supongas o adivines el modelo, marca, tipo o contexto**. 
    - En lugar de asumir o inventar datos, **haz preguntas aclaratorias cortas y precisas** al usuario para acotar el problema antes de dar una solución detallada.
    - Evita dar instrucciones a ciegas que puedan ser incorrectas o peligrosas.
