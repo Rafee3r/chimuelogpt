@@ -2948,7 +2948,7 @@ export default function Home() {
               onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
               style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px', cursor: 'pointer' }}
             >
-              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}</span>
+              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}{thinkingLevel === 'extended' ? ' Ex.' : ''}</span>
               <ChevronDown size={16} color="var(--text-secondary)" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </button>
 
