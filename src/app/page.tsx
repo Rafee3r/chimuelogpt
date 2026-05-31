@@ -824,7 +824,7 @@ export default function Home() {
   };
 
   /* ─────────── Scroll-to-bottom (Nivel 3 — Cambio 12) ─────────── */
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  // Scroll button state removed
 
   /* v2.0 — debounced localStorage write (chats only; called from streaming hot path) */
   const queueChatsToLS = useCallback((chats: Chat[]) => {
@@ -3343,7 +3343,7 @@ export default function Home() {
           onScroll={(e) => {
             const el = e.currentTarget;
             const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-            setShowScrollBtn(distFromBottom > 200 && displayMessages.length > 0);
+            // setShowScrollBtn removed
           }}
           onClick={(e) => {
             const target = e.target as HTMLElement;
@@ -4334,20 +4334,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Nivel 3 Cambio 12 — Scroll to bottom button ── */}
-      {showScrollBtn && (
-        <button
-          className="scroll-to-bottom-btn"
-          onClick={() => {
-            const el = chatScrollRef.current;
-            if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-          }}
-          title="Bajar al final"
-          aria-label="Bajar al final"
-        >
-          <ChevronDown size={20} />
-        </button>
-      )}
+      {/* ── Nivel 3 Cambio 12 — Scroll to bottom button (REMOVED) ── */}
 
       {/* ── Nivel 4 Cambio 15 — Toast premium ── */}
       <div className={`chimuelo-toast ${toast.show ? 'visible' : ''}`} role="status">
