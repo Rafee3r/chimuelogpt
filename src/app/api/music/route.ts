@@ -35,7 +35,10 @@ export async function POST(req: Request) {
     if (!submitRes.ok) {
       const err = await submitRes.text();
       console.error('FAL music submit error:', submitRes.status, err);
-      return NextResponse.json({ error: `FAL submit error ${submitRes.status}: ${err}` }, { status: 500 });
+      const friendlyError = err.includes('content_policy_violation') ? 
+        'Lo siento, el sistema de generación de música rechazó la solicitud debido a sus filtros de seguridad. Intenta con una descripción diferente.' : 
+        `Error al iniciar la generación de música (Código ${submitRes.status}).`;
+      return NextResponse.json({ error: friendlyError }, { status: 500 });
     }
 
     const queued = await submitRes.json();
@@ -73,7 +76,11 @@ export async function POST(req: Request) {
         const resultRes = await fetch(responseUrl, { headers: { 'Authorization': `Key ${falKey}` } });
         if (!resultRes.ok) {
           const err = await resultRes.text();
-          return NextResponse.json({ error: `FAL result fetch error ${resultRes.status}: ${err}` }, { status: 500 });
+          console.error('FAL music result fetch error:', resultRes.status, err);
+          const friendlyError = err.includes('content_policy_violation') ? 
+            'Lo siento, el sistema de seguridad bloqueó el audio generado por contener elementos restringidos. Intenta con otra descripción.' : 
+            `Error al obtener la música generada (Código ${resultRes.status}).`;
+          return NextResponse.json({ error: friendlyError }, { status: 500 });
         }
 
         const result = await resultRes.json();
