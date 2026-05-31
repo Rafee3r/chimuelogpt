@@ -31,6 +31,8 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
         a: ({ href, children, ...props }: any) => {
           const isPrompt = href?.startsWith('prompt:');
           if (isPrompt) {
+            const promptText = decodeURIComponent(href.slice(7));
+
             // Helper to robustly extract plain text from React nodes / nested children
             const extractText = (node: any): string => {
               if (!node) return '';
@@ -49,7 +51,11 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
               label = label.slice(0, 42) + "...";
             }
             return (
-              <a href={href} className="interactive-prompt-btn" {...props}>
+              <a 
+                href={href} 
+                data-prompt={promptText}
+                className="interactive-prompt-btn"
+              >
                 <span>{label}</span>
               </a>
             );
@@ -3387,10 +3393,17 @@ export default function Home() {
           onClick={(e) => {
             const target = e.target as HTMLElement;
             const anchor = target.closest('a');
-            if (anchor && anchor.getAttribute('href')?.startsWith('prompt:')) {
-              e.preventDefault();
-              const promptText = decodeURIComponent(anchor.getAttribute('href')!.slice(7));
-              handleSendMessage(promptText);
+            if (anchor) {
+              const dataPrompt = anchor.getAttribute('data-prompt');
+              const hrefPrompt = anchor.getAttribute('href');
+              if (dataPrompt) {
+                e.preventDefault();
+                handleSendMessage(dataPrompt);
+              } else if (hrefPrompt?.startsWith('prompt:')) {
+                e.preventDefault();
+                const promptText = decodeURIComponent(hrefPrompt.slice(7));
+                handleSendMessage(promptText);
+              }
             }
           }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
