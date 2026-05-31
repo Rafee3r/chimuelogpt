@@ -793,7 +793,7 @@ a {
   display: flex;
   flex-direction: column;
   padding-top: 1rem;
-  padding-bottom: 120px;
+  padding-bottom: 220px;
   /* CRITICAL: 'auto' (not smooth) — smooth animates every scrollIntoView during
      token streaming, creating a visible "creep down" effect. */
   scroll-behavior: auto;

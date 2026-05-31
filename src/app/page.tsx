@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -745,6 +745,8 @@ export default function Home() {
   const [inlineSubjectName, setInlineSubjectName] = useState('');
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [thinkingLevel, setThinkingLevel] = useState<'standard' | 'extended'>('standard');
+  const [showThinkingMenu, setShowThinkingMenu] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [artifactModal, setArtifactModal] = useState<string | null>(null);
   
@@ -2909,27 +2911,77 @@ export default function Home() {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <button
-                  className={`v2-model-option ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
-                  onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
-                >
-                  <div className="v2-model-opt-content">
-                    <span className="v2-model-opt-title">Rápido (sonnet 4.6)</span>
-                    <span className="v2-model-opt-desc">Respuestas más rápidas</span>
-                  </div>
-                  {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
-                </button>
+                {!showThinkingMenu ? (
+                  <>
+                    <button
+                      className={`v2-model-option ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
+                      onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
+                    >
+                      <div className="v2-model-opt-content">
+                        <span className="v2-model-opt-title">Rápido (sonnet 4.6)</span>
+                        <span className="v2-model-opt-desc">Respuestas más rápidas</span>
+                      </div>
+                      {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
+                    </button>
 
-                <button
-                  className={`v2-model-option ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
-                  onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
-                >
-                  <div className="v2-model-opt-content">
-                    <span className="v2-model-opt-title">Pro (claude opus 4.8)</span>
-                    <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
-                  </div>
-                  {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
-                </button>
+                    <button
+                      className={`v2-model-option ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
+                      onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
+                    >
+                      <div className="v2-model-opt-content">
+                        <span className="v2-model-opt-title">Pro (claude opus 4.8)</span>
+                        <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
+                      </div>
+                      {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
+                    </button>
+
+                    <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
+
+                    <button
+                      className="v2-model-option"
+                      onClick={() => setShowThinkingMenu(true)}
+                    >
+                      <div className="v2-model-opt-content">
+                        <span className="v2-model-opt-title">Nivel de pensamiento</span>
+                        <span className="v2-model-opt-desc" style={{ color: 'var(--text-secondary)' }}>{thinkingLevel === 'extended' ? 'Extendido' : 'Estándar'}</span>
+                      </div>
+                      <ChevronRight size={16} color="var(--text-secondary)" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="v2-model-option"
+                      onClick={() => setShowThinkingMenu(false)}
+                      style={{ paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', borderRadius: '16px 16px 0 0', gap: '8px', justifyContent: 'flex-start' }}
+                    >
+                      <ChevronLeft size={16} color="var(--text-secondary)" />
+                      <span className="v2-model-opt-title">Nivel de pensamiento</span>
+                    </button>
+
+                    <button
+                      className={`v2-model-option ${thinkingLevel === 'standard' ? 'active' : ''}`}
+                      onClick={() => { setThinkingLevel('standard'); localStorage.setItem('chimuelo_thinking', 'standard'); setShowThinkingMenu(false); setModelDropdownOpen(false); }}
+                    >
+                      <div className="v2-model-opt-content">
+                        <span className="v2-model-opt-title">Estándar</span>
+                        <span className="v2-model-opt-desc">Mejor para la mayoría de preguntas</span>
+                      </div>
+                      {thinkingLevel === 'standard' && <Check size={18} color="var(--text-secondary)" />}
+                    </button>
+
+                    <button
+                      className={`v2-model-option ${thinkingLevel === 'extended' ? 'active' : ''}`}
+                      onClick={() => { setThinkingLevel('extended'); localStorage.setItem('chimuelo_thinking', 'extended'); setShowThinkingMenu(false); setModelDropdownOpen(false); }}
+                    >
+                      <div className="v2-model-opt-content">
+                        <span className="v2-model-opt-title">Extendido</span>
+                        <span className="v2-model-opt-desc">Resolución de problemas complejos</span>
+                      </div>
+                      {thinkingLevel === 'extended' && <Check size={18} color="var(--text-secondary)" />}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -3712,6 +3764,13 @@ export default function Home() {
                       const hasWebBadge = currentBody.startsWith('__WEB_BADGE__');
                       const webBadgeBody = hasWebBadge ? currentBody.replace('__WEB_BADGE__', '').trim() : currentBody;
 
+                      let aiSuggestion = null;
+                      const suggestionMatch = currentBody.match(/<suggestion>([\s\S]*?)<\/suggestion>/i);
+                      if (suggestionMatch && suggestionMatch[1]) {
+                        aiSuggestion = suggestionMatch[1].trim();
+                        currentBody = currentBody.replace(/<suggestion>[\s\S]*?<\/suggestion>/i, '').trim();
+                      }
+
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
@@ -3888,10 +3947,10 @@ export default function Home() {
                               }}><Copy size={16} /></button>
                             </div>
                           )}
-                          {isLastMsg && !isThinking && msg.role === 'assistant' && smartPills.length > 0 && (
+                          {isLastMsg && !isThinking && msg.role === 'assistant' && aiSuggestion && (
                             <div className="v2-quick-reply" style={{ marginTop: '12px', display: 'flex' }}>
                               <button
-                                onClick={() => handleSendMessage(smartPills[0].message)}
+                                onClick={() => handleSendMessage(aiSuggestion)}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
@@ -3909,8 +3968,8 @@ export default function Home() {
                                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
                               >
-                                <span style={{ fontSize: '1rem' }}>{smartPills[0].icon}</span>
-                                <span>{smartPills[0].label}</span>
+                                <span style={{ fontSize: '1rem' }}>💡</span>
+                                <span>{aiSuggestion}</span>
                               </button>
                             </div>
                           )}
