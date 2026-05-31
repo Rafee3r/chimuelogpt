@@ -2772,8 +2772,11 @@ export default function Home() {
         </div>
 
         {/* ── FOOTER ── */}
-        <div className="sb-footer sb-footer-profile">
-          <div className="sb-profile-card">
+        <div className="sb-footer sb-footer-profile" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <div style={{ color: '#84cc16', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '10px', paddingLeft: '8px', letterSpacing: '0.05em' }}>
+            Suscripción Activa
+          </div>
+          <div className="sb-profile-card" style={{ width: '100%' }}>
             <div className="sb-profile-avatar">
               {userName ? userName.charAt(0).toUpperCase() : '🐾'}
             </div>
@@ -2809,7 +2812,7 @@ export default function Home() {
                 </button>
               )}
               <div className="sb-profile-plan">
-                <Sparkles size={10} /> Familia
+                <Sparkles size={10} /> Plan activo: Familia
               </div>
             </div>
             <button
@@ -3080,13 +3083,9 @@ export default function Home() {
                   <h2 className="fp-title-v2">Plan Familia</h2>
                   <p className="fp-sub-v2">Todas las funciones de Chimuelo, sin restricciones.</p>
                   <div className="fp-price-block">
-                    <div className="fp-price-strike">
-                      <span className="fp-old-price">$20.000</span>
-                      <span className="fp-old-period">/mes</span>
-                    </div>
                     <div className="fp-now-row">
-                      <span className="fp-now-price">GRATIS</span>
-                      <span className="fp-now-period">para siempre</span>
+                      <span className="fp-now-price">$19.980</span>
+                      <span className="fp-now-period">pesos mensuales</span>
                     </div>
                   </div>
                   <div className="fp-features-v2">

@@ -1,6 +1,6 @@
 {
-  "version": "21.05.5",
-  "date": "2026-05-21",
+  "version": "21.05.6",
+  "date": "2026-05-31",
   "changes": [
     { "icon": "✨", "title": "Tus agentes favoritos", "desc": "En el inicio aparecen tarjetas de los 3 agentes que más usas. Un toque y entras a su chat." },
     { "icon": "💡", "title": "Tip del día", "desc": "Cada día Chimuelo te muestra una pista para descubrir un gesto o función escondida." },

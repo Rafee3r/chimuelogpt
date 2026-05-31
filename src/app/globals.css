@@ -3647,25 +3647,40 @@ a {
   border-radius: 20px;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .version-modal-header {
-  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
-  padding: 1.25rem 1.5rem 1rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.5rem 1.5rem 1rem;
   text-align: center;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.version-modal-header::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle at 50% 0%, var(--accent-glow) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .version-modal-badge {
+  position: relative;
+  z-index: 1;
   display: inline-block;
-  background: rgba(255,255,255,0.25);
-  color: #fff;
+  background: var(--accent-glow);
+  color: var(--accent-color);
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 3px 12px;
+  padding: 4px 12px;
   border-radius: 20px;
   margin-bottom: 0.75rem;
   letter-spacing: 0.05em;
@@ -3673,9 +3688,11 @@ a {
 }
 
 .version-modal-title {
-  color: #fff;
+  position: relative;
+  z-index: 1;
+  color: var(--text-primary);
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0 0 0.25rem;
   letter-spacing: -0.02em;
 }
@@ -3685,7 +3702,9 @@ a {
 }
 
 .version-modal-date {
-  color: rgba(255,255,255,0.7);
+  position: relative;
+  z-index: 1;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   margin: 0;
 }
@@ -3694,10 +3713,11 @@ a {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  background: var(--bg-secondary);
 }
 
 .version-change-item {
@@ -3717,7 +3737,7 @@ a {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .version-change-desc {
@@ -3729,20 +3749,21 @@ a {
 .version-modal-close-btn {
   display: block;
   width: calc(100% - 3rem);
-  margin: 0 1.5rem 1.25rem;
+  margin: 1.25rem 1.5rem;
   padding: 12px;
-  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
-  color: #fff;
+  background: var(--btn-primary-bg, var(--accent-color));
+  color: var(--btn-primary-text, #fff);
   border: none;
   border-radius: 12px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 6px 20px -4px var(--accent-glow-strong);
   flex-shrink: 0;
 }
 
-.version-modal-close-btn:hover { opacity: 0.92; }
+.version-modal-close-btn:hover { transform: scale(1.02); }
 .version-modal-close-btn:active { transform: scale(0.96); transition: transform 0.08s; }
 
 /* ── Memory entries in settings ── */
@@ -6350,16 +6371,15 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  /* Respeta el tema: usa accent-color gradient en vez de verde fijo */
-  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 100%);
-  color: #fff;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   font-weight: 700;
   font-size: 0.95rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* Sombra suave neutral en vez de verde colorido */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
