@@ -673,6 +673,50 @@ type Subject = {
   name: string;
   baseMemory: string;
 };
+const ProThinkingAnimation = () => {
+  const [phase, setPhase] = useState<'visible' | 'hidden'>('visible');
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const phrases = [
+    "Analizando el contexto...",
+    "Evaluando posibles soluciones...",
+    "Estructurando la respuesta...",
+    "Revisando detalles técnicos...",
+    "Conectando conceptos...",
+    "Optimizando la redacción...",
+    "Finalizando detalles..."
+  ];
+
+  useEffect(() => {
+    let isMounted = true;
+    const cycle = async () => {
+      while (isMounted) {
+        setPhase('visible');
+        await new Promise(r => setTimeout(r, 3000));
+        if (!isMounted) break;
+        setPhase('hidden');
+        await new Promise(r => setTimeout(r, 1000));
+        if (!isMounted) break;
+        setPhraseIndex(prev => (prev + 1) % phrases.length);
+      }
+    };
+    cycle();
+    return () => { isMounted = false; };
+  }, []);
+
+  return (
+    <div className="pro-thinking-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--input-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', alignSelf: 'flex-start', marginBottom: '8px' }}>
+      <div className="thinking-v2-pill" style={{ margin: 0 }} />
+      <span style={{
+        fontSize: '0.85rem',
+        color: 'var(--text-secondary)',
+        transition: 'opacity 0.8s ease',
+        opacity: phase === 'visible' ? 1 : 0
+      }}>
+        {phrases[phraseIndex]}
+      </span>
+    </div>
+  );
+};
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -2835,8 +2879,59 @@ export default function Home() {
             </button>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>ChimueloGPT</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+            <button
+              className="v2-header-model-btn"
+              onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rápido' : 'Pro'}</span>
+              <ChevronDown size={16} color="var(--text-secondary)" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            </button>
+
+            {modelDropdownOpen && (
+              <div
+                className="v2-model-dropdown"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  marginTop: '10px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '16px',
+                  padding: '8px',
+                  width: '260px',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  zIndex: 100,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className={`v2-model-option ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
+                  onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
+                >
+                  <div className="v2-model-opt-content">
+                    <span className="v2-model-opt-title">Rápido (sonnet 4.6)</span>
+                    <span className="v2-model-opt-desc">Respuestas más rápidas</span>
+                  </div>
+                  {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
+                </button>
+
+                <button
+                  className={`v2-model-option ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
+                  onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
+                >
+                  <div className="v2-model-opt-content">
+                    <span className="v2-model-opt-title">Pro (claude opus 4.8)</span>
+                    <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
+                  </div>
+                  {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
+                </button>
+              </div>
+            )}
           </div>
 
           {!(currentChatId && displayMessages.length === 0) ? (
@@ -3510,6 +3605,10 @@ export default function Home() {
                     
                     {role === 'assistant' && reasoning && (() => {
                       const isStreaming = !displayContent;
+                      if (model === 'deepseek-v4-pro') {
+                        return isStreaming ? <ProThinkingAnimation /> : null;
+                      }
+
                       return (
                         <div className={`reasoning-v3-card ${isStreaming ? 'streaming' : 'done'}`}>
                           <div className="reasoning-v3-header">
@@ -3617,9 +3716,11 @@ export default function Home() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
                             {isThinking && isLastMsg && !currentBody.trim() && !reasoning ? (
-                              <div className="thinking-v2">
-                                <div className="thinking-v2-pill" />
-                              </div>
+                              model === 'deepseek-v4-pro' ? <ProThinkingAnimation /> : (
+                                <div className="thinking-v2">
+                                  <div className="thinking-v2-pill" />
+                                </div>
+                              )
                             ) : hasImgLoading ? (
                               <>
                                 {bodyBefore.trim() && (
@@ -3853,20 +3954,7 @@ export default function Home() {
                 <CatMascot />
               </div>
             )}
-            <div className="v2-model-selector">
-              <button
-                className={`v2-model-btn ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
-                onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); }}
-              >
-                Rápido
-              </button>
-              <button
-                className={`v2-model-btn ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
-                onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); }}
-              >
-                Pro
-              </button>
-            </div>
+
 
             <div className="v2-input-container">
               {attachedImage && (
