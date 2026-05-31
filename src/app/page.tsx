@@ -2189,7 +2189,7 @@ export default function Home() {
       { id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } },
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
       { id: 'a_model_fast', icon: Zap, label: 'Modelo: ⚡ Rápido', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
-      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Pro', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
+      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Pro (opus 4.8)', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
       { id: 'a_theme_light', icon: Palette, label: 'Tema: Claro', run: () => setTheme('light') },
       { id: 'a_theme_dark', icon: Palette, label: 'Tema: Oscuro', run: () => setTheme('dark') },
       { id: 'a_theme_oled', icon: Palette, label: 'Tema: OLED', run: () => setTheme('oled') },
@@ -2919,7 +2919,7 @@ export default function Home() {
               onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
               style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px', cursor: 'pointer' }}
             >
-              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rápido' : 'Pro'}</span>
+              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}</span>
               <ChevronDown size={16} color="var(--text-secondary)" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </button>
 
@@ -2950,7 +2950,7 @@ export default function Home() {
                       onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
                     >
                       <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Rápido (sonnet 4.6)</span>
+                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Sonnet 4.6)</span></span>
                         <span className="v2-model-opt-desc">Respuestas más rápidas</span>
                       </div>
                       {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
@@ -2961,7 +2961,7 @@ export default function Home() {
                       onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
                     >
                       <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Pro (claude opus 4.8)</span>
+                        <span className="v2-model-opt-title">Pro <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Opus 4.8)</span></span>
                         <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
                       </div>
                       {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
