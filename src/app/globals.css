@@ -47,22 +47,22 @@
     box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5);
   }
   :root:not([data-theme]) {
-    --bg-primary: #121212;
-    --bg-secondary: #1e1e1e;
-    --text-primary: #ececf1;
-    --text-secondary: #b4b4b4;
-    --border-color: #3f3f46;
-    --input-bg: #27272a;
-    --sidebar-bg: #1e1e1e;
-    --sidebar-text: #ececf1;
-    --sidebar-hover: #27272a;
-    --code-bg: #0d0d0d;
-    --code-text: #e2e8f0;
+    --bg-primary: #000000;
+    --bg-secondary: #000000;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --border-color: #27272a;
+    --input-bg: #18181b;
+    --sidebar-bg: #000000;
+    --sidebar-text: #ffffff;
+    --sidebar-hover: #18181b;
+    --code-bg: #0a0a0a;
+    --code-text: #e4e4e7;
     --user-bubble-start: #10a37f;
-    --user-bubble-end: #0a7a5f;
+    --user-bubble-end: #065f46;
     --accent-color: #10a37f;
-    --accent-glow: rgba(16, 163, 127, 0.13);
-    --accent-glow-strong: rgba(16, 163, 127, 0.5);
+    --accent-glow: rgba(16, 163, 127, 0.15);
+    --accent-glow-strong: rgba(16, 163, 127, 0.55);
   }
 }
 
@@ -88,21 +88,21 @@
 }
 
 :root[data-theme="dark"] {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --text-primary: #ececf1;
-  --text-secondary: #b4b4b4;
-  --border-color: #3f3f46;
-  --input-bg: #27272a;
-  --sidebar-bg: #1e1e1e;
-  --sidebar-text: #ececf1;
-  --sidebar-hover: #27272a;
-  --code-bg: #0d0d0d;
-  --code-text: #e2e8f0;
-  --active-bg: rgba(96, 165, 250, 0.18);
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --border-color: #27272a;
+  --input-bg: #18181b;
+  --sidebar-bg: #000000;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: #18181b;
+  --code-bg: #0a0a0a;
+  --code-text: #e4e4e7;
+  --active-bg: rgba(96, 165, 250, 0.2);
   --active-text: #60a5fa;
   --user-bubble-start: #10a37f;
-  --user-bubble-end: #0a7a5f;
+  --user-bubble-end: #065f46;
   --accent-color: #10a37f;
   --accent-glow: rgba(16, 163, 127, 0.15);
   --accent-glow-strong: rgba(16, 163, 127, 0.55);
@@ -207,10 +207,18 @@ html {
 /* Disable text selection app-wide; only AI responses are selectable */
 body, button, .sidebar, .v2-input-area, .mobile-header, .settings-page,
 .message.user, .avatar, .smart-pill, .v2-model-btn, .uni-v2-pill,
-.message-actions-bar, .action-btn {
+.message-actions-bar, .action-btn, a {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Reset default appearance for native inputs on Android/iOS */
+input, textarea, select, button {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .message.assistant .markdown-body,
