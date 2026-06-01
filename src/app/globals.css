@@ -781,7 +781,7 @@ a {
   color: var(--text-primary);
   font-weight: 500;
   z-index: 5;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: none;
 }
 
 @media (min-width: 768px) {
@@ -2511,7 +2511,7 @@ a {
 }
 
 .greeting-text-gradient {
-  font-size: 2.35rem;
+  font-size: 2.8rem;
   font-weight: 400;
   margin-bottom: 3rem;
   text-align: center;
@@ -2701,12 +2701,12 @@ a {
   max-width: 48rem;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
-  border-radius: 28px;
+  border-radius: 32px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  padding: 2px 6px;
+  padding: 4px 8px;
 }
 
 .v2-input-container:focus-within {
@@ -2717,9 +2717,8 @@ a {
 .v2-input-row {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
-  gap: 8px;
-  gap: 8px;
+  padding: 8px 10px;
+  gap: 10px;
 }
 
 .v2-attach-group {
@@ -2782,11 +2781,11 @@ a {
   border: none;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 16px; /* iOS: prevents zoom on focus (must be ≥16px) */
+  font-size: 1.1rem; /* iOS: prevents zoom on focus (must be ≥16px) */
   resize: none;
-  padding: 10px 4px;
-  min-height: 24px;
-  max-height: 200px;
+  padding: 12px 6px;
+  min-height: 28px;
+  max-height: 240px;
   outline: none;
   line-height: 1.5;
   touch-action: manipulation;
@@ -3449,7 +3448,7 @@ a {
   }
 
   .greeting-text-gradient {
-    font-size: 1.45rem;
+    font-size: 1.8rem;
     margin-bottom: 1.5rem;
     line-height: 1.35;
   }

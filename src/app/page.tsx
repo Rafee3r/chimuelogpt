@@ -2662,8 +2662,7 @@ export default function Home() {
           })()}
 
           {/* MODO UNIVERSITARIO (entrada sin subject seleccionado) */}
-          <div className="sb-section">
-            <div className="sb-section-label"><Zap size={13} strokeWidth={2.2} />Modos</div>
+          <div className="sb-section" style={{ paddingTop: '0px' }}>
             <button
               className={`sb-row ${viewMode === 'university' && !activeSubjectId ? 'active' : ''}`}
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('university'); setSidebarOpen(false); }}
@@ -2682,7 +2681,6 @@ export default function Home() {
 
           {/* CHATS */}
           <div className="sb-section sb-section-chats">
-            <div className="sb-section-label"><MessageSquare size={13} strokeWidth={2.2} />Chats</div>
             {(() => {
               const q = sidebarSearch.trim().toLowerCase();
               const filtered = q
@@ -2921,8 +2919,8 @@ export default function Home() {
       })()}
 
       <div className="main-content">
-        <div className="mobile-header" style={{ display: viewMode === 'settings' ? 'none' : undefined }}>
-          <button onClick={() => setSidebarOpen(true)} className="icon-btn">
+        <div className="mobile-header" style={{ display: viewMode === 'settings' ? 'none' : undefined, position: 'relative', justifyContent: 'center' }}>
+          <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>
           
@@ -2945,7 +2943,7 @@ export default function Home() {
             </button>
           </div>
           
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button
               className="v2-header-model-btn"
               onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
@@ -3051,11 +3049,11 @@ export default function Home() {
           </div>
 
           {!(currentChatId && displayMessages.length === 0) ? (
-            <button onClick={() => createNewChat()} className="icon-btn" title="Nuevo chat">
+            <button onClick={() => createNewChat()} className="icon-btn" title="Nuevo chat" style={{ position: 'absolute', right: '16px' }}>
               <Plus size={24} />
             </button>
           ) : (
-            <span style={{ width: 40, display: 'inline-block' }} aria-hidden="true" />
+            <span style={{ display: 'none' }} aria-hidden="true" />
           )}
         </div>
 
