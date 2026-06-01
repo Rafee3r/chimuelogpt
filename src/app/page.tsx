@@ -3659,16 +3659,12 @@ export default function Home() {
             </div>
           ) : displayMessages.length === 0 && !activeAgent ? (
             <div className="v2-empty-state">
-              <div className="v2-orb-container">
-                <div className="glowing-orb"></div>
-                <div className="glowing-orb-core">
-                  <Cat size={30} strokeWidth={1.6} />
-                </div>
+              <div className="v2-empty-sparkle" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                <Sparkles size={48} strokeWidth={1} color="var(--accent-color)" />
               </div>
-              <h2 className="greeting-text-gradient">
-                {getGreeting()}
+              <h2 className="greeting-text-gradient" style={{ fontSize: '2rem', fontWeight: '400', letterSpacing: '-0.03em', background: 'linear-gradient(to right, var(--text-primary), var(--text-secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Hola{getUserName() ? `, ${getUserName()}` : ''}. ¿En qué te puedo ayudar?
               </h2>
-
             </div>
           ) : (
             displayMessages.map((msg: any, i) => {
@@ -4098,12 +4094,7 @@ export default function Home() {
 
         {viewMode === "chat" && (
           <div className="v2-input-area">
-            {/* Mascota Chimuelo paseando arriba del input (oculta en chat de agente + si user la desactiva en Ajustes) */}
-            {!activeAgent && showCatMascot && (
-              <div className="cat-mascot-shelf" aria-hidden="true">
-                <CatMascot />
-              </div>
-            )}
+            {/* Mascota Chimuelo paseando arriba del input (Removida a petición del usuario para hacer UI tipo Gemini) */}
 
 
             <div className="v2-input-container">
