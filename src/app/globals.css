@@ -776,7 +776,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6rem 1rem;
+  padding: calc(1.2rem + env(safe-area-inset-top, 0px)) 1rem 0.6rem 1rem;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-weight: 500;
