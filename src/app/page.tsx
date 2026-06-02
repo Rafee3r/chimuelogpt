@@ -212,9 +212,42 @@ function CatMascot() {
     return () => { cancelled = true; };
   }, []);
 
+  // Pre-load audio objects for meows
+  const meowAudiosRef = useRef<HTMLAudioElement[]>([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const audios = Array.from({ length: 5 }, (_, i) => {
+      const audio = new Audio(`https://raw.githubusercontent.com/inevolin/MeowSynth/master/A${i + 1}.mp3`);
+      audio.preload = "auto";
+      audio.volume = 0.45;
+      return audio;
+    });
+    meowAudiosRef.current = audios;
+  }, []);
+
+  const playMeowSound = () => {
+    if (meowAudiosRef.current.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * meowAudiosRef.current.length);
+    const audio = meowAudiosRef.current[randomIndex];
+    
+    try {
+      audio.currentTime = 0;
+      audio.play().catch((err) => {
+        console.warn("Audio playback blocked, trying fallback:", err);
+        const fallbackAudio = new Audio(`https://raw.githubusercontent.com/inevolin/MeowSynth/master/A${randomIndex + 1}.mp3`);
+        fallbackAudio.volume = 0.45;
+        fallbackAudio.play().catch(e => console.error("Fallback play failed:", e));
+      });
+    } catch (e) {
+      console.error("Audio play error:", e);
+    }
+  };
+
   const handleClick = () => {
     if (meowing) return;
     setMeowing(true);
+    playMeowSound();
     if (meowTimerRef.current) clearTimeout(meowTimerRef.current);
     meowTimerRef.current = setTimeout(() => setMeowing(false), 1600);
   };
