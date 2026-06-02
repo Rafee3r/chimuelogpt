@@ -2664,12 +2664,12 @@ a {
   max-width: 48rem;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
-  border-radius: 32px;
+  border-radius: 36px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  padding: 4px 8px;
+  padding: 6px 12px;
 }
 
 .v2-input-container:focus-within {
@@ -2680,8 +2680,8 @@ a {
 .v2-input-row {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
-  gap: 10px;
+  padding: 10px 14px;
+  gap: 12px;
 }
 
 .v2-attach-group {
@@ -2744,10 +2744,10 @@ a {
   border: none;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 1.1rem; /* iOS: prevents zoom on focus (must be ≥16px) */
+  font-size: 1.2rem; /* iOS: prevents zoom on focus (must be ≥16px) */
   resize: none;
-  padding: 12px 6px;
-  min-height: 28px;
+  padding: 14px 8px;
+  min-height: 38px;
   max-height: 240px;
   outline: none;
   line-height: 1.5;
@@ -2762,8 +2762,8 @@ a {
   background: var(--sidebar-hover);
   color: var(--text-secondary);
   border: none;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -4036,10 +4036,10 @@ a {
 .v2-mic-btn.solo {
   background: var(--input-bg);
   color: var(--text-secondary);
-  width: 36px;
-  height: 36px;
-  margin-bottom: 4px;
-  margin-right: 4px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0;
+  margin-right: 0;
   border: 1px solid var(--border-color);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
               background 0.2s, color 0.2s, border-color 0.2s;
