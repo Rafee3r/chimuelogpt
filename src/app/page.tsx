@@ -123,6 +123,37 @@ const downloadImage = async (url: string) => {
   }
 };
 
+/* Helper to map image aspect ratio to the closest FAL preset size */
+const getImageSizePreset = (base64Str: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+      if (!width || !height) {
+        resolve('auto');
+        return;
+      }
+      const aspect = width / height;
+      if (aspect >= 0.85 && aspect <= 1.15) {
+        resolve('square');
+      } else if (aspect > 1.15) {
+        const dist43 = Math.abs(aspect - 1.333);
+        const dist169 = Math.abs(aspect - 1.777);
+        resolve(dist43 < dist169 ? 'landscape_4_3' : 'landscape_16_9');
+      } else {
+        const dist34 = Math.abs(aspect - 0.75);
+        const dist916 = Math.abs(aspect - 0.5625);
+        resolve(dist34 < dist916 ? 'portrait_4_3' : 'portrait_16_9');
+      }
+    };
+    img.onerror = () => {
+      resolve('auto');
+    };
+  });
+};
+
 /* ─────────── Mascota: gatito negro complejo (9 poses) ───────────
    Estructura en 3 capas para evitar conflictos de transforms:
    - Layer 1 (wrapper): position + burbuja (NO afectada por flip/click)
@@ -1891,6 +1922,11 @@ export default function Home() {
             const imgBody: any = { prompt: imagePrompt };
             if (imagePayload && !isText2Img) {
               imgBody.imageBase64 = imagePayload;
+              try {
+                imgBody.imageSize = await getImageSizePreset(imagePayload);
+              } catch (e) {
+                console.error("Error detecting image size preset:", e);
+              }
             }
             const imgRes = await fetch('/api/image', {
               method: 'POST',

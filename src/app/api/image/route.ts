@@ -80,7 +80,7 @@ function extractImageUrl(data: any): string | null {
 
 export async function POST(req: Request) {
   try {
-    const { prompt, imageBase64 } = await req.json();
+    const { prompt, imageBase64, imageSize } = await req.json();
     const falKey = process.env.FAL_KEY;
 
     if (!falKey) {
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
           prompt,
           image_urls: [dataUri],
           quality: 'low',
-          image_size: 'landscape_16_9',
+          image_size: imageSize || 'auto',
         }),
       });
 
