@@ -27,7 +27,7 @@ export async function POST(req: Request) {
           model: "gpt-image-2",
           prompt: prompt,
           n: 1,
-          size: "256x256",
+          size: "1280x720",
           quality: "low",
         })
       });
