@@ -5515,13 +5515,17 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
    Las animaciones NO chocan porque viven en capas separadas.
    ═══════════════════════════════════════════════════════════════ */
 .cat-mascot-shelf {
-  position: relative;
-  height: 70px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 0;
   width: 100%;
   max-width: 48rem;
   margin: 0 auto;
   pointer-events: none;
   overflow: visible;
+  z-index: 20;
 }
 
 /* ── Capa 1: wrapper con posición ──
@@ -5534,7 +5538,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   left: 20%;
   transform: translateX(-50%);
   transition: left 5.5s cubic-bezier(0.45, 0.05, 0.55, 0.95);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 20;
 }
 
@@ -5883,7 +5887,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 /* En móvil mantiene tamaño bueno (60% del tamaño desktop) */
 @media (max-width: 768px) {
   .cat-mascot-shelf {
-    height: 56px;
+    height: 0;
   }
   .cat-mascot svg {
     width: 70px;

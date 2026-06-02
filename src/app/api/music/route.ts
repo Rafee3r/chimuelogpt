@@ -15,6 +15,15 @@ function extractAudioUrl(data: any): string | null {
   );
 }
 
+function cleanMusicPrompt(prompt: string): string {
+  return prompt
+    .replace(/\b(male|female|child|adult|boy|girl|vocals?|voice|voices|singing|singer|singers|vocals?|vocales|voz|voces|canto|cantante|cantantes|speech|spoken|talk|talking)\b/gi, '')
+    .replace(/\b(rap|rapper|rappers|lyrics|lyric|lyrics?|rapero|raperos|letra|letras)\b/gi, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
@@ -23,12 +32,16 @@ export async function POST(req: Request) {
     if (!falKey) return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
     if (!prompt) return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
 
+    const cleanedPrompt = cleanMusicPrompt(prompt);
+    console.log('Original music prompt:', prompt);
+    console.log('Cleaned music prompt:', cleanedPrompt);
+
     // 1. Submit job to FAL queue
     const submitRes = await fetch(`https://queue.fal.run/${MODEL}`, {
       method: 'POST',
       headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: prompt.slice(0, 500),
+        prompt: cleanedPrompt.slice(0, 500),
       }),
     });
 

@@ -168,6 +168,12 @@ function CatMascot() {
   const [meowing, setMeowing] = useState(false);
   const meowTimerRef = useRef<any>(null);
 
+  // Drag and drop state & refs
+  const [coords, setCoords] = useState<{x: number, y: number} | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const startPosRef = useRef({ x: 0, y: 0 });
+
   useEffect(() => {
     let cancelled = false;
     let currentPos = 20;
@@ -213,11 +219,77 @@ function CatMascot() {
     meowTimerRef.current = setTimeout(() => setMeowing(false), 1600);
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    isDraggingRef.current = true;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    
+    startPosRef.current = { x: clientX, y: clientY };
+    
+    const initialCenterX = rect.left + rect.width / 2;
+    const initialCenterY = rect.top + rect.height / 2;
+    
+    dragOffsetRef.current = {
+      x: clientX - initialCenterX,
+      y: clientY - initialCenterY
+    };
+    
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    
+    const newX = clientX - dragOffsetRef.current.x;
+    const newY = clientY - dragOffsetRef.current.y;
+    
+    setCoords({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    const dist = Math.hypot(e.clientX - startPosRef.current.x, e.clientY - startPosRef.current.y);
+    if (dist < 6) {
+      handleClick();
+    }
+  };
+
   const flip = pose === 'walk-left';
 
   return (
     /* ── Capa 1 (wrapper): solo position + burbuja ── */
-    <div className="cat-mascot-wrapper" style={{ left: `${pos}%` }}>
+    <div 
+      className="cat-mascot-wrapper" 
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={
+        coords 
+          ? { 
+              position: 'fixed', 
+              left: `${coords.x}px`, 
+              top: `${coords.y}px`, 
+              bottom: 'auto', 
+              transform: 'translate(-50%, -50%)', 
+              transition: 'none',
+              cursor: 'grab',
+              touchAction: 'none'
+            }
+          : { 
+              left: `${pos}%`, 
+              cursor: 'grab',
+              touchAction: 'none'
+            }
+      }
+    >
       {meowing && (
         <div className="cat-meow-bubble" aria-hidden="true">
           ¡Miau! 🐾
@@ -228,7 +300,6 @@ function CatMascot() {
         {/* ── Capa 3 (cat): poses + click + animaciones idle ── */}
         <div
           className={`cat-mascot pose-${pose} ${meowing ? 'meowing' : ''}`}
-          onClick={handleClick}
           role="button"
           tabIndex={0}
           aria-label="Tocar al gatito"
