@@ -96,6 +96,33 @@ function CodeBlock({ inline, className, children, ...props }: any) {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+/* Helper to download any image (including cross-origin URLs) using a Blob */
+const downloadImage = async (url: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    
+    // Attempt to extract extension from URL, default to png
+    const urlPath = url.split('?')[0];
+    const ext = urlPath.substring(urlPath.lastIndexOf('.') + 1).toLowerCase();
+    const allowedExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+    const finalExt = allowedExts.includes(ext) ? ext : 'png';
+    
+    a.download = `chimuelo_imagen_${Date.now()}.${finalExt}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("Error al descargar la imagen:", err);
+    // Fallback: open in new tab
+    window.open(url, '_blank');
+  }
+};
+
 /* ─────────── Mascota: gatito negro complejo (9 poses) ───────────
    Estructura en 3 capas para evitar conflictos de transforms:
    - Layer 1 (wrapper): position + burbuja (NO afectada por flip/click)
@@ -2297,16 +2324,15 @@ export default function Home() {
         <div className="image-overlay">
           <button 
             className="image-action-btn"
+            title="Descargar"
             onClick={(e) => {
               e.stopPropagation();
-              const a = document.createElement('a');
-              a.href = props.src;
-              a.download = `chimuelo_imagen_${Date.now()}.png`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+              if (props.src) {
+                downloadImage(props.src);
+              }
             }}
           >
+            <Download size={18} />
           </button>
         </div>
       </div>
@@ -2587,11 +2613,6 @@ export default function Home() {
         </div>
       )}
 
-      {lightboxImg && (
-        <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
-          <img src={lightboxImg} alt="Lightbox" />
-        </div>
-      )}
 
       {sidebarOpen && (
         <div
@@ -3962,12 +3983,12 @@ export default function Home() {
                               <button className="action-btn hover-bg" title="No me gusta" onClick={(e) => { e.currentTarget.style.color = '#ef4444'; }}><ThumbsDown size={16} /></button>
                               
                               {/* Download button for images or artifacts */}
-                              {(displayContent.includes('![Imagen') || showArtifact) && (
+                              {(displayContent.includes('![') || showArtifact) && (
                                 <button className="action-btn hover-bg" title="Descargar" onClick={() => {
                                   const imgMatch = displayContent.match(/!\[.*?\]\((.*?)\)/);
                                   if (imgMatch && imgMatch[1]) {
                                     // It's an image
-                                    window.open(imgMatch[1], '_blank');
+                                    downloadImage(imgMatch[1]);
                                   } else if (showArtifact && isArtifactComplete) {
                                     // It's an artifact, open the modal to preview/download
                                     setArtifactModal(artifactContent);
@@ -4236,13 +4257,9 @@ export default function Home() {
           <div className="lightbox-actions" onClick={e => e.stopPropagation()}>
             <button 
               className="image-action-btn"
+              title="Descargar"
               onClick={() => {
-                const a = document.createElement('a');
-                a.href = lightboxImg;
-                a.download = `chimuelo_imagen_${Date.now()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                downloadImage(lightboxImg);
               }}
             >
               <Download size={20} />

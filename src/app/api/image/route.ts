@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           prompt,
-          image_url: imageUrl,
+          image_urls: [imageUrl],
           quality: 'low',
           image_size: 'landscape_16_9',
         }),
