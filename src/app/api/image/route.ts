@@ -88,18 +88,12 @@ export async function POST(req: Request) {
     }
 
     if (imageBase64) {
-      // ── IMG2IMG: gpt-image-2 edit vía fal.ai ──
-      // 1) Subir imagen del usuario a FAL storage
-      let imageUrl: string;
-      try {
-        imageUrl = await uploadToFalStorage(imageBase64, falKey);
-        console.log('FAL storage upload OK:', imageUrl);
-      } catch (e: any) {
-        console.error('FAL storage error:', e.message);
-        return NextResponse.json({ error: `Error subiendo imagen: ${e.message}` }, { status: 500 });
-      }
+      // ── IMG2IMG: gpt-image-2 edit vía fal.ai con base64 directo ──
+      const dataUri = imageBase64.startsWith('data:') 
+        ? imageBase64 
+        : `data:image/png;base64,${imageBase64}`;
 
-      // 2) Llamar al endpoint de edición
+      // Llamar al endpoint de edición
       const res = await fetch('https://fal.run/openai/gpt-image-2/edit', {
         method: 'POST',
         headers: {
@@ -108,7 +102,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           prompt,
-          image_urls: [imageUrl],
+          image_urls: [dataUri],
           quality: 'low',
           image_size: 'landscape_16_9',
         }),
