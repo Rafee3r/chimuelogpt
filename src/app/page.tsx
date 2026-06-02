@@ -218,7 +218,7 @@ function CatMascot() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const audios = Array.from({ length: 5 }, (_, i) => {
-      const audio = new Audio(`https://raw.githubusercontent.com/inevolin/MeowSynth/master/A${i + 1}.mp3`);
+      const audio = new Audio(`/sounds/meow-${i + 1}.mp3`);
       audio.preload = "auto";
       audio.volume = 0.45;
       return audio;
@@ -235,7 +235,7 @@ function CatMascot() {
       audio.currentTime = 0;
       audio.play().catch((err) => {
         console.warn("Audio playback blocked, trying fallback:", err);
-        const fallbackAudio = new Audio(`https://raw.githubusercontent.com/inevolin/MeowSynth/master/A${randomIndex + 1}.mp3`);
+        const fallbackAudio = new Audio(`/sounds/meow-${randomIndex + 1}.mp3`);
         fallbackAudio.volume = 0.45;
         fallbackAudio.play().catch(e => console.error("Fallback play failed:", e));
       });
@@ -281,7 +281,16 @@ function CatMascot() {
     const newX = clientX - dragOffsetRef.current.x;
     const newY = clientY - dragOffsetRef.current.y;
     
-    setCoords({ x: newX, y: newY });
+    // Constrain coords within screen boundaries so the cat doesn't go off-screen
+    const marginX = 40; // half of mascot width roughly
+    const marginY = 30; // half of mascot height roughly
+    const maxX = window.innerWidth - marginX;
+    const maxY = window.innerHeight - marginY;
+    
+    const clampedX = Math.max(marginX, Math.min(maxX, newX));
+    const clampedY = Math.max(marginY, Math.min(maxY, newY));
+    
+    setCoords({ x: clampedX, y: clampedY });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
