@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 300;
 
-const MODEL = 'fal-ai/minimax-music/v2.6';
+const MODEL = 'fal-ai/lyria2';
 
 function extractAudioUrl(data: any): string | null {
   return (
@@ -54,15 +54,21 @@ export async function POST(req: Request) {
 
     const isInstrumental = !lyrics_prompt || lyrics_prompt.toLowerCase().includes('[instrumental]') || lyrics_prompt.toLowerCase().trim() === 'instrumental';
 
-    const inputPayload: any = {
-      prompt: prompt.slice(0, 500),
-    };
+    let finalPrompt = prompt;
+    let inputPayload: any = {};
 
     if (isInstrumental) {
-      inputPayload.instrumental = true;
+      finalPrompt = `${prompt}, instrumental`;
+      inputPayload = {
+        prompt: finalPrompt.slice(0, 500),
+        negative_prompt: 'vocals, voice, singing'
+      };
     } else {
-      inputPayload.lyrics_prompt = lyrics_prompt;
-      inputPayload.instrumental = false;
+      // Lyria 2 accepts vocal descriptions and lyrics inside the prompt description
+      finalPrompt = `${prompt}. Vocals/lyrics: ${lyrics_prompt}`;
+      inputPayload = {
+        prompt: finalPrompt.slice(0, 500)
+      };
     }
 
     // 1. Submit job to FAL queue

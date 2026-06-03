@@ -167,6 +167,7 @@ function CatMascot() {
   const [pos, setPos] = useState(20);
   const [meowing, setMeowing] = useState(false);
   const meowTimerRef = useRef<any>(null);
+  const meowingRef = useRef(false);
 
   // Drag and drop state & refs
   const [coords, setCoords] = useState<{x: number, y: number} | null>(null);
@@ -192,6 +193,11 @@ function CatMascot() {
 
     const next = () => {
       if (cancelled) return;
+      // Pause automatic movement and posing while the formal tie-activation is running
+      if (meowingRef.current) {
+        setTimeout(next, 800);
+        return;
+      }
       const s = actionPool[Math.floor(Math.random() * actionPool.length)];
       setPose(s.pose);
       if (s.moves) {
@@ -212,44 +218,57 @@ function CatMascot() {
     return () => { cancelled = true; };
   }, []);
 
-  // Pre-load audio objects for meows
-  const meowAudiosRef = useRef<HTMLAudioElement[]>([]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const audios = Array.from({ length: 5 }, (_, i) => {
-      const audio = new Audio(`/sounds/meow-${i + 1}.mp3`);
-      audio.preload = "auto";
-      audio.volume = 0.45;
-      return audio;
-    });
-    meowAudiosRef.current = audios;
-  }, []);
-
-  const playMeowSound = () => {
-    if (meowAudiosRef.current.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * meowAudiosRef.current.length);
-    const audio = meowAudiosRef.current[randomIndex];
-    
+  const playActivationSound = () => {
     try {
-      audio.currentTime = 0;
-      audio.play().catch((err) => {
-        console.warn("Audio playback blocked, trying fallback:", err);
-        const fallbackAudio = new Audio(`/sounds/meow-${randomIndex + 1}.mp3`);
-        fallbackAudio.volume = 0.45;
-        fallbackAudio.play().catch(e => console.error("Fallback play failed:", e));
-      });
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      // Clean tech activation chime (ascending sine tones)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start();
+      osc1.stop(ctx.currentTime + 0.35);
+      
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(783.99, ctx.currentTime + 0.12); // G5
+      gain2.gain.setValueAtTime(0, ctx.currentTime);
+      gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+      
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.12);
+      osc2.stop(ctx.currentTime + 0.55);
     } catch (e) {
-      console.error("Audio play error:", e);
+      console.warn("Web Audio chime failed:", e);
     }
   };
 
   const handleClick = () => {
-    if (meowing) return;
+    if (meowingRef.current) return;
+    meowingRef.current = true;
     setMeowing(true);
-    playMeowSound();
+    playActivationSound();
+    
+    // Lock pose to 'look-up' to stretch the neck and show the tie and wiggle animation beautifully
+    setPose('look-up');
+    
     if (meowTimerRef.current) clearTimeout(meowTimerRef.current);
-    meowTimerRef.current = setTimeout(() => setMeowing(false), 1600);
+    meowTimerRef.current = setTimeout(() => {
+      setMeowing(false);
+      meowingRef.current = false;
+      setPose('sit');
+    }, 2000);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -333,8 +352,9 @@ function CatMascot() {
       }
     >
       {meowing && (
-        <div className="cat-meow-bubble" aria-hidden="true">
-          ¡Miau! 🐾
+        <div className="cat-meow-bubble formal" aria-hidden="true">
+          <div className="bubble-title">Inteligencia Avanzada</div>
+          <div className="bubble-subtitle">a c t i v a d a</div>
         </div>
       )}
       {/* ── Capa 2 (flip): solo scaleX cuando camina a la izquierda ── */}
@@ -483,6 +503,14 @@ function CatMascot() {
                   <line x1="76" y1="36" x2="86" y2="36" stroke="#bbb" strokeWidth="0.5" />
                   <line x1="76" y1="37.5" x2="86" y2="38" stroke="#bbb" strokeWidth="0.5" />
                   <line x1="76" y1="39" x2="86" y2="40" stroke="#bbb" strokeWidth="0.5" />
+                  
+                  {/* Corbatita formal roja */}
+                  <g className="cat-tie">
+                    {/* Nudo de la corbata */}
+                    <polygon points="70,42 74,42 73.5,45 70.5,45" fill="#ef4444" />
+                    {/* Cuerpo de la corbata */}
+                    <polygon points="71,45 73,45 74.5,56 72,60 69.5,56" fill="#dc2626" />
+                  </g>
                 </g>
                 {pose === 'groom' ? (
                   <>
@@ -993,10 +1021,10 @@ export default function Home() {
 
   type SmartPill = { icon: string; label: string; message: string };
   const defaultPills: SmartPill[] = [
-    { icon: '🍳', label: 'Idea de cena', message: 'Tengo poco tiempo, dime una cena rica y rápida con ingredientes simples.' },
-    { icon: '✉️', label: 'Redactar mensaje', message: 'Ayúdame a redactar un mensaje claro y amable para enviar.' },
-    { icon: '🧠', label: 'Explicar algo', message: 'Explícame de forma sencilla, como si tuviera 10 años, lo que te pregunte.' },
-    { icon: '👋', label: 'Conóceme a Chimuelo', message: 'Preséntate y cuéntame qué podemos hacer juntos. ¿Cómo funciona todo esto?' },
+    { icon: '📊', label: 'Análisis de datos', message: 'Ayúdame a estructurar y analizar la siguiente información de forma clara y lógica.' },
+    { icon: '✉️', label: 'Redactar correo', message: 'Ayúdame a redactar un correo formal, cortés y sumamente profesional.' },
+    { icon: '💡', label: 'Resolver problema', message: 'Presento un reto de negocio o técnico. Analiza posibles soluciones y sus pros y contras.' },
+    { icon: '👔', label: 'Presentación', message: 'Preséntate como mi asistente de Inteligencia Avanzada y explícame cómo funciona la privacidad local en este sistema.' },
   ];
   const [smartPills, setSmartPills] = useState<SmartPill[]>(defaultPills);
 
@@ -2675,10 +2703,10 @@ export default function Home() {
           <div className="welcome-onb-modal" onClick={(e) => e.stopPropagation()}>
             <div className="welcome-onb-glow" aria-hidden="true"></div>
             <div className="welcome-onb-content">
-              <div className="welcome-onb-emoji" aria-hidden="true">🐈‍⬛</div>
-              <h2 id="welcome-onb-title" className="welcome-onb-title">¡Hola! Soy Chimuelo</h2>
+              <div className="welcome-onb-emoji" aria-hidden="true">💼</div>
+              <h2 id="welcome-onb-title" className="welcome-onb-title">Sistema de Inteligencia Avanzada</h2>
               <p id="welcome-onb-sub" className="welcome-onb-sub">
-                Voy a estar acompañándote. ¿Cómo te llamo?
+                Listo para asistirle de forma profesional. ¿Cómo prefiere que le llame?
               </p>
               <label htmlFor="welcome-onb-name-input" className="sr-only">
                 Tu nombre
@@ -3364,19 +3392,19 @@ export default function Home() {
 
               {/* Personalidad */}
               <div className="settings-card">
-                <h3 className="settings-card-title">Cerebro de Chimuelo</h3>
+                <h3 className="settings-card-title">Cerebro del Asistente</h3>
                 <div className="settings-group">
-                  <label className="settings-label">Personalidad de la IA</label>
+                  <label className="settings-label">Rol y Tono de la IA</label>
                   <select className="settings-select" value={persona} onChange={(e) => setPersona(e.target.value as any)}>
-                    <option value="default">Normal (Amigable y útil)</option>
-                    <option value="amable">Amable (Muy cálido y paciente)</option>
-                    <option value="chistoso">Chistoso (Humor y sarcasmo)</option>
-                    <option value="cursi">Cursi (Amoroso, muchos emojis 🥰)</option>
-                    <option value="directo">Directo al grano (Respuestas cortas)</option>
-                    <option value="serio">Serio (Formal, analítico)</option>
-                    <option value="profesional">Profesional (Corporativo, de usted)</option>
+                    <option value="default">Asistente General (Profesional y atento)</option>
+                    <option value="amable">Soporte Pedagógico (Paciente y estructurado)</option>
+                    <option value="chistoso">Consultor Estratégico (Diplomático, formal de Usted)</option>
+                    <option value="cursi">Asesor Creativo (Ideación e innovación)</option>
+                    <option value="directo">Pragmático Ejecutivo (Directo y sin rodeos)</option>
+                    <option value="serio">Analista Técnico (Riguroso y formal)</option>
+                    <option value="profesional">Asesor de Negocios (Estratégico y corporativo)</option>
                   </select>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Cambia cómo te habla y se comporta el asistente.</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Define el rol operativo, la formalidad y el comportamiento de la IA.</p>
                 </div>
                 <div className="settings-group" style={{ marginTop: '1rem' }}>
                   <label className="settings-label">Instrucciones personalizadas</label>
@@ -4309,7 +4337,7 @@ export default function Home() {
                 <textarea
                   ref={textareaRef}
                   className="v2-input-textarea"
-                  placeholder="Pregunta a Chimuelo..."
+                  placeholder="Escribe una consulta..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={handleKeyDown}

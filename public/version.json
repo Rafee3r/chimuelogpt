@@ -1,7 +1,11 @@
 {
-  "version": "21.05.6",
-  "date": "2026-05-31",
+  "version": "22.06.1",
+  "date": "2026-06-03",
   "changes": [
+    { "icon": "👔", "title": "Identidad Ejecutiva", "desc": "El asistente y la mascota adoptan una estética formal. Toca la mascota para activar la Inteligencia Avanzada." },
+    { "icon": "⚙️", "title": "Roles Profesionales", "desc": "Ajustes actualizados con personalidades formales (Asistente General, Consultor Estratégico, Analista Técnico, etc.)." },
+    { "icon": "🎵", "title": "Música sin Restricciones", "desc": "Revertido al modelo Google Lyria 2 para admitir descripciones más libres de ritmos y voces." },
+    { "icon": "🔵", "title": "Guiado de Continuación", "desc": "La IA ahora te guiará explícitamente indicándote cuándo presionar los botones interactivos azules." },
     { "icon": "✨", "title": "Tus agentes favoritos", "desc": "En el inicio aparecen tarjetas de los 3 agentes que más usas. Un toque y entras a su chat." },
     { "icon": "💡", "title": "Tip del día", "desc": "Cada día Chimuelo te muestra una pista para descubrir un gesto o función escondida." },
     { "icon": "📊", "title": "Tus números", "desc": "En Ajustes ves tus stats: conversaciones, mensajes, días con Chimuelo y tu agente favorito." },
