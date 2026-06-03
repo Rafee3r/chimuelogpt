@@ -4332,7 +4332,7 @@ export default function Home() {
                 <textarea
                   ref={textareaRef}
                   className="v2-input-textarea"
-                  placeholder="Pregunta a Chimuelo..."
+                  placeholder="Escribe..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
