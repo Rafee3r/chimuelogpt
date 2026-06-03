@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 300;
 
-const MODEL = 'fal-ai/lyria2';
+const MODEL = 'fal-ai/sonauto/v2/text-to-music';
 
 function extractAudioUrl(data: any): string | null {
   return (
@@ -16,7 +16,7 @@ function extractAudioUrl(data: any): string | null {
 }
 
 function parseMinimaxPrompt(content: string): { prompt: string; lyrics_prompt: string } {
-  const styleRegex = /(?:STYLE|PROMPT)\s*:\s*([\s\S]*?)(?=\n\s*(?:LYRICS|TEXT)\s*:|$)/i;
+  const styleRegex = /(?:STYLE|PROMPT)\s*:\s*([\s\S]*?)(?=\r?\n\s*(?:LYRICS|TEXT)\s*:|$)/i;
   const lyricsRegex = /(?:LYRICS|TEXT)\s*:\s*([\s\S]*?)$/i;
 
   const styleMatch = content.match(styleRegex);
@@ -54,20 +54,16 @@ export async function POST(req: Request) {
 
     const isInstrumental = !lyrics_prompt || lyrics_prompt.toLowerCase().includes('[instrumental]') || lyrics_prompt.toLowerCase().trim() === 'instrumental';
 
-    let finalPrompt = prompt;
     let inputPayload: any = {};
 
     if (isInstrumental) {
-      finalPrompt = `${prompt}, instrumental`;
       inputPayload = {
-        prompt: finalPrompt.slice(0, 500),
-        negative_prompt: 'vocals, voice, singing'
+        prompt: `${prompt}, instrumental`.slice(0, 500)
       };
     } else {
-      // Lyria 2 accepts vocal descriptions and lyrics inside the prompt description
-      finalPrompt = `${prompt}. Vocals/lyrics: ${lyrics_prompt}`;
       inputPayload = {
-        prompt: finalPrompt.slice(0, 500)
+        prompt: prompt.slice(0, 500),
+        lyrics: lyrics_prompt
       };
     }
 
