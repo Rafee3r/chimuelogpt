@@ -218,39 +218,35 @@ function CatMascot() {
     return () => { cancelled = true; };
   }, []);
 
-  const playActivationSound = () => {
+  // Pre-load audio objects for meows
+  const meowAudiosRef = useRef<HTMLAudioElement[]>([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const audios = Array.from({ length: 5 }, (_, i) => {
+      const audio = new Audio(`/sounds/meow-${i + 1}.mp3`);
+      audio.preload = "auto";
+      audio.volume = 0.45;
+      return audio;
+    });
+    meowAudiosRef.current = audios;
+  }, []);
+
+  const playMeowSound = () => {
+    if (meowAudiosRef.current.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * meowAudiosRef.current.length);
+    const audio = meowAudiosRef.current[randomIndex];
+    
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      
-      // Clean tech activation chime (ascending sine tones)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      gain1.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start();
-      osc1.stop(ctx.currentTime + 0.35);
-      
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(783.99, ctx.currentTime + 0.12); // G5
-      gain2.gain.setValueAtTime(0, ctx.currentTime);
-      gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
-      
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.12);
-      osc2.stop(ctx.currentTime + 0.55);
+      audio.currentTime = 0;
+      audio.play().catch((err) => {
+        console.warn("Audio playback blocked, trying fallback:", err);
+        const fallbackAudio = new Audio(`/sounds/meow-${randomIndex + 1}.mp3`);
+        fallbackAudio.volume = 0.45;
+        fallbackAudio.play().catch(e => console.error("Fallback play failed:", e));
+      });
     } catch (e) {
-      console.warn("Web Audio chime failed:", e);
+      console.error("Audio play error:", e);
     }
   };
 
@@ -258,7 +254,7 @@ function CatMascot() {
     if (meowingRef.current) return;
     meowingRef.current = true;
     setMeowing(true);
-    playActivationSound();
+    playMeowSound();
     
     // Lock pose to 'look-up' to stretch the neck and show the tie and wiggle animation beautifully
     setPose('look-up');
@@ -268,7 +264,7 @@ function CatMascot() {
       setMeowing(false);
       meowingRef.current = false;
       setPose('sit');
-    }, 2000);
+    }, 1600);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -352,9 +348,8 @@ function CatMascot() {
       }
     >
       {meowing && (
-        <div className="cat-meow-bubble formal" aria-hidden="true">
-          <div className="bubble-title">Inteligencia Avanzada</div>
-          <div className="bubble-subtitle">a c t i v a d a</div>
+        <div className="cat-meow-bubble" aria-hidden="true">
+          ¡Miau! 🐾
         </div>
       )}
       {/* ── Capa 2 (flip): solo scaleX cuando camina a la izquierda ── */}
@@ -504,12 +499,12 @@ function CatMascot() {
                   <line x1="76" y1="37.5" x2="86" y2="38" stroke="#bbb" strokeWidth="0.5" />
                   <line x1="76" y1="39" x2="86" y2="40" stroke="#bbb" strokeWidth="0.5" />
                   
-                  {/* Corbatita formal roja */}
+                  {/* Corbatita formal blanca */}
                   <g className="cat-tie">
                     {/* Nudo de la corbata */}
-                    <polygon points="70,42 74,42 73.5,45 70.5,45" fill="#ef4444" />
+                    <polygon points="70,42 74,42 73.5,45 70.5,45" fill="#ffffff" />
                     {/* Cuerpo de la corbata */}
-                    <polygon points="71,45 73,45 74.5,56 72,60 69.5,56" fill="#dc2626" />
+                    <polygon points="71,45 73,45 74.5,56 72,60 69.5,56" fill="#f3f4f6" />
                   </g>
                 </g>
                 {pose === 'groom' ? (
