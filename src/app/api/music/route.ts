@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 300;
 
-const MODEL = 'fal-ai/lyria2';
+const MODEL = 'fal-ai/minimax-music/v2.6';
 
 function extractAudioUrl(data: any): string | null {
   return (
@@ -15,34 +15,61 @@ function extractAudioUrl(data: any): string | null {
   );
 }
 
-function cleanMusicPrompt(prompt: string): string {
-  return prompt
-    .replace(/\b(male|female|child|adult|boy|girl|vocals?|voice|voices|singing|singer|singers|vocals?|vocales|voz|voces|canto|cantante|cantantes|speech|spoken|talk|talking)\b/gi, '')
-    .replace(/\b(rap|rapper|rappers|lyrics|lyric|lyrics?|rapero|raperos|letra|letras)\b/gi, '')
-    .replace(/,\s*,/g, ',')
-    .replace(/\s+/g, ' ')
-    .trim();
+function parseMinimaxPrompt(content: string): { prompt: string; lyrics_prompt: string } {
+  const styleRegex = /(?:STYLE|PROMPT)\s*:\s*([\s\S]*?)(?=\n\s*(?:LYRICS|TEXT)\s*:|$)/i;
+  const lyricsRegex = /(?:LYRICS|TEXT)\s*:\s*([\s\S]*?)$/i;
+
+  const styleMatch = content.match(styleRegex);
+  const lyricsMatch = content.match(lyricsRegex);
+
+  let prompt = '';
+  let lyrics_prompt = '';
+
+  if (styleMatch) {
+    prompt = styleMatch[1].trim();
+  }
+  if (lyricsMatch) {
+    lyrics_prompt = lyricsMatch[1].trim();
+  }
+
+  if (!prompt && !lyrics_prompt) {
+    prompt = content.trim();
+  }
+
+  return { prompt, lyrics_prompt };
 }
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt: rawPrompt } = await req.json();
     const falKey = process.env.FAL_KEY;
 
     if (!falKey) return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
-    if (!prompt) return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
+    if (!rawPrompt) return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
 
-    const cleanedPrompt = cleanMusicPrompt(prompt);
-    console.log('Original music prompt:', prompt);
-    console.log('Cleaned music prompt:', cleanedPrompt);
+    const { prompt, lyrics_prompt } = parseMinimaxPrompt(rawPrompt);
+    console.log('Original prompt:', rawPrompt);
+    console.log('Parsed prompt (style):', prompt);
+    console.log('Parsed lyrics:', lyrics_prompt);
+
+    const isInstrumental = !lyrics_prompt || lyrics_prompt.toLowerCase().includes('[instrumental]') || lyrics_prompt.toLowerCase().trim() === 'instrumental';
+
+    const inputPayload: any = {
+      prompt: prompt.slice(0, 500),
+    };
+
+    if (isInstrumental) {
+      inputPayload.instrumental = true;
+    } else {
+      inputPayload.lyrics_prompt = lyrics_prompt;
+      inputPayload.instrumental = false;
+    }
 
     // 1. Submit job to FAL queue
     const submitRes = await fetch(`https://queue.fal.run/${MODEL}`, {
       method: 'POST',
       headers: { 'Authorization': `Key ${falKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: cleanedPrompt.slice(0, 500),
-      }),
+      body: JSON.stringify(inputPayload),
     });
 
     if (!submitRes.ok) {
