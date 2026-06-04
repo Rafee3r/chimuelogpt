@@ -89,8 +89,6 @@ function CodeBlock({ inline, className, children, ...props }: any) {
     </div>
   );
 }
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 /* Helper to download any image (including cross-origin URLs) using a Blob */
 const downloadImage = async (url: string) => {
@@ -952,6 +950,86 @@ const ProThinkingAnimation = () => {
       }}>
         {phrases[phraseIndex]}
       </span>
+    </div>
+  );
+};
+
+const InteractiveFlashcard = ({ q, a }: { q: string, a: string }) => {
+  const [flipped, setFlipped] = useState(false);
+  return (
+    <div 
+      className={`flashcard-container ${flipped ? 'flipped' : ''}`}
+      onClick={() => setFlipped(!flipped)}
+    >
+      <div className="flashcard-inner">
+        <div className="flashcard-front">
+          <div className="flashcard-label">Pregunta</div>
+          <div className="flashcard-text">{q}</div>
+          <div className="flashcard-hint">Toca para voltear ↺</div>
+        </div>
+        <div className="flashcard-back">
+          <div className="flashcard-label">Respuesta</div>
+          <div className="flashcard-text">{a}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MusicPlayer = ({ url, prompt }: { url: string; prompt?: string }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); setPlaying(false); }
+    else { audioRef.current.play(); setPlaying(true); }
+  };
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    const cur = audioRef.current.currentTime;
+    const dur = audioRef.current.duration || 0;
+    setCurrentTime(cur);
+    setProgress(dur ? (cur / dur) * 100 : 0);
+  };
+  const handleLoaded = () => { if (audioRef.current) setDuration(audioRef.current.duration); };
+  const handleEnded = () => setPlaying(false);
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
+  };
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
+  return (
+    <div className="music-player-card">
+      <audio ref={audioRef} src={url} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoaded} onEnded={handleEnded} />
+      <div className="music-player-art">
+        <div className={`music-waveform ${playing ? 'playing' : ''}`}>
+          {[...Array(14)].map((_, i) => (
+            <div key={i} className="music-bar" style={{ animationDelay: `${(i * 0.08).toFixed(2)}s` }} />
+          ))}
+        </div>
+      </div>
+      <div className="music-player-body">
+        <div className="music-player-title">{prompt ? prompt.slice(0, 38) + (prompt.length > 38 ? '…' : '') : 'Música generada'}</div>
+        <div className="music-player-sub">IA generada · Chimuelo</div>
+        <div className="music-player-controls">
+          <button className="music-play-btn" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}>
+            {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
+          <div className="music-progress-track" onClick={handleSeek}>
+            <div className="music-progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="music-time">{fmt(currentTime)}<span className="music-time-sep">/</span>{fmt(duration)}</span>
+        </div>
+      </div>
+      <a href={url} download="chimuelo-musica.mp3" className="music-dl-btn" title="Descargar">
+        <Download size={15} />
+      </a>
     </div>
   );
 };
@@ -2485,7 +2563,7 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey);
   }, [paletteOpen, sidebarOpen, viewMode, chatMenu, msgMenu, showVersionModal]);
 
-  const ImageRenderer = ({ node, ...props }: any) => {
+  const ImageRenderer = useCallback(({ node, ...props }: any) => {
     return (
       <div className="image-container">
         <img {...props} onClick={() => setLightboxImg(props.src || null)} />
@@ -2505,9 +2583,10 @@ export default function Home() {
         </div>
       </div>
     );
-  };
+  }, []);
 
-  const exportToAPA = (text: string) => {
+  const exportToAPA = async (text: string) => {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     doc.setFont("times", "normal");
     doc.setFontSize(12);
@@ -2533,85 +2612,7 @@ export default function Home() {
     doc.save("Documento_APA.pdf");
   };
 
-  const InteractiveFlashcard = ({ q, a }: { q: string, a: string }) => {
-    const [flipped, setFlipped] = useState(false);
-    return (
-      <div 
-        className={`flashcard-container ${flipped ? 'flipped' : ''}`}
-        onClick={() => setFlipped(!flipped)}
-      >
-        <div className="flashcard-inner">
-          <div className="flashcard-front">
-            <div className="flashcard-label">Pregunta</div>
-            <div className="flashcard-text">{q}</div>
-            <div className="flashcard-hint">Toca para voltear ↺</div>
-          </div>
-          <div className="flashcard-back">
-            <div className="flashcard-label">Respuesta</div>
-            <div className="flashcard-text">{a}</div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
-  const MusicPlayer = ({ url, prompt }: { url: string; prompt?: string }) => {
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const [playing, setPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-
-    const toggle = () => {
-      if (!audioRef.current) return;
-      if (playing) { audioRef.current.pause(); setPlaying(false); }
-      else { audioRef.current.play(); setPlaying(true); }
-    };
-    const handleTimeUpdate = () => {
-      if (!audioRef.current) return;
-      const cur = audioRef.current.currentTime;
-      const dur = audioRef.current.duration || 0;
-      setCurrentTime(cur);
-      setProgress(dur ? (cur / dur) * 100 : 0);
-    };
-    const handleLoaded = () => { if (audioRef.current) setDuration(audioRef.current.duration); };
-    const handleEnded = () => setPlaying(false);
-    const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!audioRef.current) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
-    };
-    const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
-
-    return (
-      <div className="music-player-card">
-        <audio ref={audioRef} src={url} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoaded} onEnded={handleEnded} />
-        <div className="music-player-art">
-          <div className={`music-waveform ${playing ? 'playing' : ''}`}>
-            {[...Array(14)].map((_, i) => (
-              <div key={i} className="music-bar" style={{ animationDelay: `${(i * 0.08).toFixed(2)}s` }} />
-            ))}
-          </div>
-        </div>
-        <div className="music-player-body">
-          <div className="music-player-title">{prompt ? prompt.slice(0, 38) + (prompt.length > 38 ? '…' : '') : 'Música generada'}</div>
-          <div className="music-player-sub">IA generada · Chimuelo</div>
-          <div className="music-player-controls">
-            <button className="music-play-btn" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}>
-              {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-            </button>
-            <div className="music-progress-track" onClick={handleSeek}>
-              <div className="music-progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="music-time">{fmt(currentTime)}<span className="music-time-sep">/</span>{fmt(duration)}</span>
-          </div>
-        </div>
-        <a href={url} download="chimuelo-musica.mp3" className="music-dl-btn" title="Descargar">
-          <Download size={15} />
-        </a>
-      </div>
-    );
-  };
 
   if (!appReady) {
     return (
@@ -4456,6 +4457,10 @@ export default function Home() {
                   onClick={async () => {
                     const iframe = document.getElementById('artifact-iframe') as HTMLIFrameElement;
                     if (iframe && iframe.contentDocument) {
+                      const [html2canvas, { default: jsPDF }] = await Promise.all([
+                        import('html2canvas').then(m => m.default),
+                        import('jspdf')
+                      ]);
                       const canvas = await html2canvas(iframe.contentDocument.body, { useCORS: true, allowTaint: true });
                       const imgData = canvas.toDataURL('image/png');
                       const pdf = new jsPDF({
