@@ -46,10 +46,6 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
             };
 
             let label = extractText(children).trim();
-            // Truncate overly long labels on prompt cards so they remain visual "quick pills" (max 45 chars)
-            if (label.length > 45) {
-              label = label.slice(0, 42) + "...";
-            }
             return (
               <a 
                 href={href} 
@@ -4220,7 +4216,10 @@ export default function Home() {
                                   fontSize: '0.9rem',
                                   fontWeight: 500,
                                   cursor: 'pointer',
-                                  transition: 'all 0.2s'
+                                  transition: 'all 0.2s',
+                                  whiteSpace: 'normal',
+                                  textAlign: 'left',
+                                  maxWidth: '100%'
                                 }}
                                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}

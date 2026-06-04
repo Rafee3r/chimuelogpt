@@ -7508,7 +7508,8 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 
 /* ── Interactive prompt markdown buttons ── */
-.markdown-body a[href^="prompt:"] {
+.markdown-body a[href^="prompt:"],
+.markdown-body a.interactive-prompt-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -7524,15 +7525,21 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
 }
 
-.markdown-body a[href^="prompt:"]:hover {
+.markdown-body a[href^="prompt:"]:hover,
+.markdown-body a.interactive-prompt-btn:hover {
   background-color: var(--active-bg);
   border-color: var(--accent-color);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.markdown-body a[href^="prompt:"]:active {
+.markdown-body a[href^="prompt:"]:active,
+.markdown-body a.interactive-prompt-btn:active {
   transform: translateY(0);
 }
