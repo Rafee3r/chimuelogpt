@@ -11,13 +11,21 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
   imgRenderer: any;
   codeRenderer: any;
 }) {
-  // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets,
-  // allowing react-markdown parser to recognize them as valid anchor links instead of raw text
   const processedContent = useMemo(() => {
     if (!content) return '';
-    return content.replace(/\[([^\]]+)\]\((prompt:[^\)]+)\)/g, (match, label, promptPart) => {
-      const promptText = promptPart.slice(7);
-      const encodedPrompt = "?prompt=" + encodeURIComponent(promptText);
+    // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets/newlines,
+    // supporting both (prompt:...) and (?prompt=...) syntax and mixed encoding.
+    return content.replace(/\[([^\]]+)\]\(\s*((?:prompt:|\?prompt=)[^\)]+)\)/g, (match, label, promptPart) => {
+      let rawPrompt = promptPart.startsWith('?prompt=') ? promptPart.slice(8) : promptPart.slice(7);
+      try {
+        // Decode in case it's partially encoded (mix of spaces and %20).
+        // Replace standalone % signs not followed by 2 hex digits to prevent decoding crash.
+        const safeDecodeText = rawPrompt.replace(/%(?![0-9a-fA-F]{2})/g, '%25');
+        rawPrompt = decodeURIComponent(safeDecodeText);
+      } catch (e) {
+        console.error("Failed to decode prompt part:", e);
+      }
+      const encodedPrompt = "?prompt=" + encodeURIComponent(rawPrompt);
       return `[${label}](${encodedPrompt})`;
     });
   }, [content]);
