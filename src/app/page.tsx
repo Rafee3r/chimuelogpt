@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -2034,10 +2034,15 @@ export default function Home() {
               const parseData = await parseRes.json();
               if (parseData.text) {
                 finalContent = `[CONTENIDO ENLACE: ${url.trim()}]\nTítulo: ${parseData.title}\n${parseData.text}\n[FIN ENLACE]\n\n${finalContent}`;
+              } else {
+                showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
               }
+            } else {
+              showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
             }
           } catch (err) {
             console.error("Error al extraer URL en el vuelo:", url, err);
+            showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
           }
         }
       }
@@ -3811,78 +3816,6 @@ export default function Home() {
                       <label className="uni-v2-notes-label" style={{ margin: 0 }}>
                         📝 Apuntes de {sub.name} <small>(Chimuelo los usará en cada respuesta)</small>
                       </label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          className="uni-v2-tool-btn"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', height: 'auto', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }}
-                          title="Subir archivo de apuntes"
-                          disabled={isNotesParsing}
-                          onClick={() => {
-                            const inp = document.createElement('input');
-                            inp.type = 'file';
-                            inp.accept = '.pdf,.docx,.txt,.md,.csv';
-                            inp.onchange = async (ev: any) => {
-                              const file = ev.target.files?.[0];
-                              if (!file) return;
-                              setIsNotesParsing(true);
-                              try {
-                                const form = new FormData();
-                                form.append('file', file);
-                                const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
-                                const data = await res.json();
-                                if (!res.ok) throw new Error(data.error || 'Error al procesar');
-                                if (data.text) {
-                                  const updatedText = (sub.baseMemory ? sub.baseMemory + '\n\n' : '') + `[APUNTE ADJUNTO: ${file.name}]\n${data.text}\n[FIN APUNTE]`;
-                                  const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: updatedText } : s);
-                                  setSubjects(updated);
-                                  localStorage.setItem('chimuelo_subjects', JSON.stringify(updated));
-                                  showToast('Apunte adjuntado correctamente');
-                                }
-                              } catch (err: any) {
-                                showToast('Error al leer el archivo: ' + err.message);
-                              } finally {
-                                setIsNotesParsing(false);
-                              }
-                            };
-                            inp.click();
-                          }}
-                        >
-                          <Paperclip size={12} /> <span style={{ fontSize: '0.7rem' }}>Archivo</span>
-                        </button>
-                        <button
-                          className="uni-v2-tool-btn"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', height: 'auto', background: 'var(--input-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }}
-                          title="Cargar apuntes desde un link"
-                          disabled={isNotesParsing}
-                          onClick={async () => {
-                            const url = window.prompt('Ingresa la URL de la página, presentación o documento:');
-                            if (!url || !url.trim()) return;
-                            setIsNotesParsing(true);
-                            try {
-                              const res = await fetch('/api/parse-url', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ url: url.trim() })
-                              });
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data.error || 'Error al procesar');
-                              if (data.text) {
-                                const updatedText = (sub.baseMemory ? sub.baseMemory + '\n\n' : '') + `[CONTENIDO ENLACE: ${url.trim()}]\nTítulo: ${data.title}\n${data.text}\n[FIN ENLACE]`;
-                                const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: updatedText } : s);
-                                setSubjects(updated);
-                                localStorage.setItem('chimuelo_subjects', JSON.stringify(updated));
-                                showToast('Contenido del enlace importado');
-                              }
-                            } catch (err: any) {
-                              showToast('Error al leer el enlace: ' + err.message);
-                            } finally {
-                              setIsNotesParsing(false);
-                            }
-                          }}
-                        >
-                          <Star size={12} /> <span style={{ fontSize: '0.7rem' }}>Cargar Link</span>
-                        </button>
-                      </div>
                     </div>
                     {isNotesParsing && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3890,19 +3823,96 @@ export default function Home() {
                         Procesando material de estudio...
                       </div>
                     )}
-                    <textarea
-                      className="uni-v2-notes-textarea"
-                      placeholder="Pega el programa, reglas del profe, fórmulas clave, o sube archivos/links usando los botones de arriba..."
-                      value={sub.baseMemory}
-                      onChange={e => {
-                        const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: e.target.value } : s);
-                        setSubjects(updated);
-                      }}
-                      onBlur={() => {
-                        localStorage.setItem('chimuelo_subjects', JSON.stringify(subjects));
-                      }}
-                      rows={3}
-                    />
+                    <div className="uni-v2-input-box" style={{ borderRadius: '12px', padding: '10px 12px 8px' }}>
+                      <textarea
+                        className="uni-v2-textarea"
+                        style={{ fontSize: '0.85rem', minHeight: '60px', padding: 0 }}
+                        placeholder="Pega el programa, reglas del profe, fórmulas clave, o sube archivos/links usando los botones de abajo..."
+                        value={sub.baseMemory}
+                        onChange={e => {
+                          const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: e.target.value } : s);
+                          setSubjects(updated);
+                        }}
+                        onBlur={() => {
+                          localStorage.setItem('chimuelo_subjects', JSON.stringify(subjects));
+                        }}
+                        rows={3}
+                      />
+                      <div className="uni-v2-toolbar" style={{ marginTop: '4px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="uni-v2-tool-btn"
+                            title="Subir archivo de apuntes (.pdf, .docx, .txt, .md, .csv)"
+                            disabled={isNotesParsing}
+                            onClick={() => {
+                              const inp = document.createElement('input');
+                              inp.type = 'file';
+                              inp.accept = '.pdf,.docx,.txt,.md,.csv';
+                              inp.onchange = async (ev: any) => {
+                                const file = ev.target.files?.[0];
+                                if (!file) return;
+                                setIsNotesParsing(true);
+                                try {
+                                  const form = new FormData();
+                                  form.append('file', file);
+                                  const res = await fetch('/api/parse-doc', { method: 'POST', body: form });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.error || 'Error al procesar');
+                                  if (data.text) {
+                                    const updatedText = (sub.baseMemory ? sub.baseMemory + '\n\n' : '') + `[APUNTE ADJUNTO: ${file.name}]\n${data.text}\n[FIN APUNTE]`;
+                                    const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: updatedText } : s);
+                                    setSubjects(updated);
+                                    localStorage.setItem('chimuelo_subjects', JSON.stringify(updated));
+                                    showToast('Apunte adjuntado correctamente');
+                                  }
+                                } catch (err: any) {
+                                  showToast('Error al leer el archivo: ' + err.message);
+                                } finally {
+                                  setIsNotesParsing(false);
+                                }
+                              };
+                              inp.click();
+                            }}
+                          >
+                            <Paperclip size={15} />
+                          </button>
+                          <button
+                            className="uni-v2-tool-btn"
+                            title="Cargar apuntes desde un link"
+                            disabled={isNotesParsing}
+                            onClick={async () => {
+                              const url = window.prompt('Ingresa la URL de la página, presentación o documento:');
+                              if (!url || !url.trim()) return;
+                              setIsNotesParsing(true);
+                              try {
+                                const res = await fetch('/api/parse-url', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ url: url.trim() })
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || 'Error al procesar');
+                                if (data.text) {
+                                  const updatedText = (sub.baseMemory ? sub.baseMemory + '\n\n' : '') + `[CONTENIDO ENLACE: ${url.trim()}]\nTítulo: ${data.title}\n${data.text}\n[FIN ENLACE]`;
+                                  const updated = subjects.map(s => s.id === sub.id ? { ...s, baseMemory: updatedText } : s);
+                                  setSubjects(updated);
+                                  localStorage.setItem('chimuelo_subjects', JSON.stringify(updated));
+                                  showToast('Contenido del enlace importado');
+                                } else {
+                                  showToast('No se pudo extraer texto del enlace.');
+                                }
+                              } catch (err: any) {
+                                showToast('Error al leer el enlace: ' + err.message);
+                              } finally {
+                                setIsNotesParsing(false);
+                              }
+                            }}
+                          >
+                            <Link size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
