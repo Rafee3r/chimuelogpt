@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -15,7 +15,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
     if (!content) return '';
     // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets/newlines.
     // Matches any markdown link and universally detects if it contains "prompt" command.
-    return content.replace(/\[([^\]]+)\]\(\s*([^\)]+)\)/g, (match, label, urlPart) => {
+    return content.replace(/\[([^\]]+)\]\(\s*([^\)]*(?:\([^\)]*\)[^\)]*)*)\)/g, (match, label, urlPart) => {
       const isPromptLink = /prompt/i.test(urlPart);
       if (!isPromptLink) {
         return match;
@@ -585,6 +585,9 @@ type BaseMessage = {
   docPlaceholder?: string;
   reasoning?: string;
   model?: string;
+  feedback?: 'like' | 'dislike';
+  status?: 'pending' | 'sent' | 'delivered' | 'read';
+  timestamp?: number;
 };
 
 /* ─────────── Helper: sanitizar chats antes de localStorage ───────────
@@ -1062,6 +1065,7 @@ export default function Home() {
   const [attachedImage, setAttachedImage] = useState<{base64: string, name: string, type?: string} | null>(null);
   const [attachedDoc, setAttachedDoc] = useState<File | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [agentTyping, setAgentTyping] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
@@ -1678,7 +1682,7 @@ export default function Home() {
     }
 
     prevMaxScrollTop.current = currentMax;
-  }, [displayMessages, isThinking]);
+  }, [displayMessages, isThinking, agentTyping]);
 
   // Reset to force-scroll when switching chats
   useEffect(() => {
@@ -1689,6 +1693,87 @@ export default function Home() {
   useEffect(() => {
     currentChatIdRef.current = currentChatId;
   }, [currentChatId]);
+
+  const triggerAgentNudge = async (chatId: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat || chat.id !== currentChatIdRef.current || !chat.agentId) return;
+
+    setAgentTyping(true);
+
+    try {
+      const historyMsgs = (chat.messages || [])
+        .filter(m => m.role && m.content)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const systemPrompt = chat.systemPrompt || "";
+      const nudgeSystemPrompt = systemPrompt + "\n\n[INSTRUCCIÓN DE RECORDATORIO / NUDGE]\nEl usuario no ha respondido en un rato. Escribe una sola frase súper corta, informal y casual (de 1 a 5 palabras) como amigo en WhatsApp para ver si sigue ahí o si necesita algo (ej. '¿cómo te fue?', '¿todo bien?', '¿necesitas algo?', 'avísame si te sirve'). Responde únicamente con esa frase en un objeto JSON con la clave \"messages\" conteniendo un solo string.";
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: historyMsgs,
+          model,
+          persona,
+          customInstructions: nudgeSystemPrompt,
+          isAgent: true,
+          thinkingLevel
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to get nudge response");
+
+      const data = await res.json();
+      const fragments = data.messages || [data.content || ''];
+      
+      const nudgeText = fragments[0] || '¿todo bien?';
+      const typingDuration = Math.max(1000, Math.min(2500, nudgeText.length * 40));
+      await new Promise(resolve => setTimeout(resolve, typingDuration));
+
+      const nudgeMsgId = (Date.now() + Math.random()).toString();
+      const nudgeMsg: BaseMessage = {
+        id: nudgeMsgId,
+        role: 'assistant',
+        content: nudgeText,
+        timestamp: Date.now(),
+        model
+      };
+
+      setChats(prev => {
+        const updated = prev.map(c => {
+          if (c.id === chatId) {
+            return { ...c, messages: [...c.messages, nudgeMsg], updatedAt: Date.now() };
+          }
+          return c;
+        });
+        safeSetChats(updated);
+        return updated;
+      });
+
+      if (currentChatIdRef.current === chatId) {
+        setDisplayMessages(prev => [...prev, nudgeMsg]);
+      }
+    } catch (e) {
+      console.error("Error generating agent nudge:", e);
+    } finally {
+      setAgentTyping(false);
+    }
+  };
+
+  useEffect(() => {
+    const chat = chats.find(c => c.id === currentChatId);
+    const isAgent = !!chat?.agentId;
+    if (!isAgent || !currentChatId) return;
+    
+    const lastMsg = displayMessages[displayMessages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant') return;
+
+    const timer = setTimeout(() => {
+      triggerAgentNudge(currentChatId);
+    }, 35000);
+
+    return () => clearTimeout(timer);
+  }, [currentChatId, displayMessages, chats]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -1891,6 +1976,40 @@ export default function Home() {
     setSubjectMenu(null);
   };
 
+  const handleMessageFeedback = (msgId: string, feedbackType: 'like' | 'dislike') => {
+    setDisplayMessages(prev => prev.map(m => {
+      if (m.id === msgId) {
+        const currentFeedback = m.feedback;
+        const newFeedback = currentFeedback === feedbackType ? undefined : feedbackType;
+        return { ...m, feedback: newFeedback };
+      }
+      return m;
+    }));
+
+    if (currentChatId) {
+      setChats(prev => {
+        const updated = prev.map(c => {
+          if (c.id === currentChatId) {
+            return {
+              ...c,
+              messages: c.messages.map(m => {
+                if (m.id === msgId) {
+                  const currentFeedback = m.feedback;
+                  const newFeedback = currentFeedback === feedbackType ? undefined : feedbackType;
+                  return { ...m, feedback: newFeedback };
+                }
+                return m;
+              })
+            };
+          }
+          return c;
+        });
+        safeSetChats(updated);
+        return updated;
+      });
+    }
+  };
+
   const handleSendMessage = async (customMessage?: string) => {
     const msgToSend = customMessage || inputMessage;
     if (!msgToSend.trim() && !attachedImage) return;
@@ -1943,6 +2062,9 @@ export default function Home() {
     }
 
     let targetChatId = currentChatId;
+    const chatBefore = targetChatId ? chats.find(c => c.id === targetChatId) : null;
+    const isAgentChat = !!(activeAgent || chatBefore?.agentId);
+
     if (!targetChatId) {
       const newChatId = Date.now().toString();
       targetChatId = newChatId;
@@ -1954,7 +2076,8 @@ export default function Home() {
           id: newChatId,
           title: messageText ? messageText.slice(0, 30) : (imageName || "Nuevo Chat"),
           messages: [],
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          ...(activeAgent ? { agentId: activeAgent.id, systemPrompt: activeAgent.prompt } : {})
         };
         return [newChat, ...prev];
       });
@@ -1967,7 +2090,8 @@ export default function Home() {
       content: messageText,
       ...(imageName ? { imagePlaceholder: imageName } : {}),
       ...(imagePayload && attachedImage?.type?.startsWith('image/') ? { imageData: attachedImage.base64 } : {}),
-      ...(docFile ? { docPlaceholder: docFile.name } : {})
+      ...(docFile ? { docPlaceholder: docFile.name } : {}),
+      ...(isAgentChat ? { status: 'pending', timestamp: Date.now() } : {})
     };
 
     setChats(prev => {
@@ -1988,13 +2112,16 @@ export default function Home() {
     setInputMessage("");
     setAttachedImage(null);
     setAttachedDoc(null);
-    // NO forzar scroll al fondo. Llevar el mensaje del usuario al TOP del viewport
-    // y bloquear el auto-scroll durante todo el streaming.
-    skipAutoScrollRef.current = true;
-    requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-msg-id="${userMsgId}"]`) as HTMLElement | null;
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    
+    if (!isAgentChat) {
+      skipAutoScrollRef.current = true;
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-msg-id="${userMsgId}"]`) as HTMLElement | null;
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else {
+      skipAutoScrollRef.current = false;
+    }
     setIsThinking(true);
 
     // Add user message to display immediately
@@ -2005,6 +2132,7 @@ export default function Home() {
     abortControllerRef.current = controller;
 
     try {
+      const startTime = Date.now();
       let finalContent = messageText || (imagePayload ? 'Describe esta imagen.' : '');
       if (docFile) {
         try {
@@ -2080,6 +2208,30 @@ export default function Home() {
       // Flag para estilo WhatsApp (sin formato, casual, mensajes cortos)
       const isAgent = !!(chatForApi?.agentId);
 
+      const updateMessageStatus = (msgId: string, status: 'pending' | 'sent' | 'delivered' | 'read') => {
+        setChats(prev => {
+          const updated = prev.map(c => {
+            if (c.id === targetChatId) {
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === msgId ? { ...m, status } : m)
+              };
+            }
+            return c;
+          });
+          safeSetChats(updated);
+          return updated;
+        });
+        if (currentChatIdRef.current === targetChatId) {
+          setDisplayMessages(prev => prev.map(m => m.id === msgId ? { ...m, status } : m));
+        }
+      };
+
+      if (isAgent) {
+        setTimeout(() => updateMessageStatus(userMsgId, 'sent'), 500);
+        setTimeout(() => updateMessageStatus(userMsgId, 'delivered'), 1000);
+      }
+
       const fetchTimeoutId = setTimeout(() => {
         controller.abort(new Error('TIMEOUT_NO_RESPONSE'));
       }, 45000); // 45s para recibir la primera respuesta (headers)
@@ -2112,6 +2264,161 @@ export default function Home() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Error desconocido del servidor' }));
         throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+
+      if (isAgent) {
+        const data = await res.json();
+        let fragments = [];
+        if (data.messages && Array.isArray(data.messages)) {
+          fragments = data.messages;
+        } else if (data.content) {
+          fragments = [data.content];
+        } else {
+          fragments = [JSON.stringify(data)];
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingToRead = Math.max(0, 1500 - elapsed);
+        await new Promise(resolve => setTimeout(resolve, remainingToRead));
+
+        updateMessageStatus(userMsgId, 'read');
+
+        for (let fIdx = 0; fIdx < fragments.length; fIdx++) {
+          let fragment = fragments[fIdx];
+
+          if (fragment.includes('<search_web>')) {
+            const searchMatch = fragment.match(/<search_web>([\s\S]*?)<\/search_web>/i);
+            if (searchMatch?.[1]) {
+              const searchQuery = searchMatch[1].trim();
+              setAgentTyping(true);
+              try {
+                const searchRes = await fetch('/api/search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ query: searchQuery }),
+                  signal: controller.signal,
+                });
+                if (searchRes.ok) {
+                  const { results = [], answer } = await searchRes.json();
+                  const answerBlock = answer ? `RESPUESTA DIRECTA DE BÚSQUEDA: ${answer}\n\n` : '';
+                  const formattedResults = results.length > 0
+                    ? results.map((r: any, i: number) =>
+                        `[${i+1}] ${r.title}\nURL: ${r.url}\n${(r.content || r.snippet || '').slice(0, 600)}`
+                      ).join('\n\n---\n\n')
+                    : 'Sin resultados.';
+                  const searchMessages = [
+                    ...historyMsgs,
+                    { role: 'assistant' as const, content: `[Búsqueda web realizada: "${searchQuery}"]` },
+                    { role: 'user' as const, content: `${answerBlock}RESULTADOS DE BÚSQUEDA WEB:\n\n${formattedResults}\n\nINSTRUCCIONES: Responde la pregunta del usuario con base en estos resultados. Sé completo y detallado. Cita las fuentes con sus URLs al final.` }
+                  ];
+                  const searchApiRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: finalSystemPrompt, isAgent: true }),
+                    signal: controller.signal,
+                  });
+                  if (searchApiRes.ok) {
+                    const searchData = await searchApiRes.json();
+                    if (searchData.messages && Array.isArray(searchData.messages)) {
+                      fragments.splice(fIdx, 1, ...searchData.messages);
+                      fragment = fragments[fIdx];
+                    } else if (searchData.content) {
+                      fragment = searchData.content;
+                    }
+                  }
+                }
+              } catch (searchErr) {
+                console.error("Search error in agent simulation:", searchErr);
+              }
+            }
+          }
+
+          if (fragment.includes('<generate_image')) {
+            const promptMatch = fragment.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
+            if (promptMatch?.[1]) {
+              const imagePrompt = promptMatch[1].trim();
+              try {
+                const imgRes = await fetch('/api/image', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ prompt: imagePrompt })
+                });
+                if (imgRes.ok) {
+                  const imgData = await imgRes.json();
+                  fragment = fragment.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, `\n\n![Imagen Generada](${imgData.url})\n\n`);
+                } else {
+                  fragment = fragment.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '\n\n*(Error al generar la imagen)*\n\n');
+                }
+              } catch {
+                fragment = fragment.replace(/<generate_image(?:[^>]*)>[\s\S]*?(?:<\/generate_image>|$)/ig, '\n\n*(Error de red al generar imagen)*\n\n');
+              }
+            }
+          }
+
+          if (fragment.includes('<generate_music')) {
+            const musicMatch = fragment.match(/<generate_music(?:[^>]*)>([\s\S]*?)(?:<\/generate_music>|$)/i);
+            if (musicMatch?.[1]) {
+              const musicPrompt = musicMatch[1].trim();
+              try {
+                const musicRes = await fetch('/api/music', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ prompt: musicPrompt })
+                });
+                if (musicRes.ok) {
+                  const musicData = await musicRes.json();
+                  fragment = fragment.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, `__MUSIC_PLAYER:${musicData.url}::${encodeURIComponent(musicPrompt)}__`);
+                } else {
+                  fragment = fragment.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error al generar música)*\n\n');
+                }
+              } catch {
+                fragment = fragment.replace(/<generate_music(?:[^>]*)>[\s\S]*?(?:<\/generate_music>|$)/ig, '\n\n*(Error de red al generar música)*\n\n');
+              }
+            }
+          }
+
+          setAgentTyping(true);
+          const typingDuration = Math.max(1000, Math.min(3000, fragment.length * 35));
+          await new Promise(resolve => setTimeout(resolve, typingDuration));
+          setAgentTyping(false);
+
+          if (currentChatIdRef.current !== targetChatId) return;
+
+          const assistantMsgId = (Date.now() + Math.random()).toString();
+          const newAssistantMsg: BaseMessage = {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: fragment,
+            timestamp: Date.now(),
+            model
+          };
+
+          setChats(prev => {
+            const updated = prev.map(c => {
+              if (c.id === targetChatId) {
+                return {
+                  ...c,
+                  messages: [...c.messages, newAssistantMsg],
+                  updatedAt: Date.now()
+                };
+              }
+              return c;
+            });
+            safeSetChats(updated);
+            return updated;
+          });
+
+          setDisplayMessages(prev => [...prev, newAssistantMsg]);
+          tryExtractMemory(messageText, fragment);
+
+          if (fIdx < fragments.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+
+        setIsThinking(false);
+        abortControllerRef.current = null;
+        return;
       }
 
       // Stream the response
@@ -3065,9 +3372,6 @@ export default function Home() {
               title="Ajustes"
             >
               <Settings size={16} />
-              {memoryEnabled && userMemory.length > 0 && (
-                <span className="sb-profile-badge">{userMemory.length}</span>
-              )}
             </button>
           </div>
         </div>
@@ -3502,22 +3806,17 @@ export default function Home() {
                     <button className={`settings-toggle-btn ${memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(true); localStorage.setItem('chimuelo_memoryEnabled', 'true'); }}>Activa</button>
                     <button className={`settings-toggle-btn ${!memoryEnabled ? 'active' : ''}`} onClick={() => { setMemoryEnabled(false); localStorage.setItem('chimuelo_memoryEnabled', 'false'); }}>Pausada</button>
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                    Chimuelo extrae datos de tus chats para recordarte entre conversaciones.
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0' }}>
+                    Chimuelo recuerda detalles de ti para personalizar y mejorar la conversación a lo largo del tiempo.
                   </p>
-                  {userMemory.length === 0 ? (
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                      Aún no hay recuerdos. Aparecerán aquí tras tus primeras conversaciones.
-                    </p>
-                  ) : (
-                    <div className="memory-entries-list">
-                      {userMemory.map(m => (
-                        <div key={m.id} className="memory-entry">
-                          <span className="memory-entry-text">{m.content}</span>
-                          <button className="memory-entry-delete" title="Olvidar esto" onClick={() => { const updated = userMemory.filter(x => x.id !== m.id); setUserMemory(updated); localStorage.setItem('chimuelo_memory', JSON.stringify(updated)); }}><X size={12} /></button>
-                        </div>
-                      ))}
-                      <button style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => { setUserMemory([]); localStorage.removeItem('chimuelo_memory'); }}>Borrar toda la memoria</button>
+                  {userMemory.length > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <button 
+                        style={{ fontSize: '0.78rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} 
+                        onClick={() => { if (window.confirm("¿Seguro que quieres borrar toda tu memoria persistente?")) { setUserMemory([]); localStorage.removeItem('chimuelo_memory'); } }}
+                      >
+                        Borrar toda la memoria
+                      </button>
                     </div>
                   )}
                 </div>
@@ -3710,9 +4009,6 @@ export default function Home() {
                         <div className="agent-info">
                           <div className="agent-info-top">
                             <span className="agent-name">{agent.name}</span>
-                            <span className="agent-score" title={`Productividad ${agent.score}/100`}>
-                              {agent.score}
-                            </span>
                             {time && <span className="agent-time">{time}</span>}
                           </div>
                           <div className="agent-tagline">{agent.tagline}</div>
@@ -4004,11 +4300,12 @@ export default function Home() {
               const reasoning = msg.model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
               const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
+              const isFirst = i === 0 || displayMessages[i - 1]?.role !== role;
               return (
               <div
                 key={msg.id}
                 data-msg-id={msg.id}
-                className={`message ${role}`}
+                className={`message ${role} ${activeAgent ? 'wa-message' : ''} ${activeAgent && isFirst ? 'wa-first-in-sequence' : ''}`}
                 onContextMenu={role === 'user' ? (e) => { e.preventDefault(); openMsgMenu(msg.id, e.clientX, e.clientY); } : undefined}
                 onTouchStart={role === 'user' ? (e) => startMsgLongPress(msg.id, e) : undefined}
                 onTouchEnd={role === 'user' ? cancelMsgLongPress : undefined}
@@ -4138,7 +4435,7 @@ export default function Home() {
                       const isArtifactComplete = displayContent.includes('</artifact>') || displayContent.includes('</artifact_html>');
                       const isLastMsg = i === displayMessages.length - 1;
                       const isReady = !isThinking || !isLastMsg;
-                      const showActions = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete);
+                      const showActions = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete) && !activeAgent;
                       
                       const hasImgLoading = currentBody.includes('__IMG_LOADING__');
                       const [bodyBefore, bodyAfter] = hasImgLoading
@@ -4284,12 +4581,51 @@ export default function Home() {
                                 </div>
                               </div>
                             )}
+                            {activeAgent && (
+                              <div className="wa-message-meta">
+                                <span className="wa-message-time">
+                                  {new Date(msg.timestamp || parseInt(msg.id) || Date.now()).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {role === 'user' && (
+                                  <span className={`wa-status-ticks ${msg.status || 'read'}`}>
+                                    {msg.status === 'pending' && <Clock size={11} className="wa-tick-icon" />}
+                                    {msg.status === 'sent' && <Check size={11} className="wa-tick-icon" />}
+                                    {msg.status === 'delivered' && (
+                                      <span className="wa-double-tick-wrapper">
+                                        <Check size={11} className="wa-tick-icon" />
+                                        <Check size={11} className="wa-tick-icon second-tick" />
+                                      </span>
+                                    )}
+                                    {(msg.status === 'read' || !msg.status) && (
+                                      <span className="wa-double-tick-wrapper read">
+                                        <Check size={11} className="wa-tick-icon" />
+                                        <Check size={11} className="wa-tick-icon second-tick" />
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           
                           {showActions && (
                             <div className="message-actions message-actions-subtle" style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                              <button className="action-btn hover-bg" title="Me gusta" onClick={(e) => { e.currentTarget.style.color = '#10b981'; }}><ThumbsUp size={16} /></button>
-                              <button className="action-btn hover-bg" title="No me gusta" onClick={(e) => { e.currentTarget.style.color = '#ef4444'; }}><ThumbsDown size={16} /></button>
+                              <button
+                                className="action-btn hover-bg"
+                                title="Me gusta"
+                                style={{ color: msg.feedback === 'like' ? '#10b981' : undefined }}
+                                onClick={() => handleMessageFeedback(msg.id, 'like')}
+                              >
+                                <ThumbsUp size={16} fill={msg.feedback === 'like' ? '#10b981' : 'none'} />
+                              </button>
+                              <button
+                                className="action-btn hover-bg"
+                                title="No me gusta"
+                                style={{ color: msg.feedback === 'dislike' ? '#ef4444' : undefined }}
+                                onClick={() => handleMessageFeedback(msg.id, 'dislike')}
+                              >
+                                <ThumbsDown size={16} fill={msg.feedback === 'dislike' ? '#ef4444' : 'none'} />
+                              </button>
                               
                               {/* Download button for images or artifacts */}
                               {(displayContent.includes('![') || showArtifact) && (
@@ -4381,33 +4717,32 @@ export default function Home() {
             })
           )}
 
-          {isThinking && (displayMessages.length === 0 || displayMessages[displayMessages.length - 1]?.role !== 'assistant') && (
-            activeAgent ? (
-              /* Indicador "Escribiendo..." estilo WhatsApp para agentes */
-              <div className="message assistant">
-                <div className="message-content-wrapper">
-                  <div className="message-text wa-typing-bubble">
-                    <span className="wa-typing-text">Escribiendo</span>
-                    <span className="wa-typing-dots">
-                      <span></span><span></span><span></span>
-                    </span>
+          {isThinking && !activeAgent && (displayMessages.length === 0 || displayMessages[displayMessages.length - 1]?.role !== 'assistant') && (
+            <div className="message assistant">
+              <div className="message-content-wrapper">
+                <div className="avatar assistant">
+                  <Cat size={24} />
+                </div>
+                <div className="message-text">
+                  <div className="thinking-v2">
+                    <div className="thinking-v2-pill" />
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="message assistant">
-                <div className="message-content-wrapper">
-                  <div className="avatar assistant">
-                    <Cat size={24} />
-                  </div>
-                  <div className="message-text">
-                    <div className="thinking-v2">
-                      <div className="thinking-v2-pill" />
-                    </div>
-                  </div>
+            </div>
+          )}
+
+          {agentTyping && (
+            <div className="message assistant">
+              <div className="message-content-wrapper">
+                <div className="message-text wa-typing-bubble">
+                  <span className="wa-typing-text">Escribiendo</span>
+                  <span className="wa-typing-dots">
+                    <span></span><span></span><span></span>
+                  </span>
                 </div>
               </div>
-            )
+            </div>
           )}
           {/* Sugerencias del agente como respuestas rápidas dentro del chat */}
           {activeAgent && displayMessages.length === 1 && displayMessages[0]?.role === 'assistant' && !isThinking && (

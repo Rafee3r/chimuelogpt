@@ -126,6 +126,46 @@ INSTRUCCIONES PARA EL HTML:
         .map((m: any) => ({ role: m.role, content: m.content || '' }))
     ];
 
+    if (isAgent) {
+      const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
+      
+      const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: actualModel,
+          messages: [
+            { role: 'system', content: jsonSystemPrompt },
+            ...messages
+              .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+              .map((m: any) => ({ role: m.role, content: m.content || '' }))
+          ],
+          response_format: { type: 'json_object' },
+          stream: false
+        })
+      });
+
+      if (!deepseekRes.ok) {
+        const errText = await deepseekRes.text();
+        console.error("DeepSeek API error:", deepseekRes.status, errText);
+        return new Response(JSON.stringify({ error: `DeepSeek ${deepseekRes.status}: ${errText}` }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const resData = await deepseekRes.json();
+      const content = resData.choices?.[0]?.message?.content || '{}';
+      return new Response(content, {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      });
+    }
+
     // Call DeepSeek API directly with streaming
     const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
