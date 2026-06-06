@@ -13,10 +13,17 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
 }) {
   const processedContent = useMemo(() => {
     if (!content) return '';
-    // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets/newlines,
-    // supporting both (prompt:...) and (?prompt=...) syntax and mixed encoding.
-    return content.replace(/\[([^\]]+)\]\(\s*((?:prompt:|\?prompt=)[^\)]+)\)/g, (match, label, promptPart) => {
-      let rawPrompt = promptPart.startsWith('?prompt=') ? promptPart.slice(8) : promptPart.slice(7);
+    // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets/newlines.
+    // Matches any markdown link and universally detects if it contains "prompt" command.
+    return content.replace(/\[([^\]]+)\]\(\s*([^\)]+)\)/g, (match, label, urlPart) => {
+      const isPromptLink = /prompt/i.test(urlPart);
+      if (!isPromptLink) {
+        return match;
+      }
+      // Extract prompt text: remove ?prompt=, prompt:, prompt=, newlines, or spaces
+      let rawPrompt = urlPart
+        .replace(/^\s*\??\s*prompt\s*[:=]\s*/i, '')
+        .replace(/^\s*\??\s*/, '');
       try {
         // Decode in case it's partially encoded (mix of spaces and %20).
         // Replace standalone % signs not followed by 2 hex digits to prevent decoding crash.
@@ -25,6 +32,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
       } catch (e) {
         console.error("Failed to decode prompt part:", e);
       }
+      rawPrompt = rawPrompt.trim();
       const encodedPrompt = "?prompt=" + encodeURIComponent(rawPrompt);
       return `[${label}](${encodedPrompt})`;
     });
