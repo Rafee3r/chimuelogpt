@@ -3747,6 +3747,76 @@ a {
 .version-modal-close-btn:hover { transform: scale(1.02); }
 .version-modal-close-btn:active { transform: scale(0.96); transition: transform 0.08s; }
 
+.version-modal.has-image {
+  max-width: 480px;
+}
+
+.version-modal-image-container {
+  width: 100%;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+  position: relative;
+}
+
+.version-modal-image {
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: cover;
+  display: block;
+}
+
+.version-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-primary);
+}
+
+.version-modal-desc {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.version-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  margin: 0.5rem 0;
+}
+
+.version-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.version-detail-icon {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.version-detail-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* ── Memory entries in settings ── */
 .memory-entries-list {
   display: flex;

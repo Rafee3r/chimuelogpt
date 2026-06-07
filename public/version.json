@@ -1,18 +1,22 @@
 {
-  "version": "22.06.1",
-  "date": "2026-06-03",
-  "changes": [
-    { "icon": "👔", "title": "Gatito Elegante", "desc": "¡El gatito ahora viste de gala con una fina corbata blanca! Tócalo para ver cómo se la ajusta con elegancia mientras emite un simpático maullido." },
-    { "icon": "⚙️", "title": "Nuevas Mentes para tu Asistente", "desc": "Elige el cerebro ideal para cada tarea en Ajustes: desde un Consultor Estratégico diplomático hasta un Asesor Creativo lleno de ideas innovadoras o un Analista Técnico de alta precisión." },
-    { "icon": "🎵", "title": "Creación Musical sin Límites", "desc": "¡Hacer canciones completas en español con ritmo y voces reales ahora es más fácil! Liberamos las restricciones para que la Inteligencia Artificial cante tus raps y poemas sin detenerse." },
-    { "icon": "🔵", "title": "Respuestas Inteligentes a un Toque", "desc": "Tu asistente ahora es más interactivo. Al final de sus respuestas, te sugerirá opciones clave en botones azules para que continúes la charla con un solo toque." },
-    { "icon": "✨", "title": "Tus agentes favoritos", "desc": "En el inicio aparecen tarjetas de los 3 agentes que más usas. Un toque y entras a su chat." },
-    { "icon": "💡", "title": "Tip del día", "desc": "Cada día Chimuelo te muestra una pista para descubrir un gesto o función escondida." },
-    { "icon": "📊", "title": "Tus números", "desc": "En Ajustes ves tus stats: conversaciones, mensajes, días con Chimuelo y tu agente favorito." },
-    { "icon": "⚡", "title": "Modifica respuestas con un toque", "desc": "Bajo cada respuesta: 'Más corto', 'Más simple', 'Más ejemplos'. Toca y la IA reformula al instante." },
-    { "icon": "📝", "title": "Instrucciones personalizadas", "desc": "En Ajustes podés decirle a Chimuelo cómo querés que te hable: 'usa bullets', 'sin emojis', etc." },
-    { "icon": "📥", "title": "Exportar chats", "desc": "Mantén presionado un chat en el panel y elige 'Exportar como .md' para descargarlo." },
-    { "icon": "🐈‍⬛", "title": "Gatito opcional", "desc": "Si te distrae el gatito sobre el input, podés ocultarlo en Ajustes > Apariencia." },
-    { "icon": "🔄", "title": "¿Qué hay de nuevo?", "desc": "Ahora podés volver a leer las novedades desde Ajustes cuando quieras." }
+  "version": "22.06.2",
+  "date": "2026-06-07",
+  "header": "¡Nueva actualización!",
+  "title": "Chimuelo ahora tiene Agentes de IA especializados",
+  "description": "¡Tus chats favoritos ahora están acompañados por expertos en cada área! Puedes conversar con personajes con personalidades únicas diseñados para ayudarte a programar, entrenar, cocinar o simplemente conversar al instante.",
+  "image": "/updates/agents_update_preview.png",
+  "details": [
+    {
+      "icon": "💬",
+      "text": "Chats casuales de WhatsApp con respuestas cortas y dinámicas."
+    },
+    {
+      "icon": "🧠",
+      "text": "Especialistas enfocados en tareas específicas como código, salud o nutrición."
+    },
+    {
+      "icon": "⚡",
+      "text": "Tarjetas de acceso rápido en tu pantalla de inicio para entrar en un solo toque."
+    }
   ]
 }

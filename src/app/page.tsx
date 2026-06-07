@@ -1104,7 +1104,16 @@ export default function Home() {
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [showWelcomeOnboarding, setShowWelcomeOnboarding] = useState<boolean>(false);
   const [onboardingNameInput, setOnboardingNameInput] = useState<string>("");
-  const [versionData, setVersionData] = useState<{version: string; date: string; changes: {icon: string; title: string; desc: string}[]}>({ version: '', date: '', changes: [] });
+  const [versionData, setVersionData] = useState<{
+    version: string;
+    date: string;
+    header?: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    details?: { icon: string; text: string }[];
+    changes?: { icon: string; title: string; desc: string }[];
+  }>({ version: '', date: '' });
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [showVersionBanner, setShowVersionBanner] = useState(false);
   const [appReady, setAppReady] = useState(true);
@@ -3123,23 +3132,53 @@ export default function Home() {
 
       {showVersionModal && (
         <div className="modal-overlay" onClick={() => setShowVersionModal(false)}>
-          <div className="modal-content version-modal" onClick={e => e.stopPropagation()}>
+          <div className={`modal-content version-modal ${versionData.image ? 'has-image' : ''}`} onClick={e => e.stopPropagation()}>
             <div className="version-modal-header">
-              <div className="version-modal-badge">✨ Novedad</div>
-              <h2 className="version-modal-title">Chimuelo <span className="version-modal-num">v{versionData.version}</span></h2>
+              <div className="version-modal-badge">{versionData.header || '✨ Novedad'}</div>
+              <h2 className="version-modal-title">{versionData.title || `Chimuelo v${versionData.version}`}</h2>
               <p className="version-modal-date">{versionData.date}</p>
             </div>
-            <div className="version-modal-changes">
-              {versionData.changes?.map((c, i) => (
-                <div key={i} className="version-change-item">
-                  <div className="version-change-icon">{c.icon}</div>
-                  <div>
-                    <div className="version-change-title">{c.title}</div>
-                    <div className="version-change-desc">{c.desc}</div>
+            
+            {versionData.image && (
+              <div className="version-modal-image-container">
+                <img 
+                  src={versionData.image} 
+                  alt={versionData.title || 'Actualización'} 
+                  className="version-modal-image" 
+                />
+              </div>
+            )}
+
+            {versionData.description || versionData.details ? (
+              <div className="version-modal-body">
+                {versionData.description && (
+                  <p className="version-modal-desc">{versionData.description}</p>
+                )}
+                {versionData.details && (
+                  <div className="version-details-list">
+                    {versionData.details.map((d, i) => (
+                      <div key={i} className="version-detail-item">
+                        <span className="version-detail-icon">{d.icon}</span>
+                        <span className="version-detail-text">{d.text}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            ) : (
+              <div className="version-modal-changes">
+                {versionData.changes?.map((c, i) => (
+                  <div key={i} className="version-change-item">
+                    <div className="version-change-icon">{c.icon}</div>
+                    <div>
+                      <div className="version-change-title">{c.title}</div>
+                      <div className="version-change-desc">{c.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button className="version-modal-close-btn" onClick={() => setShowVersionModal(false)}>
               Entendido 🎉
             </button>
