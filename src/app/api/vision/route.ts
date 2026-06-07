@@ -2,7 +2,7 @@ export const maxDuration = 90;
 
 export async function POST(req: Request) {
   try {
-    const { messages, imageBase64, persona, customInstructions, model, isAgent } = await req.json();
+    const { messages = [], imageBase64, persona, customInstructions, model, isAgent } = await req.json();
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
@@ -114,7 +114,7 @@ Stickers disponibles según contexto:
 - 🥰 cuando alguien te muestra algo tierno (mascota, niño, regalo)
 - 😂 cuando lo que ves te causa risa
 - 🔥 cuando ves algo genial / impresionante
-- 🥺 cuando ves a alguien triste o algo conmovedor
+- 🥺 cuando ver a alguien triste o algo conmovedor
 - 👏 felicitando un logro visible (graduación, deporte, comida bonita)
 - 🤔 cuando dudas o algo te llama la atención
 NO uses stickers en respuestas que requieran info concreta (recetas, nutrición, ayuda médica).
@@ -141,6 +141,8 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
 - NUNCA uses líneas separadoras (---), son ruido visual
 - EVITA tablas (|col|col|) salvo que sean estrictamente necesarias. Prefiere listas con guiones`;
 
+    const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
+
     // Build DeepSeek messages with Claude's image analysis injected
     const history = messages
       .slice(0, -1)
@@ -148,7 +150,7 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
       .map((m: any) => ({ role: m.role, content: String(m.content) }));
 
     const deepseekMessages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: isAgent ? jsonSystemPrompt : systemPrompt },
       ...history,
       {
         role: 'user',
@@ -157,8 +159,6 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
     ];
 
     if (isAgent) {
-      const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
-      
       const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {
@@ -167,14 +167,7 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
         },
         body: JSON.stringify({
           model: actualModel,
-          messages: [
-            { role: 'system', content: jsonSystemPrompt },
-            ...history,
-            {
-              role: 'user',
-              content: `[ANÁLISIS VISUAL DE LA IMAGEN ADJUNTA]\n${claudeAnalysis}\n[FIN DEL ANÁLISIS]\n\n${lastUserMsg}`
-            }
-          ],
+          messages: deepseekMessages,
           response_format: { type: 'json_object' },
           stream: false
         })
@@ -190,7 +183,25 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
       }
 
       const resData = await deepseekRes.json();
-      const content = resData.choices?.[0]?.message?.content || '{}';
+      let content = resData.choices?.[0]?.message?.content || '{"messages":[]}';
+
+      // Sanitize: strip markdown code fences if present
+      content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      // Validate JSON — if the model returned non-JSON text, wrap it
+      try {
+        const parsed = JSON.parse(content);
+        // Ensure it has the expected shape
+        if (!parsed.messages || !Array.isArray(parsed.messages)) {
+          // Maybe the model returned { "content": "..." } or just a string
+          const fallbackText = parsed.content || parsed.message || parsed.text || content;
+          content = JSON.stringify({ messages: [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)] });
+        }
+      } catch {
+        // Not valid JSON at all — wrap the raw text as a single message
+        content = JSON.stringify({ messages: [content] });
+      }
+
       return new Response(content, {
         headers: {
           'Content-Type': 'application/json; charset=utf-8'

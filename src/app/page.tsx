@@ -2267,14 +2267,21 @@ export default function Home() {
       }
 
       if (isAgent) {
-        const data = await res.json();
+        let data;
+        const resClone = res.clone();
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          const text = await resClone.text().catch(() => '');
+          data = { messages: [text || 'Error al procesar la respuesta del agente'] };
+        }
         let fragments = [];
         if (data.messages && Array.isArray(data.messages)) {
           fragments = data.messages;
         } else if (data.content) {
           fragments = [data.content];
         } else {
-          fragments = [JSON.stringify(data)];
+          fragments = [typeof data === 'string' ? data : JSON.stringify(data)];
         }
 
         const elapsed = Date.now() - startTime;
@@ -4435,7 +4442,8 @@ export default function Home() {
                       const isArtifactComplete = displayContent.includes('</artifact>') || displayContent.includes('</artifact_html>');
                       const isLastMsg = i === displayMessages.length - 1;
                       const isReady = !isThinking || !isLastMsg;
-                      const showActions = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete) && !activeAgent;
+                      const showFeedback = msg.role === 'assistant' && isReady && (!showArtifact || isArtifactComplete);
+                      const showActions = showFeedback && !activeAgent;
                       
                       const hasImgLoading = currentBody.includes('__IMG_LOADING__');
                       const [bodyBefore, bodyAfter] = hasImgLoading
@@ -4608,7 +4616,8 @@ export default function Home() {
                             )}
                           </div>
                           
-                          {showActions && (
+                          {/* Feedback: like/dislike — siempre visibles para msgs del asistente */}
+                          {showFeedback && (
                             <div className="message-actions message-actions-subtle" style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
                               <button
                                 className="action-btn hover-bg"
@@ -4626,55 +4635,55 @@ export default function Home() {
                               >
                                 <ThumbsDown size={16} fill={msg.feedback === 'dislike' ? '#ef4444' : 'none'} />
                               </button>
-                              
-                              {/* Download button for images or artifacts */}
-                              {(displayContent.includes('![') || showArtifact) && (
-                                <button className="action-btn hover-bg" title="Descargar" onClick={() => {
-                                  const imgMatch = displayContent.match(/!\[.*?\]\((.*?)\)/);
-                                  if (imgMatch && imgMatch[1]) {
-                                    // It's an image
-                                    downloadImage(imgMatch[1]);
-                                  } else if (showArtifact && isArtifactComplete) {
-                                    // It's an artifact, open the modal to preview/download
-                                    setArtifactModal(artifactContent);
-                                  }
-                                }}><Download size={16} /></button>
-                              )}
 
-                              {/* Only show regenerate for the last assistant message */}
-                              {displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && (
-                                <button className="action-btn hover-bg" title="Regenerar respuesta" onClick={() => {
-                                  // Find the last user message
-                                  const lastUserMsg = displayMessages.slice().reverse().find(m => m.role === 'user');
-                                  if (lastUserMsg && currentChatId) {
-                                    // Remove the last assistant message
-                                    setChats(prev => {
-                                      const updated = [...prev];
-                                      const chatIndex = updated.findIndex(c => c.id === currentChatId);
-                                      if (chatIndex !== -1) {
-                                        updated[chatIndex].messages = updated[chatIndex].messages.slice(0, -1);
+                              {/* Resto de acciones: solo en chat normal (sin agente) */}
+                              {showActions && (
+                                <>
+                                  {/* Download button for images or artifacts */}
+                                  {(displayContent.includes('![') || showArtifact) && (
+                                    <button className="action-btn hover-bg" title="Descargar" onClick={() => {
+                                      const imgMatch = displayContent.match(/!\[.*?\]\((.*?)\)/);
+                                      if (imgMatch && imgMatch[1]) {
+                                        downloadImage(imgMatch[1]);
+                                      } else if (showArtifact && isArtifactComplete) {
+                                        setArtifactModal(artifactContent);
                                       }
-                                      return updated;
-                                    });
-                                    setDisplayMessages(prev => prev.slice(0, -1));
-                                    // Trigger send again
-                                    handleSendMessage(lastUserMsg.content);
-                                  }
-                                }}><RotateCw size={16} /></button>
+                                    }}><Download size={16} /></button>
+                                  )}
+
+                                  {/* Only show regenerate for the last assistant message */}
+                                  {displayMessages.length > 0 && msg.id === displayMessages[displayMessages.length - 1].id && (
+                                    <button className="action-btn hover-bg" title="Regenerar respuesta" onClick={() => {
+                                      const lastUserMsg = displayMessages.slice().reverse().find(m => m.role === 'user');
+                                      if (lastUserMsg && currentChatId) {
+                                        setChats(prev => {
+                                          const updated = [...prev];
+                                          const chatIndex = updated.findIndex(c => c.id === currentChatId);
+                                          if (chatIndex !== -1) {
+                                            updated[chatIndex].messages = updated[chatIndex].messages.slice(0, -1);
+                                          }
+                                          return updated;
+                                        });
+                                        setDisplayMessages(prev => prev.slice(0, -1));
+                                        handleSendMessage(lastUserMsg.content);
+                                      }
+                                    }}><RotateCw size={16} /></button>
+                                  )}
+                                  
+                                  <button className="action-btn hover-bg" title="Compartir" onClick={() => {
+                                    if (navigator.share) {
+                                      navigator.share({ title: 'Chimuelo', text: displayContent }).catch(() => {});
+                                    } else {
+                                      navigator.clipboard.writeText(displayContent);
+                                      showToast('Copiado al portapapeles');
+                                    }
+                                  }}><Share2 size={16} /></button>
+                                  <button className="action-btn hover-bg" title="Copiar" onClick={() => {
+                                    navigator.clipboard.writeText(displayContent);
+                                    showToast('Copiado al portapapeles');
+                                  }}><Copy size={16} /></button>
+                                </>
                               )}
-                              
-                              <button className="action-btn hover-bg" title="Compartir" onClick={() => {
-                                if (navigator.share) {
-                                  navigator.share({ title: 'Chimuelo', text: displayContent }).catch(() => {});
-                                } else {
-                                  navigator.clipboard.writeText(displayContent);
-                                  showToast('Copiado al portapapeles');
-                                }
-                              }}><Share2 size={16} /></button>
-                              <button className="action-btn hover-bg" title="Copiar" onClick={() => {
-                                navigator.clipboard.writeText(displayContent);
-                                showToast('Copiado al portapapeles');
-                              }}><Copy size={16} /></button>
                             </div>
                           )}
                           {isLastMsg && !isThinking && msg.role === 'assistant' && aiSuggestion && (
