@@ -135,11 +135,11 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
 - COMIENZA con un título # H1 grande que resuma el tema cuando estés analizando una imagen (ej. "# Análisis de lo que estás consumiendo 🥩" o "# Información del producto").
 - Usa ## para subsecciones principales y ### para detalles
 - Usa **negritas** para términos clave, nombres, ingredientes, productos
-- Usa listas (- o 1.) para enumerar múltiples elementos del mismo tipo
+- Usa listas con guiones (-) para elementos normales y listas numeradas (1. 2. 3.) para planes, guías paso a paso o cronogramas (se renderizan como una hermosa línea de tiempo con círculos numerados y conectores punteados)
 - Usa emojis al inicio de secciones como anclas visuales (ej: ✅ ⚠️ 💡 🔴 🟡 🟢)
 - Párrafos cortos (máximo 2-3 líneas), evita bloques de texto densos
 - NUNCA uses líneas separadoras (---), son ruido visual
-- EVITA tablas (|col|col|) salvo que sean estrictamente necesarias. Prefiere listas con guiones`;
+- Usa tablas markdown (|col|col|) para presentar planes estructurados, resúmenes o datos comparativos de manera limpia, moderna y profesional (se renderizan sin bordes verticales y con la primera columna destacada)`;
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 

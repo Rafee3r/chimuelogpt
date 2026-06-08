@@ -1670,7 +1670,72 @@ a {
 .markdown-body strong { font-weight: 650; }
 .markdown-body em { font-style: italic; }
 
-.markdown-body ul, .markdown-body ol { padding-left: 1.6rem; margin-bottom: 1rem; }
+.markdown-body ul { padding-left: 1.6rem; margin-bottom: 1rem; }
+.markdown-body ol {
+  list-style: none;
+  padding-left: 2rem;
+  counter-reset: timeline-counter;
+  position: relative;
+  margin-bottom: 1rem;
+}
+.markdown-body ol > li {
+  position: relative;
+  counter-increment: timeline-counter;
+  padding-bottom: 18px;
+  list-style: none;
+  line-height: 1.7;
+}
+.markdown-body ol > li:last-child {
+  padding-bottom: 0;
+}
+.markdown-body ol > li::before {
+  content: counter(timeline-counter);
+  position: absolute;
+  left: -26px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  z-index: 2;
+}
+.chat-area.whatsapp-mode .message.user .markdown-body ol > li::before {
+  background-color: var(--wa-user-bubble-bg) !important;
+}
+.chat-area.whatsapp-mode .message.assistant .markdown-body ol > li::before {
+  background-color: var(--wa-agent-bubble-bg) !important;
+}
+.markdown-body ol > li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 23px;
+  bottom: -5px;
+  border-left: 1px dotted var(--text-secondary);
+  opacity: 0.5;
+  z-index: 1;
+}
+.markdown-body ol > li ol {
+  padding-left: 1.6rem;
+  list-style: decimal;
+  margin-top: 0.5rem;
+}
+.markdown-body ol > li ol > li::before { content: none; }
+.markdown-body ol > li ol > li::after { content: none; }
+.markdown-body ol > li ul {
+  padding-left: 1.6rem;
+  list-style: disc;
+  margin-top: 0.5rem;
+}
+.markdown-body ol > li ul > li::before { content: none; }
+.markdown-body ol > li ul > li::after { content: none; }
 .markdown-body li { margin-bottom: 0.3rem; line-height: 1.7; }
 .markdown-body li > p { margin-bottom: 0.4rem; }
 
@@ -1711,18 +1776,38 @@ a {
 }
 
 .markdown-body table {
-  border-spacing: 0; border-collapse: collapse; margin-bottom: 1rem;
+  border-spacing: 0;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
   display: block;
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-.markdown-body table th, .markdown-body table td {
-  padding: 6px 13px; border: 1px solid var(--border-color); white-space: normal; word-break: break-word;
+.markdown-body table th {
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border-color);
+  font-weight: 600;
+  text-align: left;
+  color: var(--text-primary);
 }
-.markdown-body table tr:nth-child(2n) {
-  background-color: var(--input-bg);
+.markdown-body table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  white-space: normal;
+  word-break: break-word;
+}
+.markdown-body table td:first-child {
+  font-weight: 600;
+}
+.markdown-body table tr {
+  background-color: transparent !important;
+}
+.markdown-body table tr:last-child td {
+  border-bottom: none;
 }
 .markdown-body table::-webkit-scrollbar { height: 6px; }
 .markdown-body table::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
