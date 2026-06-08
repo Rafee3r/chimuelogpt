@@ -166,15 +166,23 @@ INSTRUCCIONES PARA EL HTML:
       // Validate JSON — if the model returned non-JSON text, wrap it
       try {
         const parsed = JSON.parse(content);
-        // Ensure it has the expected shape
-        if (!parsed.messages || !Array.isArray(parsed.messages)) {
-          // Maybe the model returned { "content": "..." } or just a string
-          const fallbackText = parsed.content || parsed.message || parsed.text || content;
+        // Ensure it has the expected shape and contains non-empty fragments
+        if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
+          const fallbackText = parsed.content || parsed.message || parsed.text || "Pucha, no sé qué responder a eso...";
           content = JSON.stringify({ messages: [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)] });
+        } else {
+          // Filter out empty/whitespace-only messages
+          const activeMsgs = parsed.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
+          if (activeMsgs.length === 0) {
+            content = JSON.stringify({ messages: ["Pucha, no sé qué responder a eso..."] });
+          } else {
+            content = JSON.stringify({ messages: activeMsgs });
+          }
         }
       } catch {
         // Not valid JSON at all — wrap the raw text as a single message
-        content = JSON.stringify({ messages: [content] });
+        const trimmedContent = content.trim();
+        content = JSON.stringify({ messages: [trimmedContent || "Pucha, no sé qué responder a eso..."] });
       }
 
       return new Response(content, {

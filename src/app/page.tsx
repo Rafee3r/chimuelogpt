@@ -3543,7 +3543,7 @@ export default function Home() {
       })()}
 
       <div className="main-content">
-        <div className="mobile-header" style={{ display: viewMode === 'settings' ? 'none' : undefined, position: 'relative', justifyContent: 'center' }}>
+        <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, position: 'relative', justifyContent: 'center' }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>

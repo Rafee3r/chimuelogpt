@@ -786,6 +786,11 @@ a {
 
 @media (min-width: 768px) {
   .mobile-header {
+    display: flex;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .mobile-header .icon-btn {
     display: none;
   }
 }
@@ -900,7 +905,7 @@ a {
   min-width: 0;
   max-width: 100%;
   line-height: 1.6;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 /* Only the user text has a slight bubble in modern design */
@@ -1714,7 +1719,7 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 .markdown-body table th, .markdown-body table td {
-  padding: 6px 13px; border: 1px solid var(--border-color); white-space: nowrap;
+  padding: 6px 13px; border: 1px solid var(--border-color); white-space: normal; word-break: break-word;
 }
 .markdown-body table tr:nth-child(2n) {
   background-color: var(--input-bg);
