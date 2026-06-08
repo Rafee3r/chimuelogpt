@@ -1707,7 +1707,14 @@ export default function Home() {
     const chat = chats.find(c => c.id === chatId);
     if (!chat || chat.id !== currentChatIdRef.current || !chat.agentId) return;
 
+    // Guardar el ID del último mensaje al iniciar el nudge
+    const triggerMsgId = chat.messages[chat.messages.length - 1]?.id;
+    if (!triggerMsgId) return;
+
     setAgentTyping(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const historyMsgs = (chat.messages || [])
@@ -1727,7 +1734,8 @@ export default function Home() {
           customInstructions: nudgeSystemPrompt,
           isAgent: true,
           thinkingLevel
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!res.ok) throw new Error("Failed to get nudge response");
@@ -1735,9 +1743,19 @@ export default function Home() {
       const data = await res.json();
       const fragments = data.messages || [data.content || ''];
       
-      const nudgeText = fragments[0] || '¿todo bien?';
+      const rawNudge = (fragments[0] || '').trim();
+      const nudgeText = rawNudge.length > 0 ? rawNudge : '¿todo bien?';
       const typingDuration = Math.max(1000, Math.min(2500, nudgeText.length * 40));
       await new Promise(resolve => setTimeout(resolve, typingDuration));
+
+      if (currentChatIdRef.current !== chatId) return;
+      
+      // Validar que el último mensaje siga siendo el mismo y el usuario no haya escrito en el intertanto
+      const latestChat = chats.find(c => c.id === chatId);
+      const latestMsgId = latestChat?.messages[latestChat.messages.length - 1]?.id;
+      if (latestMsgId !== triggerMsgId) {
+        return; // El usuario escribió o el estado cambió, descartamos el nudge
+      }
 
       const nudgeMsgId = (Date.now() + Math.random()).toString();
       const nudgeMsg: BaseMessage = {
@@ -1762,14 +1780,20 @@ export default function Home() {
       if (currentChatIdRef.current === chatId) {
         setDisplayMessages(prev => [...prev, nudgeMsg]);
       }
-    } catch (e) {
-      console.error("Error generating agent nudge:", e);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        console.error("Error generating agent nudge:", e);
+      }
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setAgentTyping(false);
     }
   };
 
   useEffect(() => {
+    if (isThinking || agentTyping) return;
     const chat = chats.find(c => c.id === currentChatId);
     const isAgent = !!chat?.agentId;
     if (!isAgent || !currentChatId) return;
@@ -1777,12 +1801,16 @@ export default function Home() {
     const lastMsg = displayMessages[displayMessages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant') return;
 
+    // Evitar nudges consecutivos: solo nudgema si el mensaje previo al último es del usuario
+    const prevMsg = displayMessages[displayMessages.length - 2];
+    if (prevMsg && prevMsg.role !== 'user') return;
+
     const timer = setTimeout(() => {
       triggerAgentNudge(currentChatId);
-    }, 35000);
+    }, 60000); // 60 segundos de inactividad
 
     return () => clearTimeout(timer);
-  }, [currentChatId, displayMessages, chats]);
+  }, [currentChatId, displayMessages, chats, isThinking, agentTyping]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -2286,11 +2314,16 @@ export default function Home() {
         }
         let fragments = [];
         if (data.messages && Array.isArray(data.messages)) {
-          fragments = data.messages;
+          fragments = data.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
         } else if (data.content) {
-          fragments = [data.content];
+          fragments = [String(data.content).trim()].filter((m: string) => m.length > 0);
         } else {
-          fragments = [typeof data === 'string' ? data : JSON.stringify(data)];
+          const text = typeof data === 'string' ? data.trim() : JSON.stringify(data).trim();
+          fragments = [text].filter((m: string) => m.length > 0);
+        }
+
+        if (fragments.length === 0) {
+          fragments = ['Error al procesar la respuesta del agente (mensaje vacío)'];
         }
 
         const elapsed = Date.now() - startTime;

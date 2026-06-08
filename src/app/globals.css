@@ -6321,17 +6321,51 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
 }
 
+.chat-area.whatsapp-mode .message {
+  padding: 4px 6% !important;
+  display: flex !important;
+  width: 100% !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.chat-area.whatsapp-mode .message.user {
+  justify-content: flex-end !important;
+}
+
+.chat-area.whatsapp-mode .message.assistant {
+  justify-content: flex-start !important;
+}
+
+.chat-area.whatsapp-mode .message-content-wrapper {
+  max-width: 75% !important;
+  width: auto !important;
+  display: flex !important;
+  gap: 0px !important;
+}
+
+.chat-area.whatsapp-mode .message.user .message-content-wrapper {
+  justify-content: flex-end !important;
+  flex-direction: row-reverse !important;
+}
+
+.chat-area.whatsapp-mode .message.assistant .message-content-wrapper {
+  justify-content: flex-start !important;
+  flex-direction: row !important;
+}
+
 /* Burbuja de usuario: verde WhatsApp */
 .chat-area.whatsapp-mode .message.user .message-text {
   background: var(--wa-user-bubble-bg) !important;
   color: var(--wa-text-primary) !important;
   border-radius: 7.5px !important;
   padding: 6px 7px 8px 9px !important;
-  max-width: 65% !important;
+  max-width: 100% !important;
   box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13) !important;
   position: relative;
   font-size: 15px !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+  border: none !important;
 }
 [data-theme="dark"] .chat-area.whatsapp-mode .message.user .message-text,
 [data-theme="oled"] .chat-area.whatsapp-mode .message.user .message-text {
@@ -6492,13 +6526,14 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   color: var(--wa-text-primary) !important;
   border-radius: 7.5px !important;
   padding: 6px 7px 8px 9px !important;
-  max-width: 65% !important;
+  max-width: 100% !important;
   box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13) !important;
   align-self: flex-start;
   width: auto !important;
   font-size: 15px !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   position: relative;
+  border: none !important;
 }
 [data-theme="dark"] .chat-area.whatsapp-mode .message.assistant .message-text,
 [data-theme="oled"] .chat-area.whatsapp-mode .message.assistant .message-text {
