@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -4879,12 +4879,6 @@ export default function Home() {
               <input type="file" accept="image/*,.pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
-                <button className="v2-attach-btn" title="Subir imagen o documento" onClick={() => fileInputRef.current?.click()}>
-                  <div className="v2-attach-icon-wrapper">
-                    <Plus size={20} />
-                  </div>
-                </button>
-                
                 <textarea
                   ref={textareaRef}
                   className="v2-input-textarea"
@@ -4894,40 +4888,52 @@ export default function Home() {
                   onKeyDown={handleKeyDown}
                   rows={1}
                 />
-
-                {(() => {
-                  const hasInput = !!(inputMessage.trim() || attachedImage || attachedDoc);
-                  if (isThinking) {
-                    return (
-                      <button
-                        className="v2-send-btn stop active"
-                        onClick={stopGeneration}
-                        title="Detener generación"
-                      >
-                        <Square size={16} fill="currentColor" />
-                      </button>
-                    );
-                  }
-                  // Sin texto: solo mic. Con texto: solo send.
-                  return hasInput ? (
-                    <button
-                      className="v2-send-btn active"
-                      onClick={() => handleSendMessage()}
-                      title="Enviar mensaje"
-                    >
-                      <Send size={18} />
+                
+                <div className="v2-input-actions-row">
+                  <div className="v2-input-actions-left">
+                    <button className="v2-attach-btn" title="Subir imagen o documento" onClick={() => fileInputRef.current?.click()}>
+                      <div className="v2-attach-icon-wrapper">
+                        <Plus size={20} />
+                      </div>
                     </button>
-                  ) : (
+                  </div>
+                  
+                  <div className="v2-input-actions-right">
                     <button
-                      className={`v2-mic-btn solo ${isRecording ? 'recording' : ''}`}
+                      className={`v2-mic-btn ${isRecording ? 'recording' : ''}`}
                       onClick={toggleVoiceInput}
                       title={isRecording ? 'Detener grabación' : 'Mensaje de voz'}
                       type="button"
                     >
                       {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
                     </button>
-                  );
-                })()}
+
+                    {(() => {
+                      const hasInput = !!(inputMessage.trim() || attachedImage || attachedDoc);
+                      if (isThinking) {
+                        return (
+                          <button
+                            className="v2-send-btn stop active"
+                            onClick={stopGeneration}
+                            title="Detener generación"
+                          >
+                            <Square size={14} fill="currentColor" />
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          className={`v2-send-btn ${hasInput ? 'active' : ''}`}
+                          onClick={hasInput ? () => handleSendMessage() : undefined}
+                          title="Enviar mensaje"
+                          disabled={!hasInput}
+                        >
+                          <ArrowUp size={20} />
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
             </div>
             
