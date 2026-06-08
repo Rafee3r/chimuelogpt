@@ -6374,7 +6374,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 
 .chat-area.whatsapp-mode .message {
-  padding: 4px 6% !important;
+  padding: 4px 16px !important;
   display: flex !important;
   width: 100% !important;
   background-color: transparent !important;
@@ -6418,6 +6418,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   font-size: 15px !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   border: none !important;
+  overflow: visible !important;
 }
 [data-theme="dark"] .chat-area.whatsapp-mode .message.user .message-text,
 [data-theme="oled"] .chat-area.whatsapp-mode .message.user .message-text {
@@ -6586,6 +6587,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   position: relative;
   border: none !important;
+  overflow: visible !important;
 }
 [data-theme="dark"] .chat-area.whatsapp-mode .message.assistant .message-text,
 [data-theme="oled"] .chat-area.whatsapp-mode .message.assistant .message-text {

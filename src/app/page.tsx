@@ -4688,8 +4688,8 @@ export default function Home() {
                             )}
                           </div>
                           
-                          {/* Feedback: like/dislike — siempre visibles para msgs del asistente */}
-                          {showFeedback && (
+                          {/* Feedback: like/dislike — siempre visibles para msgs del asistente en chat normal */}
+                          {showFeedback && !activeAgent && (
                             <div className="message-actions message-actions-subtle" style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
                               <button
                                 className="action-btn hover-bg"
