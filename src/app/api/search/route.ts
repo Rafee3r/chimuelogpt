@@ -30,7 +30,10 @@ export async function POST(req: Request) {
     }
 
     const data = await res.json();
-    return NextResponse.json({ results: data.results || [] });
+    return NextResponse.json({
+      results: data.results || [],
+      answer: data.answer || ''
+    });
 
   } catch (error: any) {
     console.error('Search API Error:', error);

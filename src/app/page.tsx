@@ -6,10 +6,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 /* ─────────── v2.0 Performance: Memoized markdown per message ─────────── */
-const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, codeRenderer }: {
+const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, codeRenderer, onPromptClick }: {
   content: string;
   imgRenderer: any;
   codeRenderer: any;
+  onPromptClick?: (prompt: string) => void;
 }) {
   const processedContent = useMemo(() => {
     if (!content) return '';
@@ -45,9 +46,11 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
         img: imgRenderer,
         code: codeRenderer,
         a: ({ href, children, ...props }: any) => {
-          const isPrompt = href?.startsWith('?prompt=');
+          const isPrompt = href?.startsWith('?prompt=') || href?.startsWith('prompt:');
           if (isPrompt) {
-            const promptText = decodeURIComponent(href.slice(8));
+            const promptText = href.startsWith('?prompt=')
+              ? decodeURIComponent(href.slice(8))
+              : decodeURIComponent(href.slice(7));
 
             // Helper to robustly extract plain text from React nodes / nested children
             const extractText = (node: any): string => {
@@ -62,9 +65,19 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
             };
 
             let label = extractText(children).trim();
+            
+            const handleClick = (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onPromptClick) {
+                onPromptClick(promptText);
+              }
+            };
+
             return (
               <a 
                 href={href} 
+                onClick={handleClick}
                 data-prompt={promptText}
                 className="interactive-prompt-btn"
               >
@@ -79,7 +92,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
       {processedContent}
     </ReactMarkdown>
   );
-}, (prev, next) => prev.content === next.content);
+}, (prev, next) => prev.content === next.content && prev.onPromptClick === next.onPromptClick);
 
 /* ─────────── v2.0 Code block with copy button ─────────── */
 function CodeBlock({ inline, className, children, ...props }: any) {
@@ -2336,17 +2349,27 @@ export default function Home() {
           let fragment = fragments[fIdx];
 
           if (fragment.includes('<search_web>')) {
-            const searchMatch = fragment.match(/<search_web>([\s\S]*?)<\/search_web>/i);
+            const searchMatch = fragment.match(/<search_web>([\s\S]*?)(?:<\/search_web>|$)/i);
             if (searchMatch?.[1]) {
               const searchQuery = searchMatch[1].trim();
               setAgentTyping(true);
+              
+              const searchController = new AbortController();
+              const onMainAbortAgentSearch = () => searchController.abort();
+              controller.signal.addEventListener('abort', onMainAbortAgentSearch);
+              const searchTimeoutId = setTimeout(() => searchController.abort(), 15000);
+              
               try {
                 const searchRes = await fetch('/api/search', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ query: searchQuery }),
-                  signal: controller.signal,
+                  signal: searchController.signal,
                 });
+                
+                clearTimeout(searchTimeoutId);
+                controller.signal.removeEventListener('abort', onMainAbortAgentSearch);
+                
                 if (searchRes.ok) {
                   const { results = [], answer } = await searchRes.json();
                   const answerBlock = answer ? `RESPUESTA DIRECTA DE BÚSQUEDA: ${answer}\n\n` : '';
@@ -2360,12 +2383,22 @@ export default function Home() {
                     { role: 'assistant' as const, content: `[Búsqueda web realizada: "${searchQuery}"]` },
                     { role: 'user' as const, content: `${answerBlock}RESULTADOS DE BÚSQUEDA WEB:\n\n${formattedResults}\n\nINSTRUCCIONES: Responde la pregunta del usuario con base en estos resultados. Sé completo y detallado. Cita las fuentes con sus URLs al final.` }
                   ];
+                  
+                  const searchChatController = new AbortController();
+                  const onMainAbortAgentChat = () => searchChatController.abort();
+                  controller.signal.addEventListener('abort', onMainAbortAgentChat);
+                  const searchChatTimeoutId = setTimeout(() => searchChatController.abort(), 25000);
+                  
                   const searchApiRes = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: finalSystemPrompt, isAgent: true }),
-                    signal: controller.signal,
+                    signal: searchChatController.signal,
                   });
+                  
+                  clearTimeout(searchChatTimeoutId);
+                  controller.signal.removeEventListener('abort', onMainAbortAgentChat);
+                  
                   if (searchApiRes.ok) {
                     const searchData = await searchApiRes.json();
                     if (searchData.messages && Array.isArray(searchData.messages)) {
@@ -2373,11 +2406,28 @@ export default function Home() {
                       fragment = fragments[fIdx];
                     } else if (searchData.content) {
                       fragment = searchData.content;
+                    } else {
+                      fragment = '*(El agente de búsqueda no pudo responder)*';
                     }
+                  } else {
+                    const errText = await searchApiRes.text().catch(() => '');
+                    fragment = `*(Error al generar respuesta del agente: ${searchApiRes.status} ${errText.slice(0, 100)})*`;
                   }
+                } else {
+                  const errText = await searchRes.text().catch(() => '');
+                  fragment = `*(Error al completar la búsqueda del agente: ${searchRes.status} ${errText.slice(0, 100)})*`;
                 }
-              } catch (searchErr) {
-                console.error("Search error in agent simulation:", searchErr);
+              } catch (searchErr: any) {
+                clearTimeout(searchTimeoutId);
+                controller.signal.removeEventListener('abort', onMainAbortAgentSearch);
+                if (controller.signal.aborted) {
+                  throw searchErr;
+                }
+                if (searchErr?.name === 'AbortError') {
+                  fragment = '*(Tiempo de espera agotado al buscar en internet)*';
+                } else {
+                  fragment = `*(Error de búsqueda web del agente: ${searchErr.message || searchErr})*`;
+                }
               }
             }
           }
@@ -2593,19 +2643,29 @@ export default function Home() {
 
       // Post-process: intercept web search tags
       if (cleanContent.includes('<search_web>')) {
-        const searchMatch = cleanContent.match(/<search_web>([\s\S]*?)<\/search_web>/i);
+        const searchMatch = cleanContent.match(/<search_web>([\s\S]*?)(?:<\/search_web>|$)/i);
         if (searchMatch?.[1]) {
           const searchQuery = searchMatch[1].trim();
           if (currentChatIdRef.current === targetChatId) {
             setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_SEARCHING__' } : m));
           }
+          
+          const searchController = new AbortController();
+          const onMainAbortSearch = () => searchController.abort();
+          controller.signal.addEventListener('abort', onMainAbortSearch);
+          const searchTimeoutId = setTimeout(() => searchController.abort(), 15000);
+          
           try {
             const searchRes = await fetch('/api/search', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ query: searchQuery }),
-              signal: controller.signal,
+              signal: searchController.signal,
             });
+            
+            clearTimeout(searchTimeoutId);
+            controller.signal.removeEventListener('abort', onMainAbortSearch);
+            
             if (searchRes.ok) {
               const { results = [], answer } = await searchRes.json();
               const answerBlock = answer ? `RESPUESTA DIRECTA DE BÚSQUEDA: ${answer}\n\n` : '';
@@ -2619,12 +2679,22 @@ export default function Home() {
                 { role: 'assistant' as const, content: `[Búsqueda web realizada: "${searchQuery}"]` },
                 { role: 'user' as const, content: `${answerBlock}RESULTADOS DE BÚSQUEDA WEB:\n\n${formattedResults}\n\nINSTRUCCIONES: Responde la pregunta del usuario con base en estos resultados. Sé completo y detallado. Cita las fuentes con sus URLs al final.` }
               ];
+              
+              const searchChatController = new AbortController();
+              const onMainAbortChat = () => searchChatController.abort();
+              controller.signal.addEventListener('abort', onMainAbortChat);
+              const searchChatTimeoutId = setTimeout(() => searchChatController.abort(), 25000);
+              
               const searchApiRes = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: finalSystemPrompt }),
-                signal: controller.signal,
+                signal: searchChatController.signal,
               });
+              
+              clearTimeout(searchChatTimeoutId);
+              controller.signal.removeEventListener('abort', onMainAbortChat);
+              
               if (searchApiRes.ok) {
                 const searchReader = searchApiRes.body!.getReader();
                 const searchDecoder = new TextDecoder();
@@ -2640,14 +2710,23 @@ export default function Home() {
                 }
                 cleanContent = '__WEB_BADGE__\n\n' + searchFull.replace(/<think>[\s\S]*?<\/think>/, '').trim();
               } else {
-                cleanContent = '*(Error al generar respuesta con resultados de búsqueda)*';
+                const errText = await searchApiRes.text().catch(() => '');
+                cleanContent = `*(Error al generar respuesta con resultados de búsqueda: ${searchApiRes.status} ${errText.slice(0, 100)})*`;
               }
             } else {
-              cleanContent = '*(No se pudo completar la búsqueda web)*';
+              const errText = await searchRes.text().catch(() => '');
+              cleanContent = `*(No se pudo completar la búsqueda web: ${searchRes.status} ${errText.slice(0, 100)})*`;
             }
           } catch (searchErr: any) {
-            if (searchErr?.name !== 'AbortError') {
-              cleanContent = '*(Error de búsqueda web)*';
+            clearTimeout(searchTimeoutId);
+            controller.signal.removeEventListener('abort', onMainAbortSearch);
+            if (controller.signal.aborted) {
+              throw searchErr;
+            }
+            if (searchErr?.name === 'AbortError') {
+              cleanContent = '*(Tiempo de espera agotado al buscar en internet)*';
+            } else {
+              cleanContent = `*(Error de búsqueda web: ${searchErr.message || searchErr})*`;
             }
           }
         }
@@ -4554,7 +4633,7 @@ export default function Home() {
                             ) : hasImgLoading ? (
                               <>
                                 {bodyBefore.trim() && (
-                                  <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                  <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
                                 <div className="neon-image-card">
                                   <div className="neon-image-frame">
@@ -4567,13 +4646,13 @@ export default function Home() {
                                   </div>
                                 </div>
                                 {bodyAfter?.trim() && (
-                                  <MemoizedMarkdown content={bodyAfter} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                  <MemoizedMarkdown content={bodyAfter} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
                               </>
                             ) : hasMusicLoading ? (
                               <>
                                 {currentBody.split('__MUSIC_LOADING__')[0].trim() && (
-                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[0]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[0]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
                                 <div className="neon-music-card">
                                   <div className="neon-music-bars">
@@ -4587,13 +4666,13 @@ export default function Home() {
                                   </div>
                                 </div>
                                 {currentBody.split('__MUSIC_LOADING__')[1]?.trim() && (
-                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[1]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                  <MemoizedMarkdown content={currentBody.split('__MUSIC_LOADING__')[1]} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
                               </>
                             ) : hasMusicPlayer ? (
                               <>
                                 {bodyWithoutMusic && (
-                                  <MemoizedMarkdown content={bodyWithoutMusic} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                  <MemoizedMarkdown content={bodyWithoutMusic} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
                                 <MusicPlayer url={musicPlayerUrl} prompt={musicPlayerPrompt} />
                               </>
@@ -4610,7 +4689,7 @@ export default function Home() {
                                   <Search size={12} />
                                   <span>Resultado de búsqueda web</span>
                                 </div>
-                                <MemoizedMarkdown content={webBadgeBody} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />
+                                <MemoizedMarkdown content={webBadgeBody} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                               </>
                             ) : currentBody.match(/<sticker>([^<]+)<\/sticker>/) ? (
                               /* Sticker: emoji grande estilo WhatsApp */
@@ -4620,7 +4699,7 @@ export default function Home() {
                                 const restText = currentBody.replace(/<sticker>[^<]*<\/sticker>/, '').trim();
                                 return (
                                   <>
-                                    {restText && <MemoizedMarkdown content={restText} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} />}
+                                    {restText && <MemoizedMarkdown content={restText} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />}
                                     <div className="wa-sticker">{stickerEmoji}</div>
                                   </>
                                 );
@@ -4630,6 +4709,7 @@ export default function Home() {
                                 content={currentBody}
                                 imgRenderer={ImageRenderer}
                                 codeRenderer={CodeBlock}
+                                onPromptClick={handleSendMessage}
                               />
                             )}
                             {msg.role === 'assistant' && activeChat?.subjectId && (
