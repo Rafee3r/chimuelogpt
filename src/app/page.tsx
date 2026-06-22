@@ -16,7 +16,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ content, imgRenderer, 
     if (!content) return '';
     // Preprocess prompt links to URL-encode prompt queries containing spaces/brackets/newlines.
     // Matches any markdown link and universally detects if it contains "prompt" command.
-    return content.replace(/\[([^\]]+)\]\(\s*([^\)]*(?:\([^\)]*\)[^\)]*)*)\)/g, (match, label, urlPart) => {
+    return content.replace(/\[([^\]]+)\]\(\s*((?:prompt:|\?prompt=)[^()]*(?:\([^()]*\)[^()]*)*)\)/ig, (match, label, urlPart) => {
       const isPromptLink = /prompt/i.test(urlPart);
       if (!isPromptLink) {
         return match;
