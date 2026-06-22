@@ -3701,7 +3701,7 @@ export default function Home() {
             </button>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: viewMode === 'agents' ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button
               className="v2-header-model-btn"
               onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
@@ -4113,26 +4113,45 @@ export default function Home() {
         )}
 
         {/* ── Header WhatsApp del agente activo ── */}
-        {activeAgent && viewMode === 'chat' && (
-          <div className="wa-chat-header">
-            <button
-              className="wa-back-btn"
-              onClick={() => { setCurrentChatId(null); setDisplayMessages([]); setViewMode('agents'); }}
-              aria-label="Volver a agentes"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <div className="wa-header-avatar" style={{ background: activeAgent.bgColor }}>
-              <span>{activeAgent.emoji}</span>
-            </div>
-            <div className="wa-header-info">
-              <div className="wa-header-name">{activeAgent.name}</div>
-              <div className="wa-header-status">
-                <span className="wa-online-dot" /> en línea
+        {activeAgent && viewMode === 'chat' && (() => {
+          const hasConversation = displayMessages.some((m: any) => m.role === 'user');
+          const getLastWriteTime = () => {
+            if (displayMessages.length === 0) {
+              return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            }
+            const lastMsg = displayMessages[displayMessages.length - 1];
+            const ts = lastMsg?.timestamp || parseInt(lastMsg?.id) || Date.now();
+            return new Date(ts).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+          };
+          return (
+            <div className="wa-chat-header">
+              <button
+                className="wa-back-btn"
+                onClick={() => { setCurrentChatId(null); setDisplayMessages([]); setViewMode('agents'); }}
+                aria-label="Volver a agentes"
+              >
+                <ChevronLeft size={22} />
+              </button>
+              <div className="wa-header-avatar" style={{ background: activeAgent.bgColor }}>
+                <span>{activeAgent.emoji}</span>
+              </div>
+              <div className="wa-header-info">
+                <div className="wa-header-name">{activeAgent.name}</div>
+                <div className="wa-header-status">
+                  {agentTyping || isThinking ? (
+                    "escribiendo..."
+                  ) : hasConversation ? (
+                    <>
+                      <span className="wa-online-dot" /> en línea
+                    </>
+                  ) : (
+                    `últ. vez hoy a las ${getLastWriteTime()}`
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div ref={chatScrollRef}
           onScroll={(e) => {
@@ -4178,11 +4197,23 @@ export default function Home() {
               <div className="agents-list">
                 {(() => {
                   const filtered = [...AGENTS]
-                    .sort((a, b) => b.score - a.score)
                     .filter(a => !agentSearch.trim() ||
                       a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
                       a.tagline.toLowerCase().includes(agentSearch.toLowerCase()) ||
-                      a.description.toLowerCase().includes(agentSearch.toLowerCase()));
+                      a.description.toLowerCase().includes(agentSearch.toLowerCase()))
+                    .sort((a, b) => {
+                      const chatA = chats.find(c => c.agentId === a.id);
+                      const chatB = chats.find(c => c.agentId === b.id);
+                      const hasChatA = !!chatA && chatA.messages.length > 0;
+                      const hasChatB = !!chatB && chatB.messages.length > 0;
+
+                      if (hasChatA && !hasChatB) return -1;
+                      if (!hasChatA && hasChatB) return 1;
+                      if (hasChatA && hasChatB) {
+                        return (chatB?.updatedAt || 0) - (chatA?.updatedAt || 0);
+                      }
+                      return b.score - a.score;
+                    });
                   if (filtered.length === 0) {
                     return (
                       <div className="agents-empty">
@@ -4514,6 +4545,16 @@ export default function Home() {
               const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
 
               const isFirst = i === 0 || displayMessages[i - 1]?.role !== role;
+              const isShortText = activeAgent && 
+                                  displayContent.length < 100 &&
+                                  !displayContent.includes('\n') &&
+                                  !displayContent.includes('|') &&
+                                  !displayContent.includes('```') &&
+                                  !displayContent.includes('<artifact>') &&
+                                  !displayContent.includes('<artifact_html>') &&
+                                  (!msg.images || msg.images.length === 0) &&
+                                  (!msg.docs || msg.docs.length === 0);
+
               return (
               <div
                 key={msg.id}
@@ -4532,7 +4573,7 @@ export default function Home() {
                       <Cat size={24} />
                     </div>
                   )}
-                  <div className="message-text">
+                  <div className={`message-text ${isShortText ? 'wa-msg-short' : ''}`}>
                     {/* Render Multiple Docs if present, otherwise fallback to single docPlaceholder */}
                     {msg.docs && msg.docs.length > 0 ? (
                       <div className="attachments-docs-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
@@ -4991,10 +5032,9 @@ export default function Home() {
           )}
 
           {agentTyping && (
-            <div className="message assistant">
+            <div className="message assistant wa-message">
               <div className="message-content-wrapper">
                 <div className="message-text wa-typing-bubble">
-                  <span className="wa-typing-text">Escribiendo</span>
                   <span className="wa-typing-dots">
                     <span></span><span></span><span></span>
                   </span>

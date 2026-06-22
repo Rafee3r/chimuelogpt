@@ -144,7 +144,7 @@ INSTRUCCIONES PARA EL HTML:
               .filter((m: any) => m.role === 'user' || m.role === 'assistant')
               .map((m: any) => ({ role: m.role, content: m.content || '' }))
           ],
-          response_format: { type: 'json_object' },
+          ...(actualModel !== 'deepseek-v4-pro' ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
       });
@@ -161,30 +161,46 @@ INSTRUCCIONES PARA EL HTML:
       const resData = await deepseekRes.json();
       let content = resData.choices?.[0]?.message?.content || '{}';
 
+      // Extract reasoning/thinking if present
+      let reasoning = '';
+      const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+      if (thinkMatch) {
+        reasoning = thinkMatch[1].trim();
+        content = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+      }
+
       // Sanitize: strip markdown code fences if present
       content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
       // Validate JSON — if the model returned non-JSON text, wrap it
+      let messagesArray: string[] = [];
       try {
         const parsed = JSON.parse(content);
-        // Ensure it has the expected shape and contains non-empty fragments
-        if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
-          const fallbackText = parsed.content || parsed.message || parsed.text || "Pucha, no sé qué responder a eso...";
-          content = JSON.stringify({ messages: [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)] });
+        if (parsed.messages && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+          messagesArray = parsed.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
         } else {
-          // Filter out empty/whitespace-only messages
-          const activeMsgs = parsed.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
-          if (activeMsgs.length === 0) {
-            content = JSON.stringify({ messages: ["Pucha, no sé qué responder a eso..."] });
-          } else {
-            content = JSON.stringify({ messages: activeMsgs });
+          const fallbackText = parsed.content || parsed.message || parsed.text;
+          if (fallbackText) {
+            messagesArray = [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)];
           }
         }
       } catch {
-        // Not valid JSON at all — wrap the raw text as a single message
-        const trimmedContent = content.trim();
-        content = JSON.stringify({ messages: [trimmedContent || "Pucha, no sé qué responder a eso..."] });
+        const trimmed = content.trim();
+        if (trimmed) {
+          messagesArray = [trimmed];
+        }
       }
+
+      if (messagesArray.length === 0) {
+        messagesArray = ["Pucha, no sé qué responder a eso..."];
+      }
+
+      // If reasoning was found, prepend it to the first message block so frontend handles it
+      if (reasoning) {
+        messagesArray[0] = `<think>${reasoning}</think>\n${messagesArray[0]}`;
+      }
+
+      content = JSON.stringify({ messages: messagesArray });
 
       return new Response(content, {
         headers: {

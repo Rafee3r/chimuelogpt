@@ -6335,7 +6335,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 14px 18px;
   background: var(--wa-header-bg) !important;
   color: #fff;
   border-bottom: 1px solid rgba(0,0,0,0.1);
@@ -6375,13 +6375,13 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .wa-back-btn:active { background: rgba(255,255,255,0.22); }
 
 .wa-header-avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
@@ -6392,14 +6392,14 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   min-width: 0;
 }
 .wa-header-name {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .wa-header-status {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: rgba(255,255,255,0.85);
   display: flex;
   align-items: center;
@@ -6428,7 +6428,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   --wa-agent-bubble-bg: #FFFFFF;
   --wa-text-primary: #111B21;
   --wa-text-meta: #667781;
-  --wa-header-bg: #00A884;
+  --wa-header-bg: #008069;
 }
 :root[data-theme="dark"],
 :root[data-theme="oled"] {
@@ -6456,19 +6456,31 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 
 .chat-area.whatsapp-mode {
   background-color: var(--wa-chat-bg) !important;
-  background-image:
-    radial-gradient(circle at 20% 30%, var(--wa-chat-dot) 1px, transparent 1px),
-    radial-gradient(circle at 80% 60%, var(--wa-chat-dot-2) 1px, transparent 1px);
-  background-size: 40px 40px, 60px 60px;
+  background-image: url('/bg-light-whatsapp.png') !important;
+  background-repeat: repeat !important;
+  background-size: 360px !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+}
+/* Dark theme background image overrides */
+[data-theme="dark"] .chat-area.whatsapp-mode,
+[data-theme="oled"] .chat-area.whatsapp-mode {
+  background-image: url('/bg-dark-whatsapp.png') !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .chat-area.whatsapp-mode {
+    background-image: url('/bg-dark-whatsapp.png') !important;
+  }
 }
 
 .chat-area.whatsapp-mode .message {
-  padding: 4px 16px !important;
+  padding: 2px 16px !important;
   display: flex !important;
   width: 100% !important;
   background-color: transparent !important;
   border: none !important;
+}
+.chat-area.whatsapp-mode .message.wa-first-in-sequence {
+  padding-top: 10px !important;
 }
 
 .chat-area.whatsapp-mode .message.user {
@@ -6566,6 +6578,32 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   gap: 3px;
   user-select: none;
   line-height: 1;
+}
+
+/* Short message design for inline timestamps */
+.chat-area.whatsapp-mode .message-text.wa-msg-short {
+  padding-right: 78px !important;
+  position: relative !important;
+  display: inline-block !important;
+}
+.chat-area.whatsapp-mode .message-text.wa-msg-short > div {
+  display: inline !important;
+}
+.chat-area.whatsapp-mode .message-text.wa-msg-short .markdown-body {
+  display: inline !important;
+}
+.chat-area.whatsapp-mode .message-text.wa-msg-short .markdown-body p {
+  display: inline !important;
+  margin: 0 !important;
+}
+.chat-area.whatsapp-mode .message-text.wa-msg-short .wa-message-meta {
+  position: absolute !important;
+  bottom: 5px !important;
+  right: 8px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
 }
 
 .wa-status-ticks {
@@ -6872,12 +6910,13 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .wa-typing-bubble {
   display: inline-flex !important;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   background: var(--wa-agent-bubble-bg) !important;
   color: var(--wa-text-meta) !important;
   border-radius: 7.5px !important;
   border-top-left-radius: 0px !important;
-  padding: 6px 7px 8px 9px !important;
+  padding: 10px 14px !important;
+  min-height: 32px;
   max-width: fit-content !important;
   box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13) !important;
   width: auto !important;
