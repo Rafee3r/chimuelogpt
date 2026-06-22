@@ -2,7 +2,7 @@ export const maxDuration = 90;
 
 export async function POST(req: Request) {
   try {
-    const { messages = [], imageBase64, persona, customInstructions, model, isAgent } = await req.json();
+    const { messages = [], imageBase64, imagesBase64 = [], persona, customInstructions, model, isAgent } = await req.json();
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
@@ -17,11 +17,31 @@ export async function POST(req: Request) {
       });
     }
 
-    const mediaTypeMatch = imageBase64?.match(/^data:([^;]+);base64,/);
-    const mediaType = mediaTypeMatch ? mediaTypeMatch[1] : 'image/jpeg';
-    const base64Data = imageBase64?.split('base64,')[1] || '';
-
     const lastUserMsg = messages[messages.length - 1]?.content || 'Describe esta imagen.';
+
+    // Build list of base64 images to process
+    const imagesToProcess = imagesBase64.length > 0 ? imagesBase64 : (imageBase64 ? [imageBase64] : []);
+    
+    // Build the user content block containing all images and the user prompt text
+    const contentBlock: any[] = [];
+    
+    for (const imgBase64 of imagesToProcess) {
+      const mediaTypeMatch = imgBase64?.match(/^data:([^;]+);base64,/);
+      const mediaType = mediaTypeMatch ? mediaTypeMatch[1] : 'image/jpeg';
+      const base64Data = imgBase64?.split('base64,')[1] || '';
+      if (base64Data) {
+        contentBlock.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
+        });
+      }
+    }
+    
+    contentBlock.push({ type: 'text', text: lastUserMsg });
 
     // ── Step 1: Claude Haiku analyzes the image (non-streaming) ──
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -53,10 +73,7 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
 - AVOID tables (|col|col|) unless strictly necessary. Prefer bullet lists instead`,
         messages: [{
           role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-            { type: 'text', text: lastUserMsg }
-          ]
+          content: contentBlock
         }]
       })
     });

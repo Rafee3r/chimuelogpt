@@ -601,21 +601,28 @@ type BaseMessage = {
   feedback?: 'like' | 'dislike';
   status?: 'pending' | 'sent' | 'delivered' | 'read';
   timestamp?: number;
+  images?: { base64?: string; name: string; type?: string }[];
+  docs?: { name: string }[];
 };
 
 /* ─────────── Helper: sanitizar chats antes de localStorage ───────────
-   Quita imageData (base64 enorme) que revienta la cuota.
-   Mantiene imagePlaceholder (solo el nombre) para que el usuario vea
-   "[imagen.jpg]" en el historial. */
+   Quita imageData (base64 enorme) y base64 de la lista de imágenes que revienta la cuota.
+   Mantiene placeholders y nombres para que el usuario los vea en el historial. */
 function sanitizeChatsForStorage(chats: any[]): any[] {
   return chats.map(c => ({
     ...c,
     messages: (c.messages || []).map((m: any) => {
-      if (m.imageData) {
-        const { imageData, ...rest } = m;
-        return rest;
+      let cleaned = { ...m };
+      if (cleaned.imageData) {
+        delete cleaned.imageData;
       }
-      return m;
+      if (cleaned.images && Array.isArray(cleaned.images)) {
+        cleaned.images = cleaned.images.map((img: any) => {
+          const { base64, ...rest } = img;
+          return rest;
+        });
+      }
+      return cleaned;
     })
   }));
 }
@@ -629,7 +636,7 @@ function safeSetChats(chats: any[]): void {
       const stripped = chats.map(c => ({
         ...c,
         messages: (c.messages || []).map((m: any) => {
-          const { imageData, docPlaceholder, ...rest } = m;
+          const { imageData, docPlaceholder, images, docs, ...rest } = m;
           return rest;
         })
       }));
@@ -1075,8 +1082,8 @@ export default function Home() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   const [inputMessage, setInputMessage] = useState("");
-  const [attachedImage, setAttachedImage] = useState<{base64: string, name: string, type?: string} | null>(null);
-  const [attachedDoc, setAttachedDoc] = useState<File | null>(null);
+  const [attachedImages, setAttachedImages] = useState<{base64: string, name: string, type?: string}[]>([]);
+  const [attachedDocs, setAttachedDocs] = useState<File[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
   const [thinkingTask, setThinkingTask] = useState<"image" | "document" | "code" | "general">("general");
@@ -1600,6 +1607,18 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!appReady) return;
+    const seenAnnouncement = localStorage.getItem("chimuelo_multi_upload_announcement_seen");
+    if (!seenAnnouncement) {
+      const timer = setTimeout(() => {
+        showToast("¡Ya puedes subir muchas fotos a la vez!");
+        localStorage.setItem("chimuelo_multi_upload_announcement_seen", "true");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [appReady]);
+
   /* Fetch personalized smart pills — refresca cada vez que se vuelve al welcome
      screen pero con cache de 5 min para no abusar de la API */
   const fetchSmartPills = useCallback(() => {
@@ -1899,19 +1918,28 @@ export default function Home() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const finalBase64 = await compressImage(reader.result as string);
-        setAttachedImage({ base64: finalBase64, name: file.name, type: file.type });
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setAttachedDoc(file);
+    const currentTotal = attachedImages.length + attachedDocs.length;
+    if (currentTotal + files.length > 10) {
+      showToast("Máximo 10 archivos permitidos.");
+      return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const finalBase64 = await compressImage(reader.result as string);
+          setAttachedImages(prev => [...prev, { base64: finalBase64, name: file.name, type: file.type }]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setAttachedDocs(prev => [...prev, file]);
+      }
     }
   };
 
@@ -1994,9 +2022,9 @@ export default function Home() {
     setDisplayMessages([]);
     if (uniAttachment) {
       if (uniAttachment.file.type.startsWith('image/')) {
-        setAttachedImage({ base64: uniAttachment.base64 || '', name: uniAttachment.file.name, type: uniAttachment.file.type });
+        setAttachedImages([{ base64: uniAttachment.base64 || '', name: uniAttachment.file.name, type: uniAttachment.file.type }]);
       } else {
-        setAttachedDoc(uniAttachment.file);
+        setAttachedDocs([uniAttachment.file]);
       }
     }
     setViewMode('chat');
@@ -2062,7 +2090,7 @@ export default function Home() {
 
   const handleSendMessage = async (customMessage?: string) => {
     const msgToSend = customMessage || inputMessage;
-    if (!msgToSend.trim() && !attachedImage) return;
+    if (!msgToSend.trim() && attachedImages.length === 0 && attachedDocs.length === 0) return;
 
     const messageText = msgToSend.trim();
 
@@ -2096,9 +2124,19 @@ export default function Home() {
         }
       });
     };
-    const imagePayload = attachedImage ? attachedImage.base64 : null;
-    const imageName = attachedImage ? attachedImage.name : null;
-    const docFile = attachedDoc ?? null;
+    
+    const imagePayload = attachedImages.length > 0 ? attachedImages[0].base64 : null;
+    const imageName = attachedImages.length > 0 ? attachedImages[0].name : null;
+    const docFile = attachedDocs.length > 0 ? attachedDocs[0] : null;
+
+    const imagesList = attachedImages.map(img => ({
+      base64: img.base64,
+      name: img.name,
+      type: img.type
+    }));
+    const docsList = attachedDocs.map(doc => ({
+      name: doc.name
+    }));
     
     const lower = messageText.toLowerCase();
     if (lower.includes('imagen') || lower.includes('dibuja') || lower.includes('foto') || lower.includes('pint')) {
@@ -2139,8 +2177,10 @@ export default function Home() {
       role: "user", 
       content: messageText,
       ...(imageName ? { imagePlaceholder: imageName } : {}),
-      ...(imagePayload && attachedImage?.type?.startsWith('image/') ? { imageData: attachedImage.base64 } : {}),
+      ...(imagePayload && attachedImages[0]?.type?.startsWith('image/') ? { imageData: imagePayload } : {}),
       ...(docFile ? { docPlaceholder: docFile.name } : {}),
+      images: imagesList,
+      docs: docsList,
       ...(isAgentChat ? { status: 'pending', timestamp: Date.now() } : {})
     };
 
@@ -2160,8 +2200,8 @@ export default function Home() {
     });
 
     setInputMessage("");
-    setAttachedImage(null);
-    setAttachedDoc(null);
+    setAttachedImages([]);
+    setAttachedDocs([]);
     
     if (!isAgentChat) {
       skipAutoScrollRef.current = true;
@@ -2183,15 +2223,19 @@ export default function Home() {
 
     try {
       const startTime = Date.now();
-      let finalContent = messageText || (imagePayload ? 'Describe esta imagen.' : '');
-      if (docFile) {
+      let finalContent = messageText || (attachedImages.length > 0 ? 'Describe esta imagen.' : '');
+      if (attachedDocs.length > 0) {
         try {
-          const form = new FormData();
-          form.append('file', docFile);
-          const docRes = await fetch('/api/parse-doc', { method: 'POST', body: form });
-          const docData = await docRes.json();
-          if (!docRes.ok) throw new Error(docData.error || 'Error al procesar');
-          finalContent = `[DOCUMENTO ADJUNTO: ${docFile.name}]\n${docData.text}\n[FIN DEL DOCUMENTO]\n\n${finalContent}`;
+          let docsContent = "";
+          for (const doc of attachedDocs) {
+            const form = new FormData();
+            form.append('file', doc);
+            const docRes = await fetch('/api/parse-doc', { method: 'POST', body: form });
+            const docData = await docRes.json();
+            if (!docRes.ok) throw new Error(docData.error || 'Error al procesar');
+            docsContent += `[DOCUMENTO ADJUNTO: ${doc.name}]\n${docData.text}\n[FIN DEL DOCUMENTO]\n\n`;
+          }
+          finalContent = `${docsContent}${finalContent}`;
         } catch (err: any) {
           throw new Error('No se pudo leer el documento: ' + err.message);
         }
@@ -2288,12 +2332,22 @@ export default function Home() {
 
       let res: Response;
       try {
-        if (imagePayload) {
+        if (attachedImages.length > 0) {
           // Use Claude Haiku vision endpoint
+          const imagesBase64 = attachedImages.map(img => img.base64);
           res = await fetch('/api/vision', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: historyMsgs, imageBase64: imagePayload, persona, customInstructions: finalSystemPrompt, model, isAgent, thinkingLevel }),
+            body: JSON.stringify({
+              messages: historyMsgs,
+              imageBase64: imagePayload,
+              imagesBase64,
+              persona,
+              customInstructions: finalSystemPrompt,
+              model,
+              isAgent,
+              thinkingLevel
+            }),
             signal: controller.signal,
           });
         } else {
@@ -2963,7 +3017,8 @@ export default function Home() {
     } else {
       createNewChat();
     }
-    setAttachedImage(null);
+    setAttachedImages([]);
+    setAttachedDocs([]);
     setSidebarOpen(false);
     setViewMode("chat");
   };
@@ -4478,29 +4533,71 @@ export default function Home() {
                     </div>
                   )}
                   <div className="message-text">
-                    {msg.docPlaceholder && (
-                      <div className="attachment-placeholder doc-attachment-chip">
-                        <span style={{ fontSize: '1rem' }}>📄</span>
-                        <span>{msg.docPlaceholder}</span>
+                    {/* Render Multiple Docs if present, otherwise fallback to single docPlaceholder */}
+                    {msg.docs && msg.docs.length > 0 ? (
+                      <div className="attachments-docs-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                        {msg.docs.map((doc: any, idx: number) => (
+                          <div key={idx} className="attachment-placeholder doc-attachment-chip" style={{ margin: 0 }}>
+                            <span style={{ fontSize: '1rem' }}>📄</span>
+                            <span>{doc.name}</span>
+                          </div>
+                        ))}
                       </div>
+                    ) : (
+                      msg.docPlaceholder && (
+                        <div className="attachment-placeholder doc-attachment-chip" style={{ marginBottom: '8px' }}>
+                          <span style={{ fontSize: '1rem' }}>📄</span>
+                          <span>{msg.docPlaceholder}</span>
+                        </div>
+                      )
                     )}
 
-                    {msg.imagePlaceholder && (
-                      msg.imageData ? (
-                        <div className="attachment-image-preview">
-                          <img
-                            src={msg.imageData}
-                            alt={msg.imagePlaceholder}
-                            className="msg-ref-img"
-                            style={{ cursor: 'zoom-in' }}
-                            onClick={() => setLightboxImg(msg.imageData!)}
-                          />
-                        </div>
-                      ) : (
-                        <div className="attachment-placeholder">
-                          <FileImage size={16} />
-                          <span>{msg.imagePlaceholder}</span>
-                        </div>
+                    {/* Render Multiple Images if present, otherwise fallback to single imagePlaceholder */}
+                    {msg.images && msg.images.length > 0 ? (
+                      <div className="attachments-images-grid" style={{
+                        display: 'grid',
+                        gridTemplateColumns: msg.images.length === 1 ? '1fr' : msg.images.length === 2 ? '1fr 1fr' : 'repeat(auto-fill, minmax(120px, 1fr))',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        maxWidth: '100%'
+                      }}>
+                        {msg.images.map((img: any, idx: number) => (
+                          img.base64 ? (
+                            <div key={idx} className="attachment-image-preview" style={{ margin: 0 }}>
+                              <img
+                                src={img.base64}
+                                alt={img.name}
+                                className="msg-ref-img"
+                                style={{ cursor: 'zoom-in', width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'cover', borderRadius: '8px' }}
+                                onClick={() => setLightboxImg(img.base64!)}
+                              />
+                            </div>
+                          ) : (
+                            <div key={idx} className="attachment-placeholder" style={{ margin: 0 }}>
+                              <FileImage size={16} />
+                              <span>{img.name}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    ) : (
+                      msg.imagePlaceholder && (
+                        msg.imageData ? (
+                          <div className="attachment-image-preview" style={{ marginBottom: '8px' }}>
+                            <img
+                              src={msg.imageData}
+                              alt={msg.imagePlaceholder}
+                              className="msg-ref-img"
+                              style={{ cursor: 'zoom-in' }}
+                              onClick={() => setLightboxImg(msg.imageData!)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="attachment-placeholder" style={{ marginBottom: '8px' }}>
+                            <FileImage size={16} />
+                            <span>{msg.imagePlaceholder}</span>
+                          </div>
+                        )
                       )
                     )}
                     
@@ -4933,30 +5030,34 @@ export default function Home() {
 
 
             <div className="v2-input-container">
-              {attachedImage && (
-                <div className="image-preview-container">
-                  <div className="image-preview-item" style={{ background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src={attachedImage.base64} alt="Preview" className="image-preview-img" />
-                    <button className="image-preview-remove" onClick={() => setAttachedImage(null)}>
-                      <XCircle size={16} fill="white" color="#333" />
-                    </button>
-                  </div>
+              {attachedImages.length > 0 && (
+                <div className="image-preview-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 12px' }}>
+                  {attachedImages.map((img, idx) => (
+                    <div key={idx} className="image-preview-item" style={{ background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', position: 'relative', margin: 0 }}>
+                      <img src={img.base64} alt="Preview" className="image-preview-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button className="image-preview-remove" style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}>
+                        <XCircle size={14} fill="white" color="#333" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {attachedDoc && (
-                <div className="image-preview-container">
-                  <div className="doc-preview-chip">
-                    <span className="doc-preview-icon">📄</span>
-                    <span className="doc-preview-name">{attachedDoc.name.length > 22 ? attachedDoc.name.slice(0, 22) + '…' : attachedDoc.name}</span>
-                    <button className="image-preview-remove" style={{ position: 'static', marginLeft: 4 }} onClick={() => setAttachedDoc(null)}>
-                      <XCircle size={15} fill="white" color="#555" />
-                    </button>
-                  </div>
+              {attachedDocs.length > 0 && (
+                <div className="image-preview-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 12px' }}>
+                  {attachedDocs.map((doc, idx) => (
+                    <div key={idx} className="doc-preview-chip" style={{ display: 'inline-flex', alignItems: 'center', background: '#2a2a2a', padding: '4px 8px', borderRadius: '16px', gap: '6px' }}>
+                      <span className="doc-preview-icon">📄</span>
+                      <span className="doc-preview-name" style={{ fontSize: '0.85rem', color: '#eee' }}>{doc.name.length > 18 ? doc.name.slice(0, 18) + '…' : doc.name}</span>
+                      <button className="image-preview-remove" style={{ position: 'static', marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setAttachedDocs(prev => prev.filter((_, i) => i !== idx))}>
+                        <XCircle size={14} fill="white" color="#555" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              <input type="file" accept="image/*,.pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              <input type="file" multiple accept="image/*,.pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
                 <textarea
@@ -4989,7 +5090,7 @@ export default function Home() {
                     </button>
 
                     {(() => {
-                      const hasInput = !!(inputMessage.trim() || attachedImage || attachedDoc);
+                      const hasInput = !!(inputMessage.trim() || attachedImages.length > 0 || attachedDocs.length > 0);
                       if (isThinking) {
                         return (
                           <button
