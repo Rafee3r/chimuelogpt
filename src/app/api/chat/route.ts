@@ -173,6 +173,18 @@ INSTRUCCIONES PARA EL HTML:
                 let content = m.content || '';
                 // Strip think tags to keep history clean for API call
                 content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                if (m.role === 'assistant') {
+                  let isJson = false;
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.messages)) {
+                      isJson = true;
+                    }
+                  } catch (e) {}
+                  if (!isJson) {
+                    content = JSON.stringify({ messages: [content] });
+                  }
+                }
                 return { role: m.role, content };
               })
           ],

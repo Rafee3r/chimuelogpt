@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -1102,6 +1102,7 @@ export default function Home() {
   const [inlineSubjectName, setInlineSubjectName] = useState('');
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [thinkingLevel, setThinkingLevel] = useState<'standard' | 'extended'>('standard');
   const [showThinkingMenu, setShowThinkingMenu] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -1160,6 +1161,8 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docFileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   // Scroll architecture v4 — prevMaxScrollTop + useLayoutEffect.
   // The DOM is the single source of truth. Before each render, we know the
@@ -1921,6 +1924,8 @@ export default function Home() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
 
     const currentTotal = attachedImages.length + attachedDocs.length;
     if (currentTotal + files.length > 10) {
@@ -3238,7 +3243,7 @@ export default function Home() {
 
 
   return (
-    <div className="app-layout" onClick={() => setModelDropdownOpen(false)}>
+    <div className="app-layout" onClick={() => { setModelDropdownOpen(false); setAttachMenuOpen(false); }}>
 
       {/* ── ONBOARDING DE BIENVENIDA (primer uso) ── */}
       {showWelcomeOnboarding && (
@@ -5117,7 +5122,9 @@ export default function Home() {
                 </div>
               )}
 
-              <input type="file" multiple accept="image/*,.pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              <input type="file" multiple accept=".pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              <input type="file" multiple accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
               
               <div className="v2-input-row">
                 <textarea
@@ -5131,12 +5138,56 @@ export default function Home() {
                 />
                 
                 <div className="v2-input-actions-row">
-                  <div className="v2-input-actions-left">
-                    <button className="v2-attach-btn" title="Subir imagen o documento" onClick={() => fileInputRef.current?.click()}>
-                      <div className="v2-attach-icon-wrapper">
+                  <div className="v2-input-actions-left" style={{ position: 'relative' }}>
+                    <button
+                      className={`v2-attach-btn ${attachMenuOpen ? 'active' : ''}`}
+                      title="Subir imagen o documento"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAttachMenuOpen(!attachMenuOpen);
+                      }}
+                    >
+                      <div className="v2-attach-icon-wrapper" style={{ transform: attachMenuOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease' }}>
                         <Plus size={20} />
                       </div>
                     </button>
+
+                    {attachMenuOpen && (
+                      <div className="v2-attach-dropdown">
+                        <button
+                          className="v2-attach-dropdown-item"
+                          onClick={() => {
+                            setAttachMenuOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                        >
+                          <FileText size={16} className="v2-attach-dropdown-icon" style={{ color: '#85929E' }} />
+                          <span>Archivos</span>
+                        </button>
+                        
+                        <button
+                          className="v2-attach-dropdown-item"
+                          onClick={() => {
+                            setAttachMenuOpen(false);
+                            imageInputRef.current?.click();
+                          }}
+                        >
+                          <ImageIcon size={16} className="v2-attach-dropdown-icon" style={{ color: '#52BE80' }} />
+                          <span>Fotos</span>
+                        </button>
+                        
+                        <button
+                          className="v2-attach-dropdown-item"
+                          onClick={() => {
+                            setAttachMenuOpen(false);
+                            cameraInputRef.current?.click();
+                          }}
+                        >
+                          <Camera size={16} className="v2-attach-dropdown-icon" style={{ color: '#EB984E' }} />
+                          <span>Cámara</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="v2-input-actions-right">
