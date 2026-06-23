@@ -47,7 +47,7 @@ Ejemplo de FORMATO (no de contenido):
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-chat',
         messages: [{ role: 'user', content: systemPrompt }],
         max_tokens: 500,
         temperature: 0.85,

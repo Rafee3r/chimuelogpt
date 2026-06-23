@@ -6455,25 +6455,30 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 
 .chat-area.whatsapp-mode {
-  background-color: var(--wa-chat-bg) !important;
-  background-image: url('/bg-light-whatsapp.png') !important;
-  background-repeat: repeat !important;
-  background-size: 360px !important;
+  background: transparent !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   gap: 2px !important;
 }
 
+.main-content:has(.whatsapp-mode) {
+  background-color: var(--wa-chat-bg) !important;
+  background-image: url('/bg-light-whatsapp.png') !important;
+  background-repeat: repeat !important;
+  background-size: 360px !important;
+}
+
 /* Hide fade gradient overlay above the input area in WhatsApp mode */
-.chat-area.whatsapp-mode + .v2-input-area::before {
+.chat-area.whatsapp-mode + .v2-input-area::before,
+.main-content:has(.whatsapp-mode) .v2-input-area::before {
   display: none !important;
 }
+
 /* Dark theme background image overrides */
-[data-theme="dark"] .chat-area.whatsapp-mode,
-[data-theme="oled"] .chat-area.whatsapp-mode {
+[data-theme="dark"] .main-content:has(.whatsapp-mode) {
   background-image: url('/bg-dark-whatsapp.png') !important;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .chat-area.whatsapp-mode {
+  :root:not([data-theme]) .main-content:has(.whatsapp-mode) {
     background-image: url('/bg-dark-whatsapp.png') !important;
   }
 }

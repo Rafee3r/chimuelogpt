@@ -104,6 +104,7 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
 
     // ── Step 2: DeepSeek generates the final response using Claude's analysis ──
     const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    const apiModel = actualModel === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español.";
@@ -184,7 +185,7 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
           'Authorization': `Bearer ${deepseekKey}`
         },
         body: JSON.stringify({
-          model: actualModel,
+          model: apiModel,
           messages: deepseekMessages,
           ...(actualModel !== 'deepseek-v4-pro' ? { response_format: { type: 'json_object' } } : {}),
           stream: false
@@ -257,7 +258,7 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${deepseekKey}`
       },
-      body: JSON.stringify({ model: actualModel, messages: deepseekMessages, stream: true })
+      body: JSON.stringify({ model: apiModel, messages: deepseekMessages, stream: true })
     });
 
     if (!deepseekRes.ok) {

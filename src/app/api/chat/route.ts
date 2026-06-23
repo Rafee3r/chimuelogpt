@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     // Determine correct model mapping
     // Pro ALWAYS uses reasoner. Extended ALSO forces reasoner.
     let actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    let apiModel = actualModel === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
     
     let extendedThinkingPrompt = '';
     if (thinkingLevel === 'extended') {
@@ -137,7 +138,7 @@ INSTRUCCIONES PARA EL HTML:
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: actualModel,
+          model: apiModel,
           messages: [
             { role: 'system', content: jsonSystemPrompt },
             ...messages
@@ -152,6 +153,16 @@ INSTRUCCIONES PARA EL HTML:
       if (!deepseekRes.ok) {
         const errText = await deepseekRes.text();
         console.error("DeepSeek API error:", deepseekRes.status, errText);
+        try {
+          const fs = require('fs');
+          fs.appendFileSync('/Users/rafesy/Documents/chimuelogpt/chimuelogpt/api_debug.log', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            type: 'isAgent_error',
+            status: deepseekRes.status,
+            model: apiModel,
+            errText
+          }, null, 2) + '\n---\n');
+        } catch (e) {}
         return new Response(JSON.stringify({ error: `DeepSeek ${deepseekRes.status}: ${errText}` }), { 
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -159,6 +170,16 @@ INSTRUCCIONES PARA EL HTML:
       }
 
       const resData = await deepseekRes.json();
+      try {
+        const fs = require('fs');
+        fs.appendFileSync('/Users/rafesy/Documents/chimuelogpt/chimuelogpt/api_debug.log', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          type: 'isAgent_success',
+          status: deepseekRes.status,
+          model: apiModel,
+          resData
+        }, null, 2) + '\n---\n');
+      } catch (e) {}
       let content = resData.choices?.[0]?.message?.content || '{}';
 
       // Extract reasoning/thinking if present
@@ -202,6 +223,15 @@ INSTRUCCIONES PARA EL HTML:
 
       content = JSON.stringify({ messages: messagesArray });
 
+      try {
+        const fs = require('fs');
+        fs.appendFileSync('/Users/rafesy/Documents/chimuelogpt/chimuelogpt/api_debug.log', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          type: 'isAgent_final_response',
+          content
+        }, null, 2) + '\n---\n');
+      } catch (e) {}
+
       return new Response(content, {
         headers: {
           'Content-Type': 'application/json; charset=utf-8'
@@ -217,7 +247,7 @@ INSTRUCCIONES PARA EL HTML:
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: actualModel,
+        model: apiModel,
         messages: apiMessages,
         stream: true
       })
