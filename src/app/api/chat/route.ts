@@ -131,6 +131,7 @@ INSTRUCCIONES PARA EL HTML:
     ];
 
     if (isAgent) {
+      const useJsonMode = actualModel !== 'deepseek-v4-pro';
       const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {
@@ -143,9 +144,19 @@ INSTRUCCIONES PARA EL HTML:
             { role: 'system', content: jsonSystemPrompt },
             ...messages
               .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-              .map((m: any) => ({ role: m.role, content: m.content || '' }))
+              .map((m: any) => {
+                if (useJsonMode && m.role === 'assistant') {
+                  let content = m.content || '';
+                  if (!content.trim().startsWith('{')) {
+                    const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                    content = JSON.stringify({ messages: [cleanContent] });
+                  }
+                  return { role: 'assistant', content };
+                }
+                return { role: m.role, content: m.content || '' };
+              })
           ],
-          ...(actualModel !== 'deepseek-v4-pro' ? { response_format: { type: 'json_object' } } : {}),
+          ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
       });

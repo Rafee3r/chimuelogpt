@@ -162,11 +162,23 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 
+    const useJsonMode = isAgent && actualModel !== 'deepseek-v4-pro';
+
     // Build DeepSeek messages with Claude's image analysis injected
     const history = messages
       .slice(0, -1)
       .filter((m: any) => (m.role === 'user' || m.role === 'assistant') && m.content)
-      .map((m: any) => ({ role: m.role, content: String(m.content) }));
+      .map((m: any) => {
+        if (useJsonMode && m.role === 'assistant') {
+          let content = String(m.content);
+          if (!content.trim().startsWith('{')) {
+            const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            content = JSON.stringify({ messages: [cleanContent] });
+          }
+          return { role: 'assistant', content };
+        }
+        return { role: m.role, content: String(m.content) };
+      });
 
     const deepseekMessages = [
       { role: 'system', content: isAgent ? jsonSystemPrompt : systemPrompt },
@@ -187,7 +199,7 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
         body: JSON.stringify({
           model: apiModel,
           messages: deepseekMessages,
-          ...(actualModel !== 'deepseek-v4-pro' ? { response_format: { type: 'json_object' } } : {}),
+          ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
       });
