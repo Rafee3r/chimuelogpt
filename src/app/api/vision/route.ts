@@ -1,5 +1,30 @@
 export const maxDuration = 90;
 
+function extractMessages(content: string): string[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.flatMap((m: any) => extractMessages(typeof m === 'string' ? m : JSON.stringify(m)));
+    }
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.messages && Array.isArray(parsed.messages)) {
+        return parsed.messages.flatMap((m: any) => extractMessages(typeof m === 'string' ? m : JSON.stringify(m)));
+      }
+      const fallbackText = parsed.content || parsed.message || parsed.text;
+      if (fallbackText) {
+        return extractMessages(typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText));
+      }
+    }
+  } catch (e) {
+    // Plain string
+  }
+
+  return [trimmed];
+}
+
 export async function POST(req: Request) {
   try {
     const { messages = [], imageBase64, imagesBase64 = [], persona, customInstructions, model, isAgent } = await req.json();
@@ -169,15 +194,10 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
       .slice(0, -1)
       .filter((m: any) => (m.role === 'user' || m.role === 'assistant') && m.content)
       .map((m: any) => {
-        if (useJsonMode && m.role === 'assistant') {
-          let content = String(m.content);
-          if (!content.trim().startsWith('{')) {
-            const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-            content = JSON.stringify({ messages: [cleanContent] });
-          }
-          return { role: 'assistant', content };
-        }
-        return { role: m.role, content: String(m.content) };
+        let content = String(m.content);
+        // Strip think tags to keep history clean for API call
+        content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        return { role: m.role, content };
       });
 
     const deepseekMessages = [
@@ -227,24 +247,8 @@ FORMATO DE RESPUESTA: Organiza tus respuestas de forma visual y escaneable:
       // Sanitize: strip markdown code fences if present
       content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-      // Validate JSON — if the model returned non-JSON text, wrap it
-      let messagesArray: string[] = [];
-      try {
-        const parsed = JSON.parse(content);
-        if (parsed.messages && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
-          messagesArray = parsed.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
-        } else {
-          const fallbackText = parsed.content || parsed.message || parsed.text;
-          if (fallbackText) {
-            messagesArray = [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)];
-          }
-        }
-      } catch {
-        const trimmed = content.trim();
-        if (trimmed) {
-          messagesArray = [trimmed];
-        }
-      }
+      // Validate JSON — recursively extract messages using the helper
+      let messagesArray = extractMessages(content);
 
       if (messagesArray.length === 0) {
         messagesArray = ["No alcancé a cachar bien qué era, me lo mostrái de nuevo?"];

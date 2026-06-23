@@ -1,5 +1,30 @@
 export const maxDuration = 60;
 
+function extractMessages(content: string): string[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.flatMap((m: any) => extractMessages(typeof m === 'string' ? m : JSON.stringify(m)));
+    }
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.messages && Array.isArray(parsed.messages)) {
+        return parsed.messages.flatMap((m: any) => extractMessages(typeof m === 'string' ? m : JSON.stringify(m)));
+      }
+      const fallbackText = parsed.content || parsed.message || parsed.text;
+      if (fallbackText) {
+        return extractMessages(typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText));
+      }
+    }
+  } catch (e) {
+    // Plain string
+  }
+
+  return [trimmed];
+}
+
 export async function POST(req: Request) {
   try {
     const { messages = [], model, persona, customInstructions, isAgent, thinkingLevel } = await req.json();
@@ -145,15 +170,10 @@ INSTRUCCIONES PARA EL HTML:
             ...messages
               .filter((m: any) => m.role === 'user' || m.role === 'assistant')
               .map((m: any) => {
-                if (useJsonMode && m.role === 'assistant') {
-                  let content = m.content || '';
-                  if (!content.trim().startsWith('{')) {
-                    const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                    content = JSON.stringify({ messages: [cleanContent] });
-                  }
-                  return { role: 'assistant', content };
-                }
-                return { role: m.role, content: m.content || '' };
+                let content = m.content || '';
+                // Strip think tags to keep history clean for API call
+                content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                return { role: m.role, content };
               })
           ],
           ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
@@ -204,24 +224,8 @@ INSTRUCCIONES PARA EL HTML:
       // Sanitize: strip markdown code fences if present
       content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-      // Validate JSON — if the model returned non-JSON text, wrap it
-      let messagesArray: string[] = [];
-      try {
-        const parsed = JSON.parse(content);
-        if (parsed.messages && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
-          messagesArray = parsed.messages.map((m: any) => String(m).trim()).filter((m: string) => m.length > 0);
-        } else {
-          const fallbackText = parsed.content || parsed.message || parsed.text;
-          if (fallbackText) {
-            messagesArray = [typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText)];
-          }
-        }
-      } catch {
-        const trimmed = content.trim();
-        if (trimmed) {
-          messagesArray = [trimmed];
-        }
-      }
+      // Validate JSON — recursively extract messages using the helper
+      let messagesArray = extractMessages(content);
 
       if (messagesArray.length === 0) {
         messagesArray = ["Pucha, no sé qué responder a eso..."];
