@@ -2269,6 +2269,22 @@ export default function Home() {
         }
       }
 
+      // Save parsed document/URL content into state for future history turns
+      setChats(prev => {
+        const updated = prev.map(c => {
+          if (c.id === targetChatId) {
+            return {
+              ...c,
+              messages: c.messages.map(m => m.id === userMsgId ? { ...m, content: finalContent } : m)
+            };
+          }
+          return c;
+        });
+        safeSetChats(updated);
+        return updated;
+      });
+      setDisplayMessages(prev => prev.map(m => m.id === userMsgId ? { ...m, content: finalContent } : m));
+
       // Build messages history for the API
       const chatForApi = chats.find(c => c.id === targetChatId);
       const historyMsgs = (chatForApi?.messages || [])
@@ -4542,7 +4558,11 @@ export default function Home() {
               const role = msg.role;
               const contentStr = msg.content || '';
               const reasoning = msg.model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
-              const displayContent = contentStr.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+              const displayContent = contentStr
+                .replace(/<think>[\s\S]*?<\/think>/g, '')
+                .replace(/\[DOCUMENTO ADJUNTO: [^\]]+\][\s\S]*?\[FIN DEL DOCUMENTO\]\n*/gi, '')
+                .replace(/\[CONTENIDO ENLACE: [^\]]+\][\s\S]*?\[FIN ENLACE\]\n*/gi, '')
+                .trim();
 
               const isFirst = i === 0 || displayMessages[i - 1]?.role !== role;
               const isShortText = activeAgent && 
