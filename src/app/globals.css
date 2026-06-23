@@ -6460,6 +6460,12 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   background-repeat: repeat !important;
   background-size: 360px !important;
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+  gap: 2px !important;
+}
+
+/* Hide fade gradient overlay above the input area in WhatsApp mode */
+.chat-area.whatsapp-mode + .v2-input-area::before {
+  display: none !important;
 }
 /* Dark theme background image overrides */
 [data-theme="dark"] .chat-area.whatsapp-mode,
@@ -6581,8 +6587,13 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 }
 
 /* Short message design for inline timestamps */
-.chat-area.whatsapp-mode .message-text.wa-msg-short {
-  padding-right: 78px !important;
+.chat-area.whatsapp-mode .message.user .message-text.wa-msg-short {
+  padding-right: 80px !important;
+  position: relative !important;
+  display: inline-block !important;
+}
+.chat-area.whatsapp-mode .message.assistant .message-text.wa-msg-short {
+  padding-right: 65px !important;
   position: relative !important;
   display: inline-block !important;
 }
