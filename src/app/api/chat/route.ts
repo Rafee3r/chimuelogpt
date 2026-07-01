@@ -25,6 +25,63 @@ function extractMessages(content: string): string[] {
   return [trimmed];
 }
 
+function formatAgentHistory(messages: any[]): { role: string; content: string }[] {
+  // 1. Process and extract messages
+  const processed = messages
+    .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+    .map((m: any) => {
+      let content = m.content || '';
+      // Strip think tags
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+      if (m.role === 'assistant') {
+        let messagesArray: string[] = [];
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed && typeof parsed === 'object' && Array.isArray(parsed.messages)) {
+            messagesArray = parsed.messages.map((item: any) => String(item).trim()).filter((item: string) => item.length > 0);
+          }
+        } catch (e) {}
+
+        if (messagesArray.length === 0) {
+          messagesArray = [content];
+        }
+        return { role: 'assistant', messages: messagesArray };
+      } else {
+        return { role: 'user', content };
+      }
+    });
+
+  // 2. Collapse consecutive messages of the same role
+  const collapsed: any[] = [];
+  for (const msg of processed) {
+    if (collapsed.length > 0 && collapsed[collapsed.length - 1].role === msg.role) {
+      const last = collapsed[collapsed.length - 1];
+      if (msg.role === 'user') {
+        last.content = (last.content + '\n' + (msg.content || '')).trim();
+      } else {
+        last.messages = [...(last.messages || []), ...(msg.messages || [])];
+      }
+    } else {
+      if (msg.role === 'user') {
+        collapsed.push({ role: 'user', content: msg.content || '' });
+      } else {
+        collapsed.push({ role: 'assistant', messages: [...(msg.messages || [])] });
+      }
+    }
+  }
+
+  // 3. Map to final API format
+  return collapsed.map((item: any) => {
+    if (item.role === 'user') {
+      return { role: 'user', content: item.content };
+    } else {
+      return { role: 'assistant', content: JSON.stringify({ messages: item.messages }) };
+    }
+  });
+}
+
+
 export async function POST(req: Request) {
   try {
     const { messages = [], model, persona, customInstructions, isAgent, thinkingLevel } = await req.json();
@@ -167,26 +224,7 @@ INSTRUCCIONES PARA EL HTML:
           model: apiModel,
           messages: [
             { role: 'system', content: jsonSystemPrompt },
-            ...messages
-              .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-              .map((m: any) => {
-                let content = m.content || '';
-                // Strip think tags to keep history clean for API call
-                content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                if (m.role === 'assistant') {
-                  let isJson = false;
-                  try {
-                    const parsed = JSON.parse(content);
-                    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.messages)) {
-                      isJson = true;
-                    }
-                  } catch (e) {}
-                  if (!isJson) {
-                    content = JSON.stringify({ messages: [content] });
-                  }
-                }
-                return { role: m.role, content };
-              })
+            ...formatAgentHistory(messages)
           ],
           ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
