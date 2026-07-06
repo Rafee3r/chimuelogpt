@@ -1931,26 +1931,44 @@ export default function Home() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    // Cierra el menú AHORA (el archivo ya fue seleccionado, ya no se necesita el label en el DOM)
+    const target = e.target;
+    // CRÍTICO: snapshot inmediato de FileList → array real.
+    // FileList es una live collection; setValue('') puede vaciarla y
+    // los async readers no encontrarían los archivos.
+    const filesArray: File[] = target.files ? Array.from(target.files) : [];
+
+    // Cierra el menú (ya no se necesita el label en el DOM)
     setAttachMenuOpen(false);
-    if (!files || files.length === 0) return;
-    // Reset del value en el mismo input que disparó, sin tocar los otros
-    e.target.value = "";
+    if (filesArray.length === 0) return;
 
     const currentTotal = attachedImages.length + attachedDocs.length;
-    if (currentTotal + files.length > 10) {
+    if (currentTotal + filesArray.length > 10) {
       showToast("Máximo 10 archivos permitidos.");
+      // Aun así reseteamos el value para permitir re-seleccionar
+      try { target.value = ""; } catch {}
       return;
     }
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    // Reset del value DESPUÉS de haber capturado los archivos
+    // (permite re-seleccionar el mismo archivo si se quita y vuelve)
+    try { target.value = ""; } catch {}
+
+    // Procesamiento — usa las referencias del array snapshot (siempre válidas)
+    for (const file of filesArray) {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
+        reader.onerror = () => {
+          console.warn('Error leyendo imagen:', file.name);
+          showToast(`No pude leer ${file.name}`);
+        };
         reader.onloadend = async () => {
-          const finalBase64 = await compressImage(reader.result as string);
-          setAttachedImages(prev => [...prev, { base64: finalBase64, name: file.name, type: file.type }]);
+          try {
+            const finalBase64 = await compressImage(reader.result as string);
+            setAttachedImages(prev => [...prev, { base64: finalBase64, name: file.name, type: file.type }]);
+          } catch (err) {
+            console.warn('Error comprimiendo imagen:', file.name, err);
+            showToast(`No pude procesar ${file.name}`);
+          }
         };
         reader.readAsDataURL(file);
       } else {
