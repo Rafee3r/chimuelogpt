@@ -3,6 +3,9 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
 import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
+import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
+import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
+import type { BaseMessage, Chat } from "../lib/types";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -591,176 +594,6 @@ function CatMascot() {
 }
 
 
-type BaseMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  imagePlaceholder?: string;
-  imageData?: string;
-  docPlaceholder?: string;
-  reasoning?: string;
-  model?: string;
-  feedback?: 'like' | 'dislike';
-  status?: 'pending' | 'sent' | 'delivered' | 'read';
-  timestamp?: number;
-  images?: { base64?: string; name: string; type?: string }[];
-  docs?: { name: string }[];
-};
-
-/* ─────────── Helper: sanitizar chats antes de localStorage ───────────
-   Quita imageData (base64 enorme) y base64 de la lista de imágenes que revienta la cuota.
-   Mantiene placeholders y nombres para que el usuario los vea en el historial. */
-function sanitizeChatsForStorage(chats: any[]): any[] {
-  return chats.map(c => ({
-    ...c,
-    messages: (c.messages || []).map((m: any) => {
-      let cleaned = { ...m };
-      if (cleaned.imageData) {
-        delete cleaned.imageData;
-      }
-      if (cleaned.images && Array.isArray(cleaned.images)) {
-        cleaned.images = cleaned.images.map((img: any) => {
-          const { base64, ...rest } = img;
-          return rest;
-        });
-      }
-      return cleaned;
-    })
-  }));
-}
-
-function safeSetChats(chats: any[]): void {
-  try {
-    localStorage.setItem("chimuelo_chats", JSON.stringify(sanitizeChatsForStorage(chats)));
-  } catch (e) {
-    // Si igual revienta la cuota, intentar sin attachments del todo
-    try {
-      const stripped = chats.map(c => ({
-        ...c,
-        messages: (c.messages || []).map((m: any) => {
-          const { imageData, docPlaceholder, images, docs, ...rest } = m;
-          return rest;
-        })
-      }));
-      localStorage.setItem("chimuelo_chats", JSON.stringify(stripped));
-    } catch {
-      console.warn('localStorage lleno — chats no guardados en este turno.');
-    }
-  }
-}
-
-/* ─────────── SISTEMA DE BACKUP LOCAL ───────────
-   Captura TODO el estado de la app y permite:
-   1. Auto-respaldo rotativo (3 versiones, 1 cada 30 min)
-   2. Export a archivo JSON descargable
-   3. Import desde archivo JSON (restaura todo)
-   Las 3 versiones rotativas viven en localStorage como un cinturón
-   de seguridad: si las claves principales se corrompen o se borran
-   accidentalmente, la app puede recuperarse desde la última válida.
-   ─────────────────────────────────────────────── */
-
-const BACKUP_KEYS_TO_CAPTURE = [
-  'chimuelo_chats',
-  'chimuelo_subjects',
-  'chimuelo_active_subject',
-  'chimuelo_current_chat',
-  'chimuelo_memory',
-  'chimuelo_memoryEnabled',
-  'chimuelo_user_name',
-  'chimuelo_onboarding_done',
-  'chimuelo_show_cat',
-  'chimuelo_version',
-  'chimuelo_model',
-  'chimuelo_theme',
-  'chimuelo_persona',
-  'chimuelo_custom_instructions',
-  'chimuelo_bubble_style',
-  'chimuelo_message_density',
-];
-
-function captureAppSnapshot(): Record<string, string> {
-  const snapshot: Record<string, string> = {};
-  for (const key of BACKUP_KEYS_TO_CAPTURE) {
-    const v = localStorage.getItem(key);
-    if (v !== null) snapshot[key] = v;
-  }
-  return snapshot;
-}
-
-function performAutoBackup() {
-  try {
-    const snapshot = captureAppSnapshot();
-    if (Object.keys(snapshot).length === 0) return;
-    const payload = JSON.stringify({
-      version: 1,
-      savedAt: Date.now(),
-      data: snapshot
-    });
-    // Rotación: backup_v1 (más reciente), v2, v3 (más antiguo)
-    const v2 = localStorage.getItem('chimuelo_backup_v1');
-    const v1 = localStorage.getItem('chimuelo_backup_v2');
-    if (v1) localStorage.setItem('chimuelo_backup_v3', v1);
-    if (v2) localStorage.setItem('chimuelo_backup_v2', v2);
-    localStorage.setItem('chimuelo_backup_v1', payload);
-    localStorage.setItem('chimuelo_last_backup_at', Date.now().toString());
-  } catch (e) {
-    console.warn('Auto-backup falló:', e);
-  }
-}
-
-function downloadBackupFile() {
-  const snapshot = captureAppSnapshot();
-  const payload = {
-    app: 'Chimuelo',
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    data: snapshot
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const fecha = new Date().toISOString().split('T')[0];
-  a.download = `chimuelo-backup-${fecha}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-async function importBackupFile(file: File): Promise<{ok: boolean; msg: string}> {
-  try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!parsed.data || typeof parsed.data !== 'object') {
-      return { ok: false, msg: 'Archivo no válido (estructura incorrecta).' };
-    }
-    // Backup actual antes de sobrescribir
-    performAutoBackup();
-    // Restaurar
-    let restored = 0;
-    for (const [key, value] of Object.entries(parsed.data)) {
-      if (BACKUP_KEYS_TO_CAPTURE.includes(key) && typeof value === 'string') {
-        localStorage.setItem(key, value);
-        restored++;
-      }
-    }
-    return { ok: true, msg: `Restauradas ${restored} claves. Recargando…` };
-  } catch (e: any) {
-    return { ok: false, msg: 'Error: ' + (e?.message || 'archivo dañado') };
-  }
-}
-
-type Chat = {
-  id: string;
-  title: string;
-  messages: BaseMessage[];
-  updatedAt: number;
-  systemPrompt?: string;
-  subjectId?: string;
-  agentId?: string;
-  pinned?: boolean;
-};
 
 /* ─────────── Agentes (estilo WhatsApp — familia) ─────────── */
 type Agent = {
@@ -1289,20 +1122,6 @@ export default function Home() {
     recognition.start();
   }, [isRecording]);
 
-  const groupChatsByDate = (chats: Chat[]) => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
-    const unpinned = chats.filter(c => !c.pinned);
-    return {
-      pinned: chats.filter(c => c.pinned),
-      hoy:    unpinned.filter(c => c.updatedAt >= today.getTime()),
-      ayer:   unpinned.filter(c => c.updatedAt >= yesterday.getTime() && c.updatedAt < today.getTime()),
-      semana: unpinned.filter(c => c.updatedAt >= weekAgo.getTime() && c.updatedAt < yesterday.getTime()),
-      antes:  unpinned.filter(c => c.updatedAt < weekAgo.getTime()),
-    };
-  };
-
   const togglePinChat = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setChats(prev => {
@@ -1450,9 +1269,11 @@ export default function Home() {
     const savedPersona = localStorage.getItem("chimuelo_persona") as "default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional";
     if (savedPersona) setPersona(savedPersona);
 
-    // Auto-wipe old bugged instructions from localStorage
+    // Auto-wipe SOLO la key antigua con bug (camelCase).
+    // OJO: chimuelo_custom_instructions (snake_case) es la key ACTIVA que
+    // usa la UI de Ajustes — borrarla aquí wipeaba las instrucciones del
+    // usuario en cada arranque.
     localStorage.removeItem("chimuelo_customInstructions");
-    localStorage.removeItem("chimuelo_custom_instructions");
 
     const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
     if (savedModel) setModel(savedModel);
