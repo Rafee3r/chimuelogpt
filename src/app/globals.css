@@ -7997,3 +7997,41 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .markdown-body a.interactive-prompt-btn:active {
   transform: translateY(0);
 }
+
+/* ── File input oculto pero accesible via <label> ──
+   NO usar display:none porque en algunos browsers/PWAs iOS el click
+   programático no llega. Este patrón es el estándar recomendado. */
+.visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Dropdown items ahora son <label> — necesitan mismo estilo que los <button> */
+label.v2-attach-dropdown-item {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  transition: background 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+label.v2-attach-dropdown-item:hover {
+  background: var(--sidebar-hover);
+}
+label.v2-attach-dropdown-item:active {
+  transform: scale(0.98);
+  transition: transform 0.08s;
+}

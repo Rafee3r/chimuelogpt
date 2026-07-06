@@ -5122,9 +5122,10 @@ export default function Home() {
                 </div>
               )}
 
-              <input type="file" multiple accept=".pdf,.docx,.txt,.md,.csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-              <input type="file" multiple accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-              <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+              {/* File inputs con .visually-hidden-input (no display:none) — más robusto en iOS PWA */}
+              <input id="chimuelo-file-docs" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv" ref={fileInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Adjuntar documento" />
+              <input id="chimuelo-file-photos" type="file" multiple accept="image/*" ref={imageInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Adjuntar foto" />
+              <input id="chimuelo-file-camera" type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Tomar foto con cámara" />
               
               <div className="v2-input-row">
                 <textarea
@@ -5154,38 +5155,33 @@ export default function Home() {
 
                     {attachMenuOpen && (
                       <div className="v2-attach-dropdown">
-                        <button
+                        {/* <label htmlFor> dispara el file input NATIVAMENTE — sin .click() programático que falla en iOS PWA */}
+                        <label
+                          htmlFor="chimuelo-file-docs"
                           className="v2-attach-dropdown-item"
-                          onClick={() => {
-                            setAttachMenuOpen(false);
-                            fileInputRef.current?.click();
-                          }}
+                          onClick={() => setAttachMenuOpen(false)}
                         >
                           <FileText size={16} className="v2-attach-dropdown-icon" style={{ color: '#85929E' }} />
                           <span>Archivos</span>
-                        </button>
-                        
-                        <button
+                        </label>
+
+                        <label
+                          htmlFor="chimuelo-file-photos"
                           className="v2-attach-dropdown-item"
-                          onClick={() => {
-                            setAttachMenuOpen(false);
-                            imageInputRef.current?.click();
-                          }}
+                          onClick={() => setAttachMenuOpen(false)}
                         >
                           <ImageIcon size={16} className="v2-attach-dropdown-icon" style={{ color: '#52BE80' }} />
                           <span>Fotos</span>
-                        </button>
-                        
-                        <button
+                        </label>
+
+                        <label
+                          htmlFor="chimuelo-file-camera"
                           className="v2-attach-dropdown-item"
-                          onClick={() => {
-                            setAttachMenuOpen(false);
-                            cameraInputRef.current?.click();
-                          }}
+                          onClick={() => setAttachMenuOpen(false)}
                         >
                           <Camera size={16} className="v2-attach-dropdown-icon" style={{ color: '#EB984E' }} />
                           <span>Cámara</span>
-                        </button>
+                        </label>
                       </div>
                     )}
                   </div>
