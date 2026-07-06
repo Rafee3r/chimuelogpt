@@ -8035,3 +8035,145 @@ label.v2-attach-dropdown-item:active {
   transform: scale(0.98);
   transition: transform 0.08s;
 }
+
+/* ════════════════════════════════════════════════════════════
+   PREVIEWS DE ADJUNTOS — visibles, con nombre, animados
+   ════════════════════════════════════════════════════════════ */
+.attach-previews {
+  padding: 10px 12px 12px;
+  animation: attachPreviewSlide 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes attachPreviewSlide {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.attach-previews-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+.attach-previews-label svg {
+  color: var(--accent-color);
+  opacity: 0.85;
+}
+
+.attach-previews-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.attach-card {
+  position: relative;
+  width: 84px;
+  border-radius: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: attachCardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: border-color 0.2s;
+}
+.attach-card:hover {
+  border-color: var(--accent-color);
+}
+
+@keyframes attachCardPop {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Preview de imagen: 72x72 grande */
+.attach-card-image .attach-card-img {
+  width: 84px;
+  height: 68px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Doc card: icono grande centrado */
+.attach-card-doc {
+  height: 100px;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+}
+.attach-card-doc-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  padding: 6px 0;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+}
+
+/* Nombre del archivo debajo (visible siempre) */
+.attach-card-name {
+  padding: 4px 6px 5px;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  background: var(--input-bg);
+  font-weight: 500;
+}
+
+/* Botón X visible (top right, alto contraste) */
+.attach-card-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+.attach-card-remove:hover {
+  background: #ef4444;
+  transform: scale(1.15);
+}
+.attach-card-remove:active {
+  transform: scale(0.9);
+  transition: transform 0.08s;
+}
+
+[data-theme="dark"] .attach-card,
+[data-theme="oled"] .attach-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .attach-card-name,
+[data-theme="oled"] .attach-card-name {
+  background: rgba(255, 255, 255, 0.03);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .attach-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  :root:not([data-theme]) .attach-card-name {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}

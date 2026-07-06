@@ -5106,30 +5106,51 @@ export default function Home() {
 
 
             <div className="v2-input-container">
-              {attachedImages.length > 0 && (
-                <div className="image-preview-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 12px' }}>
-                  {attachedImages.map((img, idx) => (
-                    <div key={idx} className="image-preview-item" style={{ background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', position: 'relative', margin: 0 }}>
-                      <img src={img.base64} alt="Preview" className="image-preview-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button className="image-preview-remove" style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}>
-                        <XCircle size={14} fill="white" color="#333" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {attachedDocs.length > 0 && (
-                <div className="image-preview-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 12px' }}>
-                  {attachedDocs.map((doc, idx) => (
-                    <div key={idx} className="doc-preview-chip" style={{ display: 'inline-flex', alignItems: 'center', background: '#2a2a2a', padding: '4px 8px', borderRadius: '16px', gap: '6px' }}>
-                      <span className="doc-preview-icon">📄</span>
-                      <span className="doc-preview-name" style={{ fontSize: '0.85rem', color: '#eee' }}>{doc.name.length > 18 ? doc.name.slice(0, 18) + '…' : doc.name}</span>
-                      <button className="image-preview-remove" style={{ position: 'static', marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setAttachedDocs(prev => prev.filter((_, i) => i !== idx))}>
-                        <XCircle size={14} fill="white" color="#555" />
-                      </button>
-                    </div>
-                  ))}
+              {/* ── Previews de adjuntos: visibles, con nombre, animados ── */}
+              {(attachedImages.length > 0 || attachedDocs.length > 0) && (
+                <div className="attach-previews">
+                  <div className="attach-previews-label">
+                    <Paperclip size={12} />
+                    <span>
+                      {attachedImages.length + attachedDocs.length}
+                      {' '}
+                      {attachedImages.length + attachedDocs.length === 1 ? 'adjunto' : 'adjuntos'}
+                    </span>
+                  </div>
+                  <div className="attach-previews-row">
+                    {attachedImages.map((img, idx) => (
+                      <div key={`img-${idx}`} className="attach-card attach-card-image" title={img.name}>
+                        <img src={img.base64} alt={img.name} className="attach-card-img" />
+                        <button
+                          type="button"
+                          className="attach-card-remove"
+                          aria-label={`Quitar ${img.name}`}
+                          onClick={() => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                        </button>
+                        <div className="attach-card-name">
+                          {img.name.length > 14 ? img.name.slice(0, 14) + '…' : img.name}
+                        </div>
+                      </div>
+                    ))}
+                    {attachedDocs.map((doc, idx) => (
+                      <div key={`doc-${idx}`} className="attach-card attach-card-doc" title={doc.name}>
+                        <div className="attach-card-doc-icon">📄</div>
+                        <button
+                          type="button"
+                          className="attach-card-remove"
+                          aria-label={`Quitar ${doc.name}`}
+                          onClick={() => setAttachedDocs(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                        </button>
+                        <div className="attach-card-name">
+                          {doc.name.length > 14 ? doc.name.slice(0, 14) + '…' : doc.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
