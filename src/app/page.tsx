@@ -1103,6 +1103,16 @@ export default function Home() {
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  // Detecta PC (mouse) vs móvil (touch). En PC omitimos el menú y abrimos file picker directo.
+  const [isDesktopPointer, setIsDesktopPointer] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(pointer: fine)');
+    const update = () => setIsDesktopPointer(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
   const [thinkingLevel, setThinkingLevel] = useState<'standard' | 'extended'>('standard');
   const [showThinkingMenu, setShowThinkingMenu] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -1922,10 +1932,11 @@ export default function Home() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    // Cierra el menú AHORA (el archivo ya fue seleccionado, ya no se necesita el label en el DOM)
+    setAttachMenuOpen(false);
     if (!files || files.length === 0) return;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    if (imageInputRef.current) imageInputRef.current.value = "";
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    // Reset del value en el mismo input que disparó, sin tocar los otros
+    e.target.value = "";
 
     const currentTotal = attachedImages.length + attachedDocs.length;
     if (currentTotal + files.length > 10) {
@@ -5122,10 +5133,12 @@ export default function Home() {
                 </div>
               )}
 
-              {/* File inputs con .visually-hidden-input (no display:none) — más robusto en iOS PWA */}
+              {/* File inputs — el click nativo del <label htmlFor> los dispara sin necesidad de .click() programático */}
               <input id="chimuelo-file-docs" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv" ref={fileInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Adjuntar documento" />
               <input id="chimuelo-file-photos" type="file" multiple accept="image/*" ref={imageInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Adjuntar foto" />
               <input id="chimuelo-file-camera" type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="visually-hidden-input" onChange={handleFileChange} aria-label="Tomar foto con cámara" />
+              {/* Input combinado usado SOLO en PC: al tap "+" abre picker con imágenes + documentos */}
+              <input id="chimuelo-file-all" type="file" multiple accept="image/*,.pdf,.docx,.txt,.md,.csv" className="visually-hidden-input" onChange={handleFileChange} aria-label="Adjuntar archivo" />
               
               <div className="v2-input-row">
                 <textarea
@@ -5140,49 +5153,65 @@ export default function Home() {
                 
                 <div className="v2-input-actions-row">
                   <div className="v2-input-actions-left" style={{ position: 'relative' }}>
-                    <button
-                      className={`v2-attach-btn ${attachMenuOpen ? 'active' : ''}`}
-                      title="Subir imagen o documento"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAttachMenuOpen(!attachMenuOpen);
-                      }}
-                    >
-                      <div className="v2-attach-icon-wrapper" style={{ transform: attachMenuOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease' }}>
-                        <Plus size={20} />
-                      </div>
-                    </button>
-
-                    {attachMenuOpen && (
-                      <div className="v2-attach-dropdown">
-                        {/* <label htmlFor> dispara el file input NATIVAMENTE — sin .click() programático que falla en iOS PWA */}
-                        <label
-                          htmlFor="chimuelo-file-docs"
-                          className="v2-attach-dropdown-item"
-                          onClick={() => setAttachMenuOpen(false)}
+                    {isDesktopPointer ? (
+                      /* ── PC: <label> directo abre file picker sin menú intermedio ── */
+                      <label
+                        htmlFor="chimuelo-file-all"
+                        className="v2-attach-btn"
+                        title="Subir imagen o documento"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            (document.getElementById('chimuelo-file-all') as HTMLInputElement | null)?.click();
+                          }
+                        }}
+                      >
+                        <div className="v2-attach-icon-wrapper">
+                          <Plus size={20} />
+                        </div>
+                      </label>
+                    ) : (
+                      /* ── Móvil: menú con opciones (Archivos / Fotos / Cámara) ── */
+                      <>
+                        <button
+                          className={`v2-attach-btn ${attachMenuOpen ? 'active' : ''}`}
+                          title="Subir imagen o documento"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAttachMenuOpen(!attachMenuOpen);
+                          }}
                         >
-                          <FileText size={16} className="v2-attach-dropdown-icon" style={{ color: '#85929E' }} />
-                          <span>Archivos</span>
-                        </label>
+                          <div className="v2-attach-icon-wrapper" style={{ transform: attachMenuOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                            <Plus size={20} />
+                          </div>
+                        </button>
 
-                        <label
-                          htmlFor="chimuelo-file-photos"
-                          className="v2-attach-dropdown-item"
-                          onClick={() => setAttachMenuOpen(false)}
-                        >
-                          <ImageIcon size={16} className="v2-attach-dropdown-icon" style={{ color: '#52BE80' }} />
-                          <span>Fotos</span>
-                        </label>
+                        {attachMenuOpen && (
+                          <div className="v2-attach-dropdown" onClick={(e) => e.stopPropagation()}>
+                            {/* IMPORTANTE: NO cerramos el menú en onClick del label — desmontaría el label
+                                antes de que el browser dispare el file picker nativo (race condition).
+                                El menú se cierra automáticamente cuando handleFileChange procesa el archivo,
+                                o cuando el usuario toca fuera (app-layout onClick). */}
+                            <label htmlFor="chimuelo-file-docs" className="v2-attach-dropdown-item">
+                              <FileText size={16} className="v2-attach-dropdown-icon" style={{ color: '#85929E' }} />
+                              <span>Archivos</span>
+                            </label>
 
-                        <label
-                          htmlFor="chimuelo-file-camera"
-                          className="v2-attach-dropdown-item"
-                          onClick={() => setAttachMenuOpen(false)}
-                        >
-                          <Camera size={16} className="v2-attach-dropdown-icon" style={{ color: '#EB984E' }} />
-                          <span>Cámara</span>
-                        </label>
-                      </div>
+                            <label htmlFor="chimuelo-file-photos" className="v2-attach-dropdown-item">
+                              <ImageIcon size={16} className="v2-attach-dropdown-icon" style={{ color: '#52BE80' }} />
+                              <span>Fotos</span>
+                            </label>
+
+                            <label htmlFor="chimuelo-file-camera" className="v2-attach-dropdown-item">
+                              <Camera size={16} className="v2-attach-dropdown-icon" style={{ color: '#EB984E' }} />
+                              <span>Cámara</span>
+                            </label>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   
