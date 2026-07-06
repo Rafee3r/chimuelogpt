@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
 import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
+import { extractGalleryItems } from "../lib/gallery";
+import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -1090,8 +1092,9 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "agents">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery">("chat");
   const [agentSearch, setAgentSearch] = useState("");
+  const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [uniInput, setUniInput] = useState('');
@@ -1183,7 +1186,7 @@ export default function Home() {
   const prevMaxScrollTop = useRef<number>(0);
   const forceScrollNext = useRef<boolean>(true);
   const skipAutoScrollRef = useRef<boolean>(false);
-  const prevViewMode = useRef<"chat" | "university" | "agents">("chat");
+  const prevViewMode = useRef<"chat" | "university" | "agents" | "gallery">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
@@ -3488,6 +3491,13 @@ export default function Home() {
               <Sparkles size={15} />
               <span>Agentes</span>
             </button>
+            <button
+              className={`sb-row ${viewMode === 'gallery' ? 'active' : ''}`}
+              onClick={() => { prevViewMode.current = 'chat'; setViewMode('gallery'); setSidebarOpen(false); }}
+            >
+              <ImageIcon size={15} />
+              <span>Galería</span>
+            </button>
           </div>
 
           {/* CHATS */}
@@ -3627,7 +3637,7 @@ export default function Home() {
             <button
               className="sb-profile-settings"
               onClick={() => {
-                prevViewMode.current = viewMode as "chat" | "university" | "agents";
+                prevViewMode.current = viewMode === 'settings' ? 'chat' : viewMode;
                 setViewMode('settings');
                 setSidebarOpen(false);
               }}
@@ -4226,7 +4236,111 @@ export default function Home() {
             }
           }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
-          {viewMode === "agents" ? (
+          {viewMode === "gallery" ? (
+            /* ── GALERÍA DE CREACIONES ── */
+            (() => {
+              const items = extractGalleryItems(chats);
+              const images = items.filter(i => i.kind === 'image');
+              const music = items.filter(i => i.kind === 'music');
+              const shown = galleryTab === 'images' ? images : music;
+              return (
+                <div className="gallery-page">
+                  <div className="gallery-header">
+                    <h1 className="gallery-title">Galería</h1>
+                    <p className="gallery-sub">Todo lo que has creado con Chimuelo, en un solo lugar.</p>
+                    <div className="gallery-tabs">
+                      <button
+                        className={`gallery-tab ${galleryTab === 'images' ? 'active' : ''}`}
+                        onClick={() => setGalleryTab('images')}
+                      >
+                        🎨 Imágenes {images.length > 0 && <span className="gallery-tab-count">{images.length}</span>}
+                      </button>
+                      <button
+                        className={`gallery-tab ${galleryTab === 'music' ? 'active' : ''}`}
+                        onClick={() => setGalleryTab('music')}
+                      >
+                        🎵 Música {music.length > 0 && <span className="gallery-tab-count">{music.length}</span>}
+                      </button>
+                    </div>
+                    {shown.length > 0 && (
+                      <p className="gallery-hint">Las creaciones antiguas pueden expirar — descarga las que quieras conservar.</p>
+                    )}
+                  </div>
+
+                  {shown.length === 0 ? (
+                    <div className="gallery-empty">
+                      <div className="gallery-empty-icon">{galleryTab === 'images' ? '🎨' : '🎵'}</div>
+                      <p className="gallery-empty-title">
+                        {galleryTab === 'images' ? 'Aún no has creado imágenes' : 'Aún no has creado canciones'}
+                      </p>
+                      <small className="gallery-empty-sub">
+                        {galleryTab === 'images'
+                          ? 'Pídele a Chimuelo "genera una imagen de..." y aparecerá aquí.'
+                          : 'Pídele a Chimuelo "crea una canción de..." y aparecerá aquí.'}
+                      </small>
+                    </div>
+                  ) : galleryTab === 'images' ? (
+                    <div className="gallery-grid">
+                      {images.map(item => (
+                        <div key={item.url} className="gallery-card">
+                          <img
+                            src={item.url}
+                            alt={`Creación de ${item.chatTitle}`}
+                            className="gallery-card-img"
+                            loading="lazy"
+                            onClick={() => setLightboxImg(item.url)}
+                            onError={(e) => {
+                              const card = (e.target as HTMLElement).closest('.gallery-card');
+                              card?.classList.add('expired');
+                            }}
+                          />
+                          <div className="gallery-card-expired-msg">Imagen expirada</div>
+                          <div className="gallery-card-footer">
+                            <button
+                              className="gallery-card-chat-link"
+                              title={`Ir al chat: ${item.chatTitle}`}
+                              onClick={() => { handleSwitchChat(item.chatId); setViewMode('chat'); }}
+                            >
+                              💬 {item.chatTitle.length > 16 ? item.chatTitle.slice(0, 16) + '…' : item.chatTitle}
+                            </button>
+                            <button
+                              className="gallery-card-download"
+                              title="Descargar"
+                              onClick={() => downloadImage(item.url)}
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="gallery-music-list">
+                      {music.map(item => (
+                        <div key={item.url} className="gallery-music-card">
+                          <div className="gallery-music-icon">🎵</div>
+                          <div className="gallery-music-info">
+                            {item.prompt && (
+                              <div className="gallery-music-prompt" title={item.prompt}>
+                                {item.prompt.length > 60 ? item.prompt.slice(0, 60) + '…' : item.prompt}
+                              </div>
+                            )}
+                            <audio controls src={item.url} className="gallery-music-audio" preload="none" />
+                            <button
+                              className="gallery-card-chat-link"
+                              onClick={() => { handleSwitchChat(item.chatId); setViewMode('chat'); }}
+                            >
+                              💬 {item.chatTitle.length > 24 ? item.chatTitle.slice(0, 24) + '…' : item.chatTitle}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          ) : viewMode === "agents" ? (
             /* ── AGENTES — estilo WhatsApp ── */
             <div className="agents-page">
               <div className="agents-page-header">

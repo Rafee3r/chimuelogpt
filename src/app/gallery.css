@@ -1,0 +1,254 @@
+/* ════════════════════════════════════════════════════════════
+   GALERÍA DE CREACIONES — estilos aislados de globals.css
+   ════════════════════════════════════════════════════════════ */
+
+.gallery-page {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 7rem;
+  animation: galleryFadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes galleryFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gallery-header { margin-bottom: 1.25rem; }
+
+.gallery-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  background: linear-gradient(to right, var(--text-primary), #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gallery-sub {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+/* Tabs */
+.gallery-tabs {
+  display: inline-flex;
+  gap: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 4px;
+}
+
+.gallery-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.gallery-tab.active {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.gallery-tab-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.gallery-tab:not(.active) .gallery-tab-count {
+  background: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.gallery-hint {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* ── Grid de imágenes ── */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.gallery-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s;
+}
+.gallery-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-color);
+}
+
+.gallery-card-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+  background: var(--border-color);
+}
+
+/* Estado expirado: se activa via JS agregando .expired al card */
+.gallery-card-expired-msg { display: none; }
+.gallery-card.expired .gallery-card-img { display: none; }
+.gallery-card.expired .gallery-card-expired-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+.gallery-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 9px;
+}
+
+.gallery-card-chat-link {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  transition: color 0.2s;
+}
+.gallery-card-chat-link:hover { color: var(--accent-color); }
+
+.gallery-card-download {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+.gallery-card-download:hover {
+  color: var(--text-primary);
+  background: var(--border-color);
+}
+
+/* ── Lista de música ── */
+.gallery-music-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gallery-music-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.gallery-music-card:hover { border-color: var(--accent-color); }
+
+.gallery-music-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.gallery-music-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gallery-music-prompt {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.gallery-music-audio {
+  width: 100%;
+  height: 36px;
+}
+
+/* ── Empty state ── */
+.gallery-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 24px;
+  gap: 6px;
+}
+.gallery-empty-icon {
+  font-size: 3rem;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+.gallery-empty-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.gallery-empty-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* Dark themes */
+[data-theme="dark"] .gallery-card,
+[data-theme="oled"] .gallery-card,
+[data-theme="dark"] .gallery-music-card,
+[data-theme="oled"] .gallery-music-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
