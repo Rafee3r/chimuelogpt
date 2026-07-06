@@ -6,6 +6,8 @@ import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
+import { useReminders } from "../lib/use-reminders";
+import { parseSetReminderTag } from "../lib/message-parsers";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -928,6 +930,9 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery">("chat");
   const [agentSearch, setAgentSearch] = useState("");
   const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
+  const remindersHook = useReminders();
+  const [newReminderText, setNewReminderText] = useState("");
+  const [newReminderWhen, setNewReminderWhen] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [uniInput, setUniInput] = useState('');
@@ -2500,6 +2505,26 @@ export default function Home() {
         reasoning = undefined;
       }
 
+      // Post-process: recordatorios creados por el agente (<set_reminder>)
+      if (cleanContent.includes('<set_reminder')) {
+        const parsed = parseSetReminderTag(cleanContent);
+        if (parsed && parsed.dueAt) {
+          remindersHook.create({
+            text: parsed.text,
+            dueAt: parsed.dueAt,
+            repeat: parsed.repeat,
+            createdBy: chatForApi?.agentId || 'agent',
+            chatId: targetChatId,
+          });
+          const when = new Date(parsed.dueAt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+          const confirm = `⏰ Listo, te voy a recordar: "${parsed.text}" el ${when}.`;
+          cleanContent = parsed.rest ? `${parsed.rest}\n\n${confirm}` : confirm;
+        } else if (parsed) {
+          // Tag sin fecha válida: quitar el tag, dejar el resto
+          cleanContent = parsed.rest || cleanContent.replace(/<set_reminder[^>]*>[\s\S]*?(?:<\/set_reminder>|$)/i, '').trim();
+        }
+      }
+
       // Post-process: intercept image generation tags on the clean content
       if (cleanContent.includes('<generate_image')) {
         const promptMatch = cleanContent.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
@@ -3868,6 +3893,95 @@ export default function Home() {
                     Reglas que Chimuelo seguirá en TODOS tus chats. Máx 500 caracteres ({customInstructions.length}/500).
                   </p>
                 </div>
+              </div>
+
+              {/* ── Recordatorios ── */}
+              <div className="settings-card">
+                <h3 className="settings-card-title">⏰ Recordatorios</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 12px' }}>
+                  Chimuelo y sus agentes pueden recordarte cosas. Suenan cuando la app está abierta; si está cerrada, los verás al volver a entrar.
+                </p>
+
+                {/* Crear recordatorio */}
+                <div className="reminder-create">
+                  <input
+                    type="text"
+                    className="settings-select"
+                    placeholder="Ej: llamar al doctor"
+                    value={newReminderText}
+                    maxLength={200}
+                    onChange={(e) => setNewReminderText(e.target.value)}
+                    style={{ marginBottom: '8px' }}
+                  />
+                  <div className="reminder-create-row">
+                    <input
+                      type="datetime-local"
+                      className="settings-select"
+                      value={newReminderWhen}
+                      onChange={(e) => setNewReminderWhen(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      className="settings-action-btn reminder-add-btn"
+                      disabled={!newReminderText.trim() || !newReminderWhen}
+                      onClick={() => {
+                        const dueAt = new Date(newReminderWhen).getTime();
+                        if (Number.isNaN(dueAt)) { showToast('Fecha inválida'); return; }
+                        remindersHook.create({ text: newReminderText, dueAt, createdBy: 'user' });
+                        setNewReminderText('');
+                        setNewReminderWhen('');
+                        showToast('Recordatorio creado ⏰');
+                      }}
+                    >
+                      <Plus size={16} /> Crear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Aviso de permiso */}
+                {remindersHook.permission === 'denied' && (
+                  <p className="reminder-perm-warn">
+                    ⚠️ Las notificaciones están bloqueadas. Los recordatorios igual aparecerán al abrir la app, pero no sonarán. Actívalas en los ajustes de tu teléfono.
+                  </p>
+                )}
+
+                {/* Lista de pendientes */}
+                {(() => {
+                  const pending = remindersHook.reminders
+                    .filter(r => r.status !== 'done')
+                    .sort((a, b) => a.dueAt - b.dueAt);
+                  if (pending.length === 0) {
+                    return <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '12px' }}>No tienes recordatorios pendientes.</p>;
+                  }
+                  return (
+                    <div className="reminder-list">
+                      {pending.map(r => {
+                        const overdue = r.dueAt <= Date.now();
+                        return (
+                          <div key={r.id} className={`reminder-item ${overdue ? 'overdue' : ''}`}>
+                            <div className="reminder-item-info">
+                              <span className="reminder-item-text">{r.text}</span>
+                              <span className="reminder-item-when">
+                                {overdue ? '¡Ahora! ' : ''}
+                                {new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })}
+                                {r.repeat && ` · ${r.repeat === 'daily' ? 'cada día' : 'cada semana'}`}
+                                {r.createdBy !== 'user' && ' · por un agente'}
+                              </span>
+                            </div>
+                            <div className="reminder-item-actions">
+                              <button className="reminder-done-btn" title="Marcar como hecho" onClick={() => remindersHook.complete(r.id)}>
+                                <Check size={15} />
+                              </button>
+                              <button className="reminder-del-btn" title="Borrar" onClick={() => remindersHook.remove(r.id)}>
+                                <X size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Estilo del Chat */}

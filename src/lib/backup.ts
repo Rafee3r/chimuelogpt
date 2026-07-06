@@ -30,6 +30,7 @@ export const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_density',
   'chimuelo_fontSize',
   'chimuelo_enterToSend',
+  'chimuelo_reminders',
 ];
 
 export function captureAppSnapshot(storage: StorageLike = localStorage): Record<string, string> {
