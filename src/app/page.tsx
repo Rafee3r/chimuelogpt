@@ -971,7 +971,7 @@ export default function Home() {
   const [userName, setUserName] = useState<string>("");
   const [editingName, setEditingName] = useState<boolean>(false);
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
-  const [showCatMascot, setShowCatMascot] = useState<boolean>(true);
+  const [showCatMascot, setShowCatMascot] = useState<boolean>(false);
   const [customInstructions, setCustomInstructions] = useState<string>("");
   const [showVersionModal, setShowVersionModal] = useState<boolean>(false);
   const [showWelcomeOnboarding, setShowWelcomeOnboarding] = useState<boolean>(false);
@@ -1317,8 +1317,9 @@ export default function Home() {
     const savedUserName = localStorage.getItem("chimuelo_user_name");
     if (savedUserName) setUserName(savedUserName);
 
+    // Gato mascota: apagado por default; solo se muestra si el usuario lo activó explícitamente
     const savedCatMascot = localStorage.getItem("chimuelo_show_cat");
-    if (savedCatMascot === 'false') setShowCatMascot(false);
+    if (savedCatMascot === 'true') setShowCatMascot(true);
 
     const savedCustomInst = localStorage.getItem("chimuelo_custom_instructions");
     if (savedCustomInst) setCustomInstructions(savedCustomInst);
