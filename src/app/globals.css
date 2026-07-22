@@ -18,7 +18,7 @@
   --user-bubble-start: #10a37f;
   --user-bubble-end: #0a7a5f;
   --accent-glow: rgba(16, 163, 127, 0.13);
-  --accent-glow-strong: rgba(16, 163, 127, 0.5);
+  --accent-glow-strong: rgba(16, 163, 127, 0.3);
 
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
@@ -62,7 +62,7 @@
     --user-bubble-end: #065f46;
     --accent-color: #10a37f;
     --accent-glow: rgba(16, 163, 127, 0.15);
-    --accent-glow-strong: rgba(16, 163, 127, 0.55);
+    --accent-glow-strong: rgba(16, 163, 127, 0.3);
   }
 }
 
@@ -84,7 +84,7 @@
   --user-bubble-end: #0a7a5f;
   --accent-color: #10a37f;
   --accent-glow: rgba(16, 163, 127, 0.13);
-  --accent-glow-strong: rgba(16, 163, 127, 0.5);
+  --accent-glow-strong: rgba(16, 163, 127, 0.3);
 }
 
 :root[data-theme="dark"] {
@@ -105,7 +105,7 @@
   --user-bubble-end: #065f46;
   --accent-color: #10a37f;
   --accent-glow: rgba(16, 163, 127, 0.15);
-  --accent-glow-strong: rgba(16, 163, 127, 0.55);
+  --accent-glow-strong: rgba(16, 163, 127, 0.3);
 }
 
 :root[data-theme="pink"] {
@@ -126,7 +126,7 @@
   --user-bubble-end: #9d174d;
   --accent-color: #ec4899;
   --accent-glow: rgba(236, 72, 153, 0.13);
-  --accent-glow-strong: rgba(236, 72, 153, 0.5);
+  --accent-glow-strong: rgba(236, 72, 153, 0.3);
 }
 
 :root[data-theme="orange"] {
@@ -147,7 +147,7 @@
   --user-bubble-end: #9a3412;
   --accent-color: #f97316;
   --accent-glow: rgba(249, 115, 22, 0.13);
-  --accent-glow-strong: rgba(249, 115, 22, 0.5);
+  --accent-glow-strong: rgba(249, 115, 22, 0.3);
 }
 
 :root[data-theme="oled"] {
@@ -168,7 +168,7 @@
   --user-bubble-end: #065f46;
   --accent-color: #10a37f;
   --accent-glow: rgba(16, 163, 127, 0.15);
-  --accent-glow-strong: rgba(16, 163, 127, 0.55);
+  --accent-glow-strong: rgba(16, 163, 127, 0.3);
 }
 
 :root[data-theme="snow"] {
@@ -189,7 +189,7 @@
   --user-bubble-end: #1e40af;
   --accent-color: #3b82f6;
   --accent-glow: rgba(59, 130, 246, 0.13);
-  --accent-glow-strong: rgba(59, 130, 246, 0.5);
+  --accent-glow-strong: rgba(59, 130, 246, 0.3);
 }
 
 * {
@@ -2510,6 +2510,7 @@ a {
   align-items: center;
 }
 
+/* Orb zen: duotono suave del tema, respiración lenta — sin arcoíris */
 .glowing-orb {
   position: absolute;
   width: 100%;
@@ -2517,18 +2518,13 @@ a {
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
-    #ff3366,
-    #ff9933,
-    #ffdd33,
-    #66ff66,
-    #33ddff,
-    #6633ff,
-    #ff33cc,
-    #ff3366
+    var(--accent-color),
+    #a5b4fc,
+    var(--accent-color)
   );
-  filter: blur(15px);
-  animation: rotate-gradient 5s linear infinite;
-  opacity: 0.7;
+  filter: blur(18px);
+  animation: rotate-gradient 14s linear infinite;
+  opacity: 0.35;
 }
 
 .glowing-orb-core {
@@ -2538,8 +2534,8 @@ a {
   background: var(--bg-primary);
   border-radius: 50%;
   z-index: 2;
-  box-shadow: inset 0 0 20px rgba(255,255,255,0.1), 0 0 15px rgba(0,0,0,0.5);
-  animation: pulse-glow 3s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 1px var(--border-color);
+  animation: pulse-glow 5s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2548,7 +2544,6 @@ a {
 
 .glowing-orb-core svg {
   z-index: 3;
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.4));
 }
 
 /* Variante para el formulario de auth: orb un poco más pequeño y centrado */
@@ -2561,8 +2556,8 @@ a {
 }
 
 @keyframes pulse-glow {
-  0% { transform: scale(0.95); box-shadow: inset 0 0 10px rgba(255,255,255,0.1), 0 0 10px rgba(0,0,0,0.5); }
-  100% { transform: scale(1.05); box-shadow: inset 0 0 30px rgba(255,255,255,0.3), 0 0 25px rgba(255,255,255,0.2); }
+  0%   { transform: scale(0.98); }
+  100% { transform: scale(1.02); }
 }
 
 .greeting-text-gradient {
@@ -2606,7 +2601,7 @@ a {
 .smart-pill:hover {
   background: var(--sidebar-hover);
   border-color: #a18cd1;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
 }
 
@@ -3016,7 +3011,7 @@ a {
 
 /* Dashboard Animations */
 @keyframes fadeUpStagger {
-  0% { opacity: 0; transform: translateY(20px); }
+  0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
@@ -3364,7 +3359,7 @@ a {
 }
 
 .subject-add-first-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(161, 140, 209, 0.4);
 }
 
@@ -3924,7 +3919,7 @@ a {
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 6px 20px -4px var(--accent-glow-strong);
   flex-shrink: 0;
 }
@@ -4298,7 +4293,7 @@ a {
   margin-bottom: 0;
   margin-right: 0;
   border: 1px solid var(--border-color);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
               background 0.2s, color 0.2s, border-color 0.2s;
 }
 .v2-mic-btn.solo:hover {
@@ -4909,7 +4904,7 @@ a {
 }
 .uni-v2-pill:hover {
   border-color: #a18cd1;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
 }
 .uni-v2-pill.active {
@@ -4974,7 +4969,7 @@ a {
 .uni-v2-pill-new:hover {
   border-color: #a18cd1;
   color: var(--text-primary);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
 }
 
@@ -5082,7 +5077,7 @@ a {
 }
 .uni-v2-tpl-btn:hover {
   border-color: #a18cd1;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 8px 20px -8px rgba(0,0,0,0.2);
 }
 
@@ -5196,13 +5191,13 @@ a {
 
 /* ── Keyframes ── */
 @keyframes msgEnter {
-  0%   { opacity: 0; transform: translateY(16px); }
+  0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes userBubbleEnter {
-  0%   { opacity: 0; transform: translateX(20px) scale(0.96); }
-  100% { opacity: 1; transform: translateX(0) scale(1); }
+  0%   { opacity: 0; transform: translateX(8px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
 /* ── Cambio 1: Todos los mensajes entran con fadeUp ──
@@ -5242,7 +5237,7 @@ a {
    Problema: el botón de enviar no tenía feedback táctil al presionar.
    En móvil especialmente, el usuario no sabe si registró el tap.
    Solución: al presionar (:active), escala a 0.85 en 80ms (fast-in).
-   Al soltar, la transición normal usa cubic-bezier(0.34, 1.56, 0.64, 1)
+   Al soltar, la transición normal usa cubic-bezier(0.22, 1, 0.36, 1)
    — el easing "overshoot" que simula un resorte — volviendo a scale(1)
    pasando brevemente por 1.06 antes de asentarse.
    Aplica solo a .v2-send-btn.active (cuando hay texto escrito).
@@ -5272,7 +5267,7 @@ a {
    inmediato y plano — no había feedback físico de "seleccioné algo".
    Solución: .uni-v2-pill:active y .smart-pill:active escalan a 0.92
    en 80ms. Al soltar, la transición normal con spring easing
-   cubic-bezier(0.34, 1.56, 0.64, 1) hace que reboten de vuelta a
+   cubic-bezier(0.22, 1, 0.36, 1) hace que reboten de vuelta a
    scale(1) con un pequeño overshoot. Se siente como presionar
    un botón físico.
    ═══════════════════════════════════════════════════════════════ */
@@ -5280,7 +5275,7 @@ a {
 /* ── Cambio 5 — Send button: press elástico ── */
 .v2-send-btn.active {
   /* Spring easing para el rebote al soltar */
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
               background 0.3s ease,
               box-shadow 0.3s ease,
               color 0.3s ease;
@@ -5312,7 +5307,7 @@ a {
 }
 
 .message-actions .action-btn {
-  animation: btnPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: btnPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .message-actions .action-btn:nth-child(1) { animation-delay: 0.00s; }
 .message-actions .action-btn:nth-child(2) { animation-delay: 0.04s; }
@@ -5324,7 +5319,7 @@ a {
 .uni-v2-pill {
   transition: background 0.25s ease, border-color 0.25s ease,
               box-shadow 0.25s ease, color 0.2s ease,
-              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .uni-v2-pill:active {
   transform: scale(0.92);
@@ -5334,7 +5329,7 @@ a {
 .smart-pill {
   transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.3s ease, box-shadow 0.3s ease,
-              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .smart-pill:active {
   transform: scale(0.92);
@@ -5399,12 +5394,12 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .smart-pill {
   transition: background-color 0.4s ease, border-color 0.4s ease,
               color 0.4s ease, box-shadow 0.3s ease,
-              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .uni-v2-pill {
   transition: background-color 0.4s ease, border-color 0.4s ease,
               color 0.4s ease, box-shadow 0.3s ease,
-              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ── Cambio 10 — Sidebar items: hover deslizante ── */
@@ -5446,7 +5441,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   opacity: 1 !important;
 }
 .code-copy-btn svg {
-  animation: iconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: iconPop 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: center;
 }
 @keyframes iconPop {
@@ -5708,7 +5703,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   flex-shrink: 0;
   font-size: 1.8rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .agent-row:hover .agent-avatar {
   transform: scale(1.05) rotate(-3deg);
@@ -5813,7 +5808,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   pointer-events: auto;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.22));
   transform-origin: 50% 100%;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -5927,7 +5922,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
 .cat-tie {
   transform-origin: 72px 42px;
   transform: scale(1);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Click activation triggers the tie-adjusting keyframe */
@@ -6724,7 +6719,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   max-width: 80%;
   text-align: right;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  transition: background 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   animation: agentRowEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .wa-quick-reply-bubble:nth-child(1) { animation-delay: 0.10s; }
@@ -6929,7 +6924,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
-  transition: background 0.2s, color 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.2s, color 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sb-profile-settings:hover {
   background: var(--border-color);
@@ -7111,23 +7106,22 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   justify-content: center;
 }
 
+/* Splash zen: un solo anillo suave + orb respirando. Sin partículas de colores. */
 .splash-ring {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid;
-  border-image: linear-gradient(135deg, var(--accent-color), #a18cd1, #ec4899) 1;
+  border: 1px solid var(--accent-color);
   opacity: 0;
-  animation: splashRingPulse 2.4s ease-out infinite;
+  animation: splashRingPulse 3s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 .splash-ring-1 { animation-delay: 0s; }
-.splash-ring-2 { animation-delay: 0.4s; }
-.splash-ring-3 { animation-delay: 0.8s; }
+.splash-ring-2, .splash-ring-3 { display: none; }
 
 @keyframes splashRingPulse {
-  0%   { opacity: 0; transform: scale(0.4); border-width: 4px; }
-  40%  { opacity: 0.9; }
-  100% { opacity: 0; transform: scale(1.6); border-width: 1px; }
+  0%   { opacity: 0; transform: scale(0.6); }
+  30%  { opacity: 0.35; }
+  100% { opacity: 0; transform: scale(1.4); }
 }
 
 .splash-orb-wow {
@@ -7135,44 +7129,21 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-color) 0%, #a18cd1 50%, #ec4899 100%);
+  background: linear-gradient(135deg, var(--accent-color) 0%, #a5b4fc 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow:
-    0 0 40px -8px var(--accent-glow-strong),
-    0 10px 30px -6px rgba(0,0,0,0.3);
-  animation: splashOrbBreath 2s ease-in-out infinite;
+  box-shadow: 0 8px 32px -12px var(--accent-glow);
+  animation: splashOrbBreath 3.2s ease-in-out infinite;
 }
 @keyframes splashOrbBreath {
   0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.08); }
+  50%      { transform: scale(1.04); }
 }
 
-/* Partículas flotando alrededor */
-.splash-particle {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent-color);
-  opacity: 0;
-  animation: splashParticle 3s ease-in-out infinite;
-}
-.splash-particle-1 { top: 20%; left: 18%; animation-delay: 0s; background: #ec4899; }
-.splash-particle-2 { top: 25%; right: 14%; animation-delay: 0.4s; background: #a18cd1; }
-.splash-particle-3 { bottom: 22%; left: 22%; animation-delay: 0.8s; background: var(--accent-color); }
-.splash-particle-4 { bottom: 18%; right: 20%; animation-delay: 1.2s; background: #f59e0b; }
-.splash-particle-5 { top: 50%; left: 8%; animation-delay: 1.6s; background: #10b981; }
-.splash-particle-6 { top: 55%; right: 6%; animation-delay: 2.0s; background: #3b82f6; }
-
-@keyframes splashParticle {
-  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
-  30%  { opacity: 1; transform: translate(0, -10px) scale(1); }
-  70%  { opacity: 1; }
-  100% { opacity: 0; transform: translate(0, -30px) scale(0.3); }
-}
+/* Partículas eliminadas (zen) */
+.splash-particle { display: none; }
 
 /* Search con margen normal (sin close flotante arriba) */
 .sb-search { margin-top: 14px !important; }
@@ -7407,7 +7378,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: welcomeOnbSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: welcomeOnbSlide 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   isolation: isolate;
 }
 @keyframes welcomeOnbSlide {
@@ -7517,7 +7488,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 6px 20px -4px var(--accent-glow-strong);
 }
 .welcome-onb-btn-primary:hover:not(:disabled) {
@@ -7712,12 +7683,12 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   cursor: pointer;
   min-width: 100px;
   transition: background 0.2s, border-color 0.2s,
-              transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .recent-agent-card:hover {
   background: var(--sidebar-hover);
   border-color: var(--accent-color);
-  transform: translateY(-3px);
+  transform: translateY(-1px);
 }
 .recent-agent-card:active {
   transform: scale(0.94) translateY(-2px);
@@ -7895,7 +7866,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s,
-              transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .quick-action-pill:hover {
   background: var(--input-bg);
@@ -8082,7 +8053,7 @@ label.v2-attach-dropdown-item:active {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: attachCardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: attachCardPop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: border-color 0.2s;
 }
 .attach-card:hover {
@@ -8146,7 +8117,7 @@ label.v2-attach-dropdown-item:active {
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   z-index: 2;
 }
@@ -8175,5 +8146,70 @@ label.v2-attach-dropdown-item:active {
   }
   :root:not([data-theme]) .attach-card-name {
     background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ZEN PASS — limpieza visual global (ma / 間: espacio que respira)
+   Sin features nuevas: solo menos ruido, más aire, un solo tempo.
+   ════════════════════════════════════════════════════════════ */
+
+/* Más aire entre mensajes: la conversación respira */
+.chat-area { gap: 22px; }
+.chat-area.density-compact { gap: 12px; }
+
+/* Scrollbar aún más discreta */
+.chat-area::-webkit-scrollbar { width: 3px; }
+
+/* Tip del día: casi invisible hasta que lo buscas */
+.tip-of-day-mini { opacity: 0.4; }
+
+/* Section labels del sidebar: menos gritones */
+.sb-section-label {
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+/* Los iconos de acciones del mensaje aparecen aún más quietos */
+.message-actions-subtle { opacity: 0.3; }
+
+/* Sombra del input principal: difusa, no un aura */
+.v2-input-container {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+.v2-input-container:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Smart pills: hover calmado (sin salto ni sombra grande) */
+.smart-pill:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--sidebar-hover);
+  border-color: var(--text-secondary);
+}
+
+/* Cards de agente: hover sin levitación, solo borde */
+.agent-row:hover .agent-avatar { transform: none; }
+
+/* Stagger de pills más rápido: la pantalla se arma en <400ms */
+.smart-pill:nth-child(1) { animation-delay: 0.03s; }
+.smart-pill:nth-child(2) { animation-delay: 0.07s; }
+.smart-pill:nth-child(3) { animation-delay: 0.11s; }
+.smart-pill:nth-child(4) { animation-delay: 0.15s; }
+
+/* Score badge del agente: neutro, no gradient llamativo */
+.agent-score {
+  background: var(--border-color);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+/* Respeto por reduced-motion (accesibilidad + zen real) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
