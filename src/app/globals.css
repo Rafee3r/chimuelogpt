@@ -2801,6 +2801,13 @@ a {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   padding: 12px 16px 8px 16px;
   gap: 8px;
+  /* FIX: sobre el gradient .v2-input-area::before (z-index 11).
+     El backdrop-filter del container crea un stacking context con
+     z-index auto (=0), aplanando el dropdown de adjuntos DEBAJO del
+     fade — 'Fotos' se veía opacado. Con z-index propio > 11, todo
+     el contenido (incluido el menú de adjuntos) pinta encima. */
+  position: relative;
+  z-index: 20;
 }
 
 .v2-input-container:focus-within {
