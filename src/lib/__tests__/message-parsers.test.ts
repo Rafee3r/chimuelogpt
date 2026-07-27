@@ -1,5 +1,42 @@
 import { describe, it, expect } from 'vitest';
-import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag } from '../message-parsers';
+import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag, resolveDisplayContent } from '../message-parsers';
+
+describe('resolveDisplayContent — nunca burbuja fantasma', () => {
+  it('devuelve el texto limpio en el caso normal', () => {
+    const r = resolveDisplayContent('<think>2+2</think>El resultado es 16.');
+    expect(r).toEqual({ content: 'El resultado es 16.', isEmpty: false });
+  });
+
+  it('rescata la respuesta cuando el <think> quedó SIN cerrar', () => {
+    // Bug real: think abierto dejaba el texto crudo o vacío en el render
+    const r = resolveDisplayContent('<think>pensando');
+    expect(r.isEmpty).toBe(false);
+    expect(r.content).toBe('pensando');
+  });
+
+  it('usa el razonamiento si no hay respuesta final (stream cortado)', () => {
+    const r = resolveDisplayContent('<think>iba a decir 16</think>');
+    expect(r.content).toBe('iba a decir 16');
+    expect(r.isEmpty).toBe(false);
+  });
+
+  it('marca isEmpty solo cuando de verdad no hay nada', () => {
+    expect(resolveDisplayContent('').isEmpty).toBe(true);
+    expect(resolveDisplayContent('   ').isEmpty).toBe(true);
+    expect(resolveDisplayContent(null).isEmpty).toBe(true);
+    expect(resolveDisplayContent(undefined).isEmpty).toBe(true);
+  });
+
+  it('no deja burbuja vacía si todo el mensaje era contexto inyectado', () => {
+    const soloDoc = '[DOCUMENTO ADJUNTO: cv.pdf]\ncontenido\n[FIN DEL DOCUMENTO]';
+    expect(resolveDisplayContent(soloDoc).isEmpty).toBe(true);
+  });
+
+  it('conserva la respuesta cuando viene junto a un documento adjunto', () => {
+    const r = resolveDisplayContent('[DOCUMENTO ADJUNTO: cv.pdf]\ntexto\n[FIN DEL DOCUMENTO]\n\nTu CV se ve bien.');
+    expect(r.content).toBe('Tu CV se ve bien.');
+  });
+});
 
 describe('stripThinkTags', () => {
   it('quita el bloque think y conserva el resto', () => {

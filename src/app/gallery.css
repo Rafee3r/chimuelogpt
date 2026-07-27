@@ -350,3 +350,42 @@
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* ── Aviso de respuesta vacía (nunca burbuja muda) ── */
+.empty-reply-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--input-bg);
+  border: 1px dashed var(--border-color);
+}
+.empty-reply-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.empty-reply-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.empty-reply-retry:hover {
+  background: var(--sidebar-hover);
+  border-color: var(--text-secondary);
+}
+[data-theme="dark"] .empty-reply-notice,
+[data-theme="oled"] .empty-reply-notice {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}

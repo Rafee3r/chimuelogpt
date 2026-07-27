@@ -7,8 +7,49 @@
 /* <think>...</think> — razonamiento del modelo (se oculta del render) */
 export const THINK_RE = /<think>[\s\S]*?<\/think>/g;
 
+/* Variante tolerante: también captura un <think> que quedó SIN cerrar
+   (stream cortado). Sin ella, un think abierto se mostraría crudo. */
+export const THINK_OPEN_RE = /<think>[\s\S]*?(?:<\/think>|$)/g;
+
 export function stripThinkTags(content: string): string {
   return content.replace(THINK_RE, '').trim();
+}
+
+/* ─────────── Resolución defensiva del contenido a mostrar ───────────
+   Garantiza que una respuesta del asistente NUNCA se renderice como
+   burbuja fantasma (avatar + botones, sin texto).
+
+   Orden de intentos:
+   1. Limpieza normal (think cerrado + bloques de contexto inyectado).
+   2. Si quedó vacío: reintenta tolerando <think> sin cerrar.
+   3. Si sigue vacío: usa el razonamiento como contenido (mejor mostrar
+      el pensamiento que una burbuja muda).
+   4. Si sigue vacío: reporta isEmpty para que la UI ofrezca reintentar.
+*/
+export function resolveDisplayContent(raw: string | null | undefined): {
+  content: string;
+  isEmpty: boolean;
+} {
+  const original = (raw || '').trim();
+  if (!original) return { content: '', isEmpty: true };
+
+  const stripContextBlocks = (s: string) =>
+    s
+      .replace(/\[DOCUMENTO ADJUNTO: [^\]]+\][\s\S]*?\[FIN DEL DOCUMENTO\]\n*/gi, '')
+      .replace(/\[CONTENIDO ENLACE: [^\]]+\][\s\S]*?\[FIN ENLACE\]\n*/gi, '')
+      .trim();
+
+  // 1. Limpieza. THINK_OPEN_RE es lazy: si el tag cierra, para en </think>
+  //    y conserva la respuesta; si quedó abierto, se lleva la cola huérfana.
+  const content = stripContextBlocks(original.replace(THINK_OPEN_RE, ''));
+  if (content) return { content, isEmpty: false };
+
+  // 2. No hubo respuesta final: rescatar el razonamiento antes que mostrar nada
+  const reasoning = original.match(/<think>([\s\S]*?)(?:<\/think>|$)/)?.[1]?.trim();
+  if (reasoning) return { content: reasoning, isEmpty: false };
+
+  // 3. Genuinamente vacío
+  return { content: '', isEmpty: true };
 }
 
 /* __MUSIC_PLAYER:url::promptCodificado__ — canción generada.

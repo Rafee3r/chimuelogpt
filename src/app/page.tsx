@@ -7,7 +7,7 @@ import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
-import { parseSetReminderTag } from "../lib/message-parsers";
+import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parsers";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -4642,11 +4642,11 @@ export default function Home() {
               const role = msg.role;
               const contentStr = msg.content || '';
               const reasoning = msg.model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
-              const displayContent = contentStr
-                .replace(/<think>[\s\S]*?<\/think>/g, '')
-                .replace(/\[DOCUMENTO ADJUNTO: [^\]]+\][\s\S]*?\[FIN DEL DOCUMENTO\]\n*/gi, '')
-                .replace(/\[CONTENIDO ENLACE: [^\]]+\][\s\S]*?\[FIN ENLACE\]\n*/gi, '')
-                .trim();
+              // Resolución defensiva: nunca renderizar una burbuja fantasma
+              // (avatar + botones sin texto). Ver src/lib/message-parsers.ts
+              const resolved = resolveDisplayContent(contentStr);
+              const displayContent = resolved.content;
+              const isEmptyReply = role === 'assistant' && resolved.isEmpty && !isThinking;
 
               const isFirst = i === 0 || displayMessages[i - 1]?.role !== role;
               const isShortText = activeAgent && 
@@ -4781,6 +4781,34 @@ export default function Home() {
                     {role === 'assistant' && isThinking && i === displayMessages.length - 1 && !displayContent && !reasoning && (
                       <div className="thinking-v2">
                         <div className="thinking-v2-pill" />
+                      </div>
+                    )}
+
+                    {/* Respuesta vacía: aviso claro + reintentar, nunca burbuja muda */}
+                    {isEmptyReply && !reasoning && (
+                      <div className="empty-reply-notice">
+                        <span className="empty-reply-text">
+                          No alcancé a responder. ¿Lo intentamos de nuevo?
+                        </span>
+                        <button
+                          className="empty-reply-retry"
+                          onClick={() => {
+                            const lastUserMsg = displayMessages.slice(0, i).reverse().find((m: any) => m.role === 'user');
+                            if (!lastUserMsg || !currentChatId) return;
+                            // Quitar la respuesta vacía antes de reintentar
+                            setChats(prev => {
+                              const updated = prev.map(c => c.id === currentChatId
+                                ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) }
+                                : c);
+                              safeSetChats(updated);
+                              return updated;
+                            });
+                            setDisplayMessages(prev => prev.filter((m: any) => m.id !== msg.id));
+                            handleSendMessage(lastUserMsg.content);
+                          }}
+                        >
+                          <RotateCw size={13} /> Reintentar
+                        </button>
                       </div>
                     )}
 
