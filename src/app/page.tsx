@@ -8,6 +8,7 @@ import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, download
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
 import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parsers";
+import { buildApiHistory, trimHistory } from "../lib/chat-context";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1033,6 +1034,10 @@ export default function Home() {
   const uniTextareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSystemHint = useRef('');
   const currentChatIdRef = useRef<string | null>(null);
+  /* Espejo siempre-fresco de `chats`. handleSendMessage es async y su closure
+     captura un `chats` viejo; leer de aquí garantiza que el historial que se
+     manda a la IA incluya TODOS los turnos previos (bug de pérdida de contexto). */
+  const chatsRef = useRef<Chat[]>([]);
 
   /* ─────────── Toast (Nivel 4 — Cambio 15) ─────────── */
   const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: '', show: false });
@@ -1578,8 +1583,13 @@ export default function Home() {
     currentChatIdRef.current = currentChatId;
   }, [currentChatId]);
 
+  // Espejo de `chats` para leer el historial completo sin closures viejos
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
   const triggerAgentNudge = async (chatId: string) => {
-    const chat = chats.find(c => c.id === chatId);
+    const chat = chatsRef.current.find(c => c.id === chatId) || chats.find(c => c.id === chatId);
     if (!chat || chat.id !== currentChatIdRef.current || !chat.agentId) return;
 
     // Guardar el ID del último mensaje al iniciar el nudge
@@ -1592,9 +1602,11 @@ export default function Home() {
     abortControllerRef.current = controller;
 
     try {
-      const historyMsgs = (chat.messages || [])
-        .filter(m => m.role && m.content)
-        .map(m => ({ role: m.role, content: m.content }));
+      const historyMsgs = trimHistory(
+        (chat.messages || [])
+          .filter(m => m.role && typeof m.content === 'string' && m.content.trim())
+          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      );
 
       const systemPrompt = chat.systemPrompt || "";
       const nudgeSystemPrompt = systemPrompt + "\n\n[INSTRUCCIÓN DE RECORDATORIO / NUDGE]\nEl usuario no ha respondido en un rato. Escribe una sola frase súper corta, informal y casual (de 1 a 5 palabras) como amigo en WhatsApp para ver si sigue ahí o si necesita algo (ej. '¿cómo te fue?', '¿todo bien?', '¿necesitas algo?', 'avísame si te sirve'). Responde únicamente con esa frase en un objeto JSON con la clave \"messages\" conteniendo un solo string.";
@@ -2149,12 +2161,13 @@ export default function Home() {
       });
       setDisplayMessages(prev => prev.map(m => m.id === userMsgId ? { ...m, content: finalContent } : m));
 
-      // Build messages history for the API
-      const chatForApi = chats.find(c => c.id === targetChatId);
-      const historyMsgs = (chatForApi?.messages || [])
-        .filter(m => m.role && m.content)
-        .map(m => ({ role: m.role, content: m.content }));
-      historyMsgs.push({ role: 'user' as const, content: finalContent });
+      // Build messages history for the API.
+      // Se lee de chatsRef (siempre fresco): usar el state `chats` del closure
+      // perdía todos los turnos previos y la IA respondía sin contexto.
+      const chatForApi =
+        chatsRef.current.find(c => c.id === targetChatId) ||
+        chats.find(c => c.id === targetChatId);
+      const historyMsgs = buildApiHistory(chatForApi?.messages, finalContent, userMsgId);
 
       let finalSystemPrompt = "";
       if (chatForApi) {
