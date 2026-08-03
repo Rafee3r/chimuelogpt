@@ -185,8 +185,10 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
     }
 
     // ── Step 2: DeepSeek generates the final response using Claude's analysis ──
+    // V4: los nombres de la API son directos (ya no deepseek-chat/reasoner)
     const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
-    const apiModel = actualModel === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const apiModel = actualModel;
+    const reasoningEffort = 'high'; // ver comentario en api/chat/route.ts
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español.";
@@ -287,6 +289,7 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
         body: JSON.stringify({
           model: apiModel,
           messages: deepseekMessages,
+          reasoning_effort: reasoningEffort,
           ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
@@ -342,7 +345,7 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${deepseekKey}`
       },
-      body: JSON.stringify({ model: apiModel, messages: deepseekMessages, stream: true })
+      body: JSON.stringify({ model: apiModel, messages: deepseekMessages, reasoning_effort: reasoningEffort, stream: true })
     });
 
     if (!deepseekRes.ok) {

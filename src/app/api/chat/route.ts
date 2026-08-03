@@ -94,11 +94,22 @@ export async function POST(req: Request) {
       });
     }
 
-    // Determine correct model mapping
-    // Pro ALWAYS uses reasoner. Extended ALSO forces reasoner.
-    let actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
-    let apiModel = actualModel === 'deepseek-v4-pro' ? 'deepseek-reasoner' : 'deepseek-chat';
-    
+    // Modelos V4: los nombres de la API son directos (ya no deepseek-chat /
+    // deepseek-reasoner). Pro se usa cuando el usuario lo elige o al pedir
+    // razonamiento extendido.
+    const actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    const apiModel = actualModel;
+
+    /* reasoning_effort — valores válidos: 'low' | 'high' | 'max' (no existe 'medium').
+       El thinking viene habilitado por defecto con effort 'high'.
+       Mapeo interno de DeepSeek:
+         v4-flash: low→low, high→high, max→max
+         v4-pro:   low→high, high→high, max→max  (pro nunca baja de 'high')
+       Ambos usan 'high' por defecto (flash-high rankea sobre modelos mucho
+       más caros y su costo sigue siendo bajo) y suben a 'max' cuando el
+       usuario pide razonamiento extendido. */
+    const reasoningEffort = thinkingLevel === 'extended' ? 'max' : 'high';
+
     let extendedThinkingPrompt = '';
     if (thinkingLevel === 'extended') {
       extendedThinkingPrompt = '\n\n[INSTRUCCIÓN CRÍTICA DE RAZONAMIENTO EXTENDIDO]\nPara esta solicitud, DEBES realizar un razonamiento sumamente exhaustivo, pensar paso a paso en gran profundidad, prever casos límite y explorar múltiples ángulos antes de emitir tu respuesta final. Tómate todo el tiempo necesario en tu bloque de pensamiento.';
@@ -252,6 +263,7 @@ INSTRUCCIONES PARA EL HTML:
             { role: 'system', content: jsonSystemPrompt },
             ...formatAgentHistory(messages)
           ],
+          reasoning_effort: reasoningEffort,
           ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
@@ -340,6 +352,7 @@ INSTRUCCIONES PARA EL HTML:
       body: JSON.stringify({
         model: apiModel,
         messages: apiMessages,
+        reasoning_effort: reasoningEffort,
         stream: true
       })
     });

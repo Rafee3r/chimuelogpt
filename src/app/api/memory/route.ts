@@ -30,7 +30,8 @@ REGLAS ESTRICTAS:
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
+        reasoning_effort: 'low', // tarea mecánica de extracción: no necesita razonar
         messages: [
           { role: 'system', content: systemPrompt },
           {

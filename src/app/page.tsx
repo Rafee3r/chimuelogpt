@@ -3627,7 +3627,15 @@ export default function Home() {
               onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
               style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px', cursor: 'pointer' }}
             >
-              Chimuelo <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}{thinkingLevel === 'extended' ? ' Ex.' : ''}</span>
+              Chimuelo{' '}
+              {/* key fuerza el remonte -> la animación corre en cada cambio de modelo */}
+              <span
+                key={`${model}-${thinkingLevel}`}
+                className="model-label-swap"
+                style={{ color: 'var(--text-secondary)', fontWeight: 400 }}
+              >
+                {model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}{thinkingLevel === 'extended' ? ' Ex.' : ''}
+              </span>
               <ChevronDown size={16} color="var(--text-secondary)" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </button>
 
@@ -3658,7 +3666,7 @@ export default function Home() {
                       onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
                     >
                       <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Sonnet 4.6)</span></span>
+                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Sonnet 5)</span></span>
                         <span className="v2-model-opt-desc">Respuestas más rápidas</span>
                       </div>
                       {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
@@ -3669,7 +3677,7 @@ export default function Home() {
                       onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
                     >
                       <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Pro <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Opus 4.8)</span></span>
+                        <span className="v2-model-opt-title">Pro <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Opus 5)</span></span>
                         <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
                       </div>
                       {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
