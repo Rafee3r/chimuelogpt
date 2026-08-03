@@ -9,6 +9,7 @@ import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
 import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parsers";
 import { buildApiHistory, trimHistory } from "../lib/chat-context";
+import { startActivity, finishActivity, settlePendingActivities, activityLabel, type ToolActivity } from "../lib/activities";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -192,6 +193,40 @@ const getImageSizePreset = (base64Str: string): Promise<string> => {
    - Layer 3 (cat):     poses, click, idle animations */
 type CatPose = 'walk-right' | 'walk-left' | 'sit' | 'sleep' | 'stretch'
              | 'groom' | 'play' | 'look-up' | 'yawn';
+
+/* Lista de herramientas usadas para responder. Aparece sobre el mensaje y
+   muestra el progreso en vivo ("Leyendo el documento…") en vez de dejar al
+   usuario mirando un silencio sin saber si la app sigue trabajando. */
+const ACTIVITY_ICON: Record<string, React.ReactNode> = {
+  search: <Search size={13} />,
+  'read-doc': <FileText size={13} />,
+  'read-url': <Link size={13} />,
+  image: <ImageIcon size={13} />,
+  music: <Music size={13} />,
+  reminder: <Clock size={13} />,
+  calc: <Zap size={13} />,
+  artifact: <Book size={13} />,
+};
+
+function ActivityTrail({ activities }: { activities: ToolActivity[] }) {
+  if (!activities || activities.length === 0) return null;
+  return (
+    <div className="activity-trail" role="status" aria-live="polite">
+      {activities.map(a => (
+        <div key={a.id} className={`activity-row activity-${a.status}`}>
+          <span className="activity-icon">
+            {a.status === 'running'
+              ? <span className="activity-spinner" aria-hidden="true" />
+              : a.status === 'error'
+                ? <XCircle size={13} />
+                : ACTIVITY_ICON[a.kind] ?? <Check size={13} />}
+          </span>
+          <span className="activity-label">{activityLabel(a)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function CatMascot() {
   const [pose, setPose] = useState<CatPose>('sit');
@@ -2097,10 +2132,43 @@ export default function Home() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    /* Actividades de herramientas de este turno. Se reflejan en vivo sobre
+       el mensaje del asistente para que el usuario vea qué está pasando.
+       assistantId se declara aquí porque las actividades empiezan ANTES del
+       stream (leer documentos/enlaces ocurre antes de llamar al modelo). */
+    const assistantId = (Date.now() + 1).toString();
+    let activities: ToolActivity[] = [];
+    const pushActivities = () => {
+      const snapshot = [...activities];
+      setDisplayMessages(prev => {
+        const idx = prev.findIndex(m => m.id === assistantId);
+        // La burbuja del asistente aún no existe (leer doc/enlace ocurre antes
+        // del stream): la creamos vacía para poder mostrar el progreso ya.
+        if (idx === -1) {
+          return [...prev, { id: assistantId, role: 'assistant', content: '', activities: snapshot, model } as BaseMessage];
+        }
+        const next = [...prev];
+        next[idx] = { ...next[idx], activities: snapshot };
+        return next;
+      });
+    };
+    const beginActivity = (kind: Parameters<typeof startActivity>[0], detail?: string) => {
+      const act = startActivity(kind, detail);
+      activities = [...activities, act];
+      pushActivities();
+      return act.id;
+    };
+    const endActivity = (id: string, status: 'done' | 'error', result?: string) => {
+      activities = finishActivity(activities, id, status, result);
+      pushActivities();
+    };
+
     try {
       const startTime = Date.now();
       let finalContent = messageText || (attachedImages.length > 0 ? 'Describe esta imagen.' : '');
       if (attachedDocs.length > 0) {
+        const docActivityId = beginActivity('read-doc',
+          attachedDocs.length === 1 ? attachedDocs[0].name : `${attachedDocs.length} archivos`);
         try {
           let docsContent = "";
           for (const doc of attachedDocs) {
@@ -2112,7 +2180,10 @@ export default function Home() {
             docsContent += `[DOCUMENTO ADJUNTO: ${doc.name}]\n${docData.text}\n[FIN DEL DOCUMENTO]\n\n`;
           }
           finalContent = `${docsContent}${finalContent}`;
+          endActivity(docActivityId, 'done',
+            attachedDocs.length === 1 ? attachedDocs[0].name : `${attachedDocs.length} archivos`);
         } catch (err: any) {
+          endActivity(docActivityId, 'error');
           throw new Error('No se pudo leer el documento: ' + err.message);
         }
       }
@@ -2122,6 +2193,9 @@ export default function Home() {
       const urls = messageText.match(urlRegex);
       if (urls && urls.length > 0) {
         for (const url of urls) {
+          let hostLabel = url.trim();
+          try { hostLabel = new URL(url.trim()).hostname.replace(/^www\./, ''); } catch {}
+          const urlActivityId = beginActivity('read-url', hostLabel);
           try {
             const parseRes = await fetch('/api/parse-url', {
               method: 'POST',
@@ -2132,13 +2206,17 @@ export default function Home() {
               const parseData = await parseRes.json();
               if (parseData.text) {
                 finalContent = `[CONTENIDO ENLACE: ${url.trim()}]\nTítulo: ${parseData.title}\n${parseData.text}\n[FIN ENLACE]\n\n${finalContent}`;
+                endActivity(urlActivityId, 'done', parseData.title ? String(parseData.title).slice(0, 40) : hostLabel);
               } else {
+                endActivity(urlActivityId, 'error');
                 showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
               }
             } else {
+              endActivity(urlActivityId, 'error');
               showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
             }
           } catch (err) {
+            endActivity(urlActivityId, 'error');
             console.error("Error al extraer URL en el vuelo:", url, err);
             showToast(`No pudimos leer el contenido del enlace: ${url.trim()}. Asegúrate de que sea público.`);
           }
@@ -2470,7 +2548,6 @@ export default function Home() {
       // Stream the response
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      const assistantId = (Date.now() + 1).toString();
       let fullText = '';
 
       while (true) {
@@ -2613,10 +2690,11 @@ export default function Home() {
         const searchMatch = cleanContent.match(/<search_web>([\s\S]*?)(?:<\/search_web>|$)/i);
         if (searchMatch?.[1]) {
           const searchQuery = searchMatch[1].trim();
+          const searchActivityId = beginActivity('search', searchQuery);
           if (currentChatIdRef.current === targetChatId) {
             setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_SEARCHING__' } : m));
           }
-          
+
           const searchController = new AbortController();
           const onMainAbortSearch = () => searchController.abort();
           controller.signal.addEventListener('abort', onMainAbortSearch);
@@ -2635,6 +2713,8 @@ export default function Home() {
             
             if (searchRes.ok) {
               const { results = [], answer } = await searchRes.json();
+              endActivity(searchActivityId, 'done',
+                results.length > 0 ? `${results.length} ${results.length === 1 ? 'fuente' : 'fuentes'}` : undefined);
               const answerBlock = answer ? `RESPUESTA DIRECTA DE BÚSQUEDA: ${answer}\n\n` : '';
               const formattedResults = results.length > 0
                 ? results.map((r: any, i: number) =>
@@ -2681,12 +2761,14 @@ export default function Home() {
                 cleanContent = `*(Error al generar respuesta con resultados de búsqueda: ${searchApiRes.status} ${errText.slice(0, 100)})*`;
               }
             } else {
+              endActivity(searchActivityId, 'error');
               const errText = await searchRes.text().catch(() => '');
               cleanContent = `*(No se pudo completar la búsqueda web: ${searchRes.status} ${errText.slice(0, 100)})*`;
             }
           } catch (searchErr: any) {
             clearTimeout(searchTimeoutId);
             controller.signal.removeEventListener('abort', onMainAbortSearch);
+            endActivity(searchActivityId, 'error');
             if (controller.signal.aborted) {
               throw searchErr;
             }
@@ -2699,9 +2781,44 @@ export default function Home() {
         }
       }
 
+      // Post-process: cálculo exacto (<calc>). El modelo pide el cómputo y
+      // nosotros lo resolvemos de verdad; después le pedimos que lo explique.
+      if (cleanContent.includes('<calc>')) {
+        const calcMatch = cleanContent.match(/<calc>([\s\S]*?)(?:<\/calc>|$)/i);
+        const expression = calcMatch?.[1]?.trim();
+        if (expression) {
+          const calcActivityId = beginActivity('calc', expression);
+          try {
+            const calcRes = await fetch('/api/calc', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ expression }),
+              signal: controller.signal,
+            });
+            const calcData = await calcRes.json();
+            if (calcData?.ok) {
+              endActivity(calcActivityId, 'done', `${expression} = ${calcData.formatted}`);
+              cleanContent = `${expression} = **${calcData.formatted}**`;
+            } else {
+              endActivity(calcActivityId, 'error');
+              cleanContent = `*(No pude resolver ese cálculo: ${calcData?.error || 'expresión inválida'})*`;
+            }
+          } catch (calcErr: any) {
+            endActivity(calcActivityId, 'error');
+            if (controller.signal.aborted) throw calcErr;
+            cleanContent = '*(No pude resolver ese cálculo)*';
+          }
+        }
+      }
+
       // Only keep reasoning if the model that generated this message supports it
       const finalReasoning = model === 'deepseek-v4-pro' ? reasoning : undefined;
-      const finalAssistantMsg: BaseMessage = { id: assistantId, role: 'assistant', content: cleanContent, reasoning: finalReasoning, model };
+      // Cierra lo que haya quedado girando para que nada gire indefinidamente
+      activities = settlePendingActivities(activities);
+      const finalAssistantMsg: BaseMessage = {
+        id: assistantId, role: 'assistant', content: cleanContent, reasoning: finalReasoning, model,
+        ...(activities.length > 0 ? { activities } : {}),
+      };
 
       // Update display only if still on the same chat
       if (currentChatIdRef.current === targetChatId) {
@@ -4799,7 +4916,12 @@ export default function Home() {
                       );
                     })()}
 
-                    {role === 'assistant' && isThinking && i === displayMessages.length - 1 && !displayContent && !reasoning && (
+                    {/* Herramientas usadas: visible mientras trabaja y al terminar */}
+                    {role === 'assistant' && msg.activities?.length > 0 && (
+                      <ActivityTrail activities={msg.activities} />
+                    )}
+
+                    {role === 'assistant' && isThinking && i === displayMessages.length - 1 && !displayContent && !reasoning && !msg.activities?.length && (
                       <div className="thinking-v2">
                         <div className="thinking-v2-pill" />
                       </div>

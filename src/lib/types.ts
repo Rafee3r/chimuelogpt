@@ -2,10 +2,14 @@
    Fuente única de verdad para los tipos de datos del chat.
    page.tsx los importa desde aquí. */
 
+import type { ToolActivity } from './activities';
+
 export type BaseMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Herramientas usadas para responder (búsqueda, lectura, cálculo…) */
+  activities?: ToolActivity[];
   imagePlaceholder?: string;
   imageData?: string;
   docPlaceholder?: string;

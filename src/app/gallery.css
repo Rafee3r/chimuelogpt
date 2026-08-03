@@ -434,3 +434,78 @@
   .v2-model-option,
   .v2-model-option svg { animation: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   ACTIVIDADES DE HERRAMIENTAS
+   "Leyendo el documento…", "Buscando información actualizada…"
+   Da visibilidad del trabajo en curso sin robar protagonismo
+   a la respuesta.
+   ════════════════════════════════════════════════════════════ */
+.activity-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  animation: activityIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes activityIn {
+  0%   { opacity: 0; transform: translateY(-3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.activity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+/* Mientras corre: label con respiración suave */
+.activity-running .activity-label {
+  animation: activityPulse 1.8s ease-in-out infinite;
+}
+@keyframes activityPulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* Spinner mínimo: aro fino girando */
+.activity-spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  animation: activitySpin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes activitySpin { to { transform: rotate(360deg); } }
+
+/* Terminadas: se apagan para no competir con la respuesta */
+.activity-done { opacity: 0.6; }
+.activity-done .activity-icon { color: var(--accent-color); }
+
+.activity-error { opacity: 0.75; }
+.activity-error .activity-icon { color: #ef4444; }
+.activity-error .activity-label { color: #ef4444; }
+
+.activity-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-row, .activity-running .activity-label { animation: none; }
+  .activity-spinner { animation-duration: 1.6s; }
+}
