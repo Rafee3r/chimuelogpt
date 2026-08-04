@@ -2382,7 +2382,7 @@ export default function Home() {
               const searchController = new AbortController();
               const onMainAbortAgentSearch = () => searchController.abort();
               controller.signal.addEventListener('abort', onMainAbortAgentSearch);
-              const searchTimeoutId = setTimeout(() => searchController.abort(), 15000);
+              const searchTimeoutId = setTimeout(() => searchController.abort(), 25000);
               
               try {
                 const searchRes = await fetch('/api/search', {
@@ -2698,7 +2698,7 @@ export default function Home() {
           const searchController = new AbortController();
           const onMainAbortSearch = () => searchController.abort();
           controller.signal.addEventListener('abort', onMainAbortSearch);
-          const searchTimeoutId = setTimeout(() => searchController.abort(), 15000);
+          const searchTimeoutId = setTimeout(() => searchController.abort(), 25000);
           
           try {
             const searchRes = await fetch('/api/search', {
@@ -2757,13 +2757,13 @@ export default function Home() {
                 }
                 cleanContent = '__WEB_BADGE__\n\n' + searchFull.replace(/<think>[\s\S]*?<\/think>/, '').trim();
               } else {
-                const errText = await searchApiRes.text().catch(() => '');
-                cleanContent = `*(Error al generar respuesta con resultados de búsqueda: ${searchApiRes.status} ${errText.slice(0, 100)})*`;
+                console.warn('Redacción con resultados falló:', searchApiRes.status, await searchApiRes.text().catch(() => ''));
+                cleanContent = '';  // deja actuar al fallback
               }
             } else {
               endActivity(searchActivityId, 'error');
-              const errText = await searchRes.text().catch(() => '');
-              cleanContent = `*(No se pudo completar la búsqueda web: ${searchRes.status} ${errText.slice(0, 100)})*`;
+              console.warn('Búsqueda web falló:', searchRes.status, await searchRes.text().catch(() => ''));
+              cleanContent = '';  // deja actuar al fallback
             }
           } catch (searchErr: any) {
             clearTimeout(searchTimeoutId);
@@ -2772,10 +2772,48 @@ export default function Home() {
             if (controller.signal.aborted) {
               throw searchErr;
             }
-            if (searchErr?.name === 'AbortError') {
-              cleanContent = '*(Tiempo de espera agotado al buscar en internet)*';
-            } else {
-              cleanContent = `*(Error de búsqueda web: ${searchErr.message || searchErr})*`;
+            cleanContent = '';  // el fallback de abajo decide qué mostrar
+          }
+
+          /* Si la búsqueda no dio contenido, NO dejamos al usuario sin
+             respuesta: le pedimos al modelo que conteste con lo que sabe,
+             avisando que no pudo verificar datos de última hora. Antes
+             mostrábamos solo "(Tiempo de espera agotado)" y la pregunta
+             quedaba sin responder aunque el modelo supiera la respuesta. */
+          if (!cleanContent.trim()) {
+            try {
+              const fallbackRes = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  messages: [
+                    ...historyMsgs,
+                    { role: 'user' as const, content: `No se pudo completar la búsqueda web. Responde la pregunta anterior ("${searchQuery}") con lo que ya sabes. Empieza avisando en UNA línea corta que no pudiste verificar datos de última hora, y luego responde igual. No uses la etiqueta <search_web> de nuevo.` }
+                  ],
+                  model, persona, customInstructions: finalSystemPrompt, isAgent,
+                }),
+                signal: controller.signal,
+              });
+              if (fallbackRes.ok) {
+                const fbReader = fallbackRes.body!.getReader();
+                const fbDecoder = new TextDecoder();
+                let fbText = '';
+                while (true) {
+                  const { done, value } = await fbReader.read();
+                  if (done) break;
+                  fbText += fbDecoder.decode(value, { stream: true });
+                  const partial = resolveDisplayContent(fbText).content;
+                  if (partial && currentChatIdRef.current === targetChatId) {
+                    setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: partial } : m));
+                  }
+                }
+                cleanContent = resolveDisplayContent(fbText).content;
+              }
+            } catch (fbErr: any) {
+              if (controller.signal.aborted) throw fbErr;
+            }
+            if (!cleanContent.trim()) {
+              cleanContent = 'No pude conectarme a internet para verificar ese dato. ¿Lo intentamos de nuevo?';
             }
           }
         }
