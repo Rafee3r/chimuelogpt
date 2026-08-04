@@ -616,6 +616,18 @@ a {
   overflow: hidden;
   position: relative;
   overscroll-behavior: none;
+  /* Acompaña el ritmo del teclado de iOS (~250ms) en vez de saltar de una
+     altura a otra. Si el sistema reporta la altura progresivamente, esta
+     transición es tan corta que no estorba. */
+  transition: height 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* El primer render no tiene nada que suavizar: animarlo se vería como un
+   estirón al abrir la app. */
+.app-layout.no-anim { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout { transition: none; }
 }
 
 .sidebar {

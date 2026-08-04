@@ -1638,7 +1638,17 @@ export default function Home() {
     let frame = 0;
     let lastHeight = -1;
 
+    /* Corrección inmediata, NO dentro del rAF.
+       Antes el desplazamiento se corregía un frame después: el header
+       alcanzaba a salir de pantalla y volvía de golpe — ese ida y vuelta
+       era el movimiento brusco. Escuchando el scroll del window y
+       corrigiendo en el acto, no llega a verse fuera de sitio. */
+    const pinToTop = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+
     const sync = () => {
+      pinToTop();               // primero anclar, sin esperar al frame
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
@@ -1647,19 +1657,25 @@ export default function Home() {
           lastHeight = h;
           document.documentElement.style.setProperty('--app-height', `${h}px`);
         }
-        // iOS desplaza el documento para revelar el campo enfocado; lo devolvemos
-        // a su sitio para que el header no quede fuera de vista.
-        if (window.scrollY !== 0) window.scrollTo(0, 0);
       });
     };
 
+    // Medida inicial sin transición (animarla se vería como un estirón).
+    const layoutEl = document.querySelector('.app-layout');
+    layoutEl?.classList.add('no-anim');
     sync();
+    requestAnimationFrame(() => layoutEl?.classList.remove('no-anim'));
+
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
+    // El scroll del documento es el que mueve el header: atajarlo aquí es
+    // lo que evita que se vea el salto.
+    window.addEventListener('scroll', pinToTop, { passive: true });
     return () => {
       if (frame) cancelAnimationFrame(frame);
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
+      window.removeEventListener('scroll', pinToTop);
       document.documentElement.style.removeProperty('--app-height');
     };
   }, []);
