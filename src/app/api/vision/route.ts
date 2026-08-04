@@ -188,7 +188,11 @@ UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief int
     // V4: los nombres de la API son directos (ya no deepseek-chat/reasoner)
     const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
     const apiModel = actualModel;
-    const reasoningEffort = 'high'; // ver comentario en api/chat/route.ts
+    /* 'low' salvo en Pro. Este flujo ya hace DOS llamadas (Claude analiza la
+       imagen y luego DeepSeek redacta), así que el presupuesto de 60s de
+       Vercel se consume rápido; razonar de más aquí provoca timeout.
+       Ver el comentario extendido en api/chat/route.ts. */
+    const reasoningEffort = actualModel === 'deepseek-v4-pro' ? 'high' : 'low';
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español.";

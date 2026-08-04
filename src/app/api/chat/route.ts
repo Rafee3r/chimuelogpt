@@ -101,14 +101,24 @@ export async function POST(req: Request) {
     const apiModel = actualModel;
 
     /* reasoning_effort — valores válidos: 'low' | 'high' | 'max' (no existe 'medium').
-       El thinking viene habilitado por defecto con effort 'high'.
        Mapeo interno de DeepSeek:
          v4-flash: low→low, high→high, max→max
          v4-pro:   low→high, high→high, max→max  (pro nunca baja de 'high')
-       Ambos usan 'high' por defecto (flash-high rankea sobre modelos mucho
-       más caros y su costo sigue siendo bajo) y suben a 'max' cuando el
-       usuario pide razonamiento extendido. */
-    const reasoningEffort = thinkingLevel === 'extended' ? 'max' : 'high';
+
+       ⚠️ LÍMITE DURO: las funciones serverless de Vercel cortan a los 60s.
+       Poner 'high' en flash colgaba la app: el modelo razonaba tanto antes
+       de emitir el primer token que la petición moría por timeout y el
+       usuario no veía NADA. flash-high puntúa muy bien en benchmarks, pero
+       no cabe en esta ventana.
+
+       Por eso:
+         - "Rápido" (flash)  → 'low'  : su propósito es responder ya.
+         - "Pro"             → 'high' : es su mínimo posible de todas formas.
+         - Pensamiento extendido → 'max' (solo Pro, el usuario lo pide a sabiendas). */
+    const reasoningEffort =
+      thinkingLevel === 'extended' ? 'max'
+      : actualModel === 'deepseek-v4-pro' ? 'high'
+      : 'low';
 
     let extendedThinkingPrompt = '';
     if (thinkingLevel === 'extended') {
@@ -343,20 +353,39 @@ INSTRUCCIONES PARA EL HTML:
       });
     }
 
-    // Call DeepSeek API directly with streaming
-    const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: apiModel,
-        messages: apiMessages,
-        reasoning_effort: reasoningEffort,
-        stream: true
-      })
-    });
+    /* Cortamos ANTES del límite de 60s de Vercel. Si dejamos que lo mate la
+       plataforma, el usuario ve la burbuja vacía sin explicación; así al
+       menos devolvemos un error que la UI puede mostrar y reintentar. */
+    const upstreamController = new AbortController();
+    const upstreamTimeout = setTimeout(() => upstreamController.abort(), 50_000);
+
+    let deepseekRes: Response;
+    try {
+      deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: apiModel,
+          messages: apiMessages,
+          reasoning_effort: reasoningEffort,
+          stream: true
+        }),
+        signal: upstreamController.signal,
+      });
+    } catch (e: any) {
+      clearTimeout(upstreamTimeout);
+      const timedOut = e?.name === 'AbortError';
+      console.error('DeepSeek fetch falló:', timedOut ? 'timeout 50s' : e);
+      return new Response(JSON.stringify({
+        error: timedOut
+          ? 'La respuesta tardó demasiado. Prueba con el modo Rápido o vuelve a intentar.'
+          : 'No pude conectar con el modelo. Revisa tu conexión e intenta de nuevo.'
+      }), { status: 504, headers: { 'Content-Type': 'application/json' } });
+    }
+    clearTimeout(upstreamTimeout);
 
     if (!deepseekRes.ok) {
       const errText = await deepseekRes.text();
