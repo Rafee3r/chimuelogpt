@@ -1623,6 +1623,32 @@ export default function Home() {
     chatsRef.current = chats;
   }, [chats]);
 
+  /* ─────────── Teclado en iOS: mantener el header visible ───────────
+     Con height:100dvh + overflow:hidden, al abrir el teclado iOS hace
+     scroll de la página para revelar el input y empuja el header fuera
+     de la pantalla. Medimos el viewport REAL (visualViewport, que sí
+     descuenta el teclado) y devolvemos el scroll a 0 en cada cambio. */
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : undefined;
+    if (!vv) return;
+
+    const sync = () => {
+      document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
+      // iOS desplaza el documento para revelar el campo enfocado; lo devolvemos
+      // a su sitio para que el header no quede fuera de vista.
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      document.documentElement.style.removeProperty('--app-height');
+    };
+  }, []);
+
   const triggerAgentNudge = async (chatId: string) => {
     const chat = chatsRef.current.find(c => c.id === chatId) || chats.find(c => c.id === chatId);
     if (!chat || chat.id !== currentChatIdRef.current || !chat.agentId) return;
@@ -3759,7 +3785,9 @@ export default function Home() {
       })()}
 
       <div className="main-content">
-        <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, position: 'relative', justifyContent: 'center' }}>
+        {/* Sin position inline: el CSS lo fija como sticky para que el header
+            no se vaya de la pantalla al abrirse el teclado en iOS. */}
+        <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>

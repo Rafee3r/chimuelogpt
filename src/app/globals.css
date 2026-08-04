@@ -610,7 +610,9 @@ a {
 /* Layout */
 .app-layout {
   display: flex;
-  height: 100dvh;
+  /* --app-height lo fija el JS desde visualViewport (descuenta el teclado en
+     iOS). 100dvh queda como respaldo si la API no está disponible. */
+  height: var(--app-height, 100dvh);
   overflow: hidden;
   position: relative;
   overscroll-behavior: none;
@@ -768,7 +770,7 @@ a {
   flex-direction: column;
   position: relative;
   background-color: var(--bg-primary);
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   overflow: hidden;
 }
 
@@ -780,8 +782,13 @@ a {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-weight: 500;
-  z-index: 5;
+  z-index: 30;
   border-bottom: none;
+  /* Ancla superior: con el teclado abierto el header sigue en su sitio.
+     flex-shrink:0 evita que el flex lo comprima cuando baja la altura. */
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
