@@ -614,27 +614,8 @@ a {
      iOS). 100dvh queda como respaldo si la API no está disponible. */
   height: var(--app-height, 100dvh);
   overflow: hidden;
+  position: relative;
   overscroll-behavior: none;
-
-  /* position:fixed ancla el layout al viewport. iOS IGNORA overflow:hidden en
-     html/body al enfocar un input: desplaza la página para revelar el campo y
-     el header se iba de pantalla. Antes lo devolvíamos con scrollTo(0,0), y
-     ese ida-y-vuelta era el salto brusco. Anclado, no hay nada que devolver. */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-
-  /* Suaviza el cambio de alto cuando iOS reporta el teclado de una sola vez
-     en lugar de progresivamente. */
-  transition: height 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* En el primer render no hay nada que suavizar: evita un estirón al abrir. */
-.app-layout.no-anim { transition: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .app-layout { transition: none; }
 }
 
 .sidebar {
@@ -789,11 +770,7 @@ a {
   flex-direction: column;
   position: relative;
   background-color: var(--bg-primary);
-  /* El alto lo dicta .app-layout (que está anclado al viewport); aquí basta
-     con ocupar todo el disponible. Fijar la altura otra vez provocaba una
-     segunda animación desincronizada con la del padre. */
-  height: 100%;
-  min-height: 0;
+  height: var(--app-height, 100dvh);
   overflow: hidden;
 }
 

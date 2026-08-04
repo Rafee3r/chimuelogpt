@@ -1637,7 +1637,6 @@ export default function Home() {
        fuerza un recálculo de layout por evento y la animación se ve a tirones. */
     let frame = 0;
     let lastHeight = -1;
-    const root = document.documentElement;
 
     const sync = () => {
       if (frame) return;
@@ -1646,26 +1645,22 @@ export default function Home() {
         const h = Math.round(vv.height);
         if (h !== lastHeight) {
           lastHeight = h;
-          root.style.setProperty('--app-height', `${h}px`);
+          document.documentElement.style.setProperty('--app-height', `${h}px`);
         }
+        // iOS desplaza el documento para revelar el campo enfocado; lo devolvemos
+        // a su sitio para que el header no quede fuera de vista.
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
       });
     };
 
-    // La medida inicial se aplica sin transición: al abrir no hay nada que
-    // suavizar y animarla se vería como un estirón.
-    const layout = document.querySelector('.app-layout');
-    layout?.classList.add('no-anim');
-    root.style.setProperty('--app-height', `${Math.round(vv.height)}px`);
-    lastHeight = Math.round(vv.height);
-    requestAnimationFrame(() => layout?.classList.remove('no-anim'));
-
+    sync();
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
     return () => {
       if (frame) cancelAnimationFrame(frame);
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
-      root.style.removeProperty('--app-height');
+      document.documentElement.style.removeProperty('--app-height');
     };
   }, []);
 
