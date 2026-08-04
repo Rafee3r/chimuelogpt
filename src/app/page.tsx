@@ -2919,7 +2919,14 @@ export default function Home() {
         if (partialContent) tryExtractMemory(messageText, partialContent);
       } else {
         console.error("Stream error:", e);
-        const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: `*(Error de conexión: ${e.message})*` };
+        /* El mensaje del servidor ya viene traducido a lenguaje humano
+           (ver src/lib/api-errors.ts). Antes se concatenaba el JSON crudo
+           del proveedor y el usuario veía un volcado técnico ilegible. */
+        const rawMsg = String(e?.message || '');
+        const friendly = rawMsg.trim().startsWith('{') || rawMsg.includes('"error"')
+          ? 'No pude completar la respuesta. Intenta de nuevo.'
+          : rawMsg || 'No pude completar la respuesta. Intenta de nuevo.';
+        const errMsg: BaseMessage = { id: (Date.now() + 2).toString(), role: 'assistant', content: friendly };
         if (currentChatIdRef.current === targetChatId) {
           setDisplayMessages(prev => [...prev, errMsg]);
         }

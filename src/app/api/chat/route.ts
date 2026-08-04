@@ -1,3 +1,5 @@
+import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../lib/api-errors';
+
 export const maxDuration = 60;
 
 function extractMessages(content: string): string[] {
@@ -353,39 +355,74 @@ INSTRUCCIONES PARA EL HTML:
       });
     }
 
-    /* Cortamos ANTES del límite de 60s de Vercel. Si dejamos que lo mate la
-       plataforma, el usuario ve la burbuja vacía sin explicación; así al
-       menos devolvemos un error que la UI puede mostrar y reintentar. */
-    const upstreamController = new AbortController();
-    const upstreamTimeout = setTimeout(() => upstreamController.abort(), 50_000);
+    /* Llamada con reintento automático. Los 503 ("Service is too busy") y los
+       429 de DeepSeek son transitorios: reintentar 2 veces con backoff corto
+       resuelve la mayoría sin que el usuario tenga que hacer nada.
+       El timeout total se mantiene por debajo del límite de 60s de Vercel. */
+    const deadline = Date.now() + 50_000;
+    let deepseekRes: Response | null = null;
+    let lastErrorBody = '';
+    let lastStatus = 0;
 
-    let deepseekRes: Response;
-    try {
-      deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: apiModel,
-          messages: apiMessages,
-          reasoning_effort: reasoningEffort,
-          stream: true
-        }),
-        signal: upstreamController.signal,
-      });
-    } catch (e: any) {
-      clearTimeout(upstreamTimeout);
-      const timedOut = e?.name === 'AbortError';
-      console.error('DeepSeek fetch falló:', timedOut ? 'timeout 50s' : e);
-      return new Response(JSON.stringify({
-        error: timedOut
-          ? 'La respuesta tardó demasiado. Prueba con el modo Rápido o vuelve a intentar.'
-          : 'No pude conectar con el modelo. Revisa tu conexión e intenta de nuevo.'
-      }), { status: 504, headers: { 'Content-Type': 'application/json' } });
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      const remaining = deadline - Date.now();
+      if (remaining < 5_000) break;  // sin tiempo para otro intento
+
+      const upstreamController = new AbortController();
+      const upstreamTimeout = setTimeout(() => upstreamController.abort(), remaining);
+
+      try {
+        const res = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: apiModel,
+            messages: apiMessages,
+            reasoning_effort: reasoningEffort,
+            stream: true
+          }),
+          signal: upstreamController.signal,
+        });
+        clearTimeout(upstreamTimeout);
+
+        if (res.ok) { deepseekRes = res; break; }
+
+        lastStatus = res.status;
+        lastErrorBody = await res.text().catch(() => '');
+        if (!isRetryableStatus(res.status) || attempt === 2) break;
+
+        const wait = Math.min(backoffDelay(attempt), Math.max(0, deadline - Date.now() - 3_000));
+        if (wait <= 0) break;
+        console.warn(`DeepSeek ${res.status}, reintento ${attempt + 1}/2 en ${wait}ms`);
+        await new Promise(r => setTimeout(r, wait));
+      } catch (e: any) {
+        clearTimeout(upstreamTimeout);
+        if (e?.name === 'AbortError') {
+          lastStatus = 504;
+          lastErrorBody = 'timeout';
+          break;
+        }
+        lastStatus = 0;
+        lastErrorBody = String(e?.message || e);
+        if (attempt === 2) break;
+        await new Promise(r => setTimeout(r, backoffDelay(attempt)));
+      }
     }
-    clearTimeout(upstreamTimeout);
+
+    if (!deepseekRes) {
+      // Mensaje humano, nunca el JSON del proveedor
+      const friendly = lastStatus
+        ? friendlyApiError(lastStatus, lastErrorBody)
+        : { message: 'No pude conectar con el modelo. Revisa tu conexión e intenta de nuevo.', retryable: true };
+      console.error('DeepSeek falló tras reintentos:', lastStatus, lastErrorBody.slice(0, 200));
+      return new Response(JSON.stringify({ error: friendly.message, retryable: friendly.retryable }), {
+        status: lastStatus === 504 ? 504 : 503,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!deepseekRes.ok) {
       const errText = await deepseekRes.text();
