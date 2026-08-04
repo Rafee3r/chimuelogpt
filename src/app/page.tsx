@@ -1632,17 +1632,32 @@ export default function Home() {
     const vv = typeof window !== 'undefined' ? window.visualViewport : undefined;
     if (!vv) return;
 
+    /* iOS dispara estos eventos decenas de veces mientras sube el teclado.
+       Agrupamos con rAF y solo escribimos si el valor cambió: sin esto se
+       fuerza un recálculo de layout por evento y la animación se ve a tirones. */
+    let frame = 0;
+    let lastHeight = -1;
+
     const sync = () => {
-      document.documentElement.style.setProperty('--app-height', `${vv.height}px`);
-      // iOS desplaza el documento para revelar el campo enfocado; lo devolvemos
-      // a su sitio para que el header no quede fuera de vista.
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const h = Math.round(vv.height);
+        if (h !== lastHeight) {
+          lastHeight = h;
+          document.documentElement.style.setProperty('--app-height', `${h}px`);
+        }
+        // iOS desplaza el documento para revelar el campo enfocado; lo devolvemos
+        // a su sitio para que el header no quede fuera de vista.
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
+      });
     };
 
     sync();
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
       document.documentElement.style.removeProperty('--app-height');
@@ -5163,12 +5178,10 @@ export default function Home() {
                                 <MusicPlayer url={musicPlayerUrl} prompt={musicPlayerPrompt} />
                               </>
                             ) : hasWebSearching ? (
-                              <div className="web-search-loading">
-                                <div className="web-search-loading-dots">
-                                  <span /><span /><span />
-                                </div>
-                                <span className="web-search-loading-text">Buscando en internet...</span>
-                              </div>
+                              /* Sin loader propio: el trail de actividades de arriba
+                                 ya muestra "Buscando información actualizada".
+                                 Tener ambos duplicaba el aviso en pantalla. */
+                              null
                             ) : hasWebBadge ? (
                               <>
                                 <div className="web-search-badge">
