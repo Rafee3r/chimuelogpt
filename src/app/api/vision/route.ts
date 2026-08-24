@@ -1,3 +1,5 @@
+import { VISION_MODEL, buildVisionMessages, filterUsableImages } from '../../../lib/vision-payload';
+
 export const maxDuration = 90;
 
 function extractMessages(content: string): string[] {
@@ -82,17 +84,63 @@ function formatAgentHistory(messages: any[]): { role: string; content: string }[
 }
 
 
+/* Convierte el SSE de DeepSeek en texto plano, envolviendo el razonamiento
+   en <think> para que el cliente lo separe. Compartido por el camino de
+   visión nativa y el de respaldo. */
+function streamDeepSeekSSE(body: ReadableStream<Uint8Array>): ReadableStream {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    async start(controller) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let inReasoning = false;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+              if (reasoning) {
+                if (!inReasoning) { controller.enqueue(encoder.encode('<think>')); inReasoning = true; }
+                controller.enqueue(encoder.encode(reasoning));
+              }
+              if (content) {
+                if (inReasoning) { controller.enqueue(encoder.encode('</think>')); inReasoning = false; }
+                controller.enqueue(encoder.encode(content));
+              }
+            } catch { /* fragmento incompleto */ }
+          }
+        }
+      } catch (e) {
+        console.error('Vision stream error:', e);
+      } finally {
+        if (inReasoning) controller.enqueue(encoder.encode('</think>'));
+        controller.close();
+      }
+    }
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const { messages = [], imageBase64, imagesBase64 = [], persona, customInstructions, model, isAgent } = await req.json();
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
-    if (!anthropicKey) {
-      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada." }), {
-        status: 500, headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    /* ANTHROPIC_API_KEY ya NO es obligatoria: el camino principal es la visión
+       nativa de DeepSeek. Claude solo actúa de respaldo, así que su ausencia
+       se comprueba más abajo, justo antes de usarlo. */
     if (!deepseekKey) {
       return new Response(JSON.stringify({ error: "DEEPSEEK_API_KEY no configurada." }), {
         status: 500, headers: { 'Content-Type': 'application/json' }
@@ -125,66 +173,7 @@ export async function POST(req: Request) {
     
     contentBlock.push({ type: 'text', text: lastUserMsg });
 
-    // ── Step 1: Claude Haiku analyzes the image (non-streaming) ──
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        system: `You are a vision analysis system. You have two jobs depending on the user request:
-
-JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image, respond ONLY with the appropriate XML tag (no other text):
-- Minor edits (hair color, clothing, background, accessories): <generate_image mode="img2img" strength="0.7">Extremely detailed english description of the final image, including all original facial features, body, pose, setting + the requested changes</generate_image>
-- Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
-Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.
-
-JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask questions about the image, provide a comprehensive factual analysis in English covering: all visible objects, text/labels, people, colors, context, numbers, ingredients, brands, or any relevant details. Be thorough and precise — this analysis will be used by another AI to answer the user.
-
-UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief intro before generate_image tag):
-- Use # H1 large title to introduce major topics or analyses
-- Use **bold** for key terms, names, products
-- Use ## for subsections, ### for details
-- Use emoji anchors at section starts (✅ ⚠️ 💡 🔴 🟡 🟢 🥩 🍎)
-- Short paragraphs (2-3 lines max)
-- NEVER use --- (horizontal rule), it's visual noise — use headings instead
-- AVOID tables (|col|col|) unless strictly necessary. Prefer bullet lists instead`,
-        messages: [{
-          role: 'user',
-          content: contentBlock
-        }]
-      })
-    });
-
-    if (!claudeRes.ok) {
-      const err = await claudeRes.text();
-      return new Response(JSON.stringify({ error: `Claude vision error: ${err}` }), {
-        status: 500, headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const claudeData = await claudeRes.json();
-    const claudeAnalysis = claudeData.content?.[0]?.text || '';
-
-    // ── If Claude returned an image editing tag, stream it directly ──
-    if (claudeAnalysis.includes('<generate_image')) {
-      const encoder = new TextEncoder();
-      const readable = new ReadableStream({
-        start(controller) {
-          controller.enqueue(encoder.encode(claudeAnalysis));
-          controller.close();
-        }
-      });
-      return new Response(readable, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
-      });
-    }
-
-    // ── Step 2: DeepSeek generates the final response using Claude's analysis ──
+    // ── Configuración de modelo y prompts (la usan ambos caminos) ──
     // V4: los nombres de la API son directos (ya no deepseek-chat/reasoner)
     const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
     const apiModel = actualModel;
@@ -260,6 +249,124 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 
     const useJsonMode = isAgent && actualModel !== 'deepseek-v4-pro';
+
+    /* ═══ CAMINO PRINCIPAL: visión nativa de DeepSeek ═══
+       Una sola llamada: el modelo MIRA la foto y responde. El camino
+       histórico (Claude describe → DeepSeek redacta) queda más abajo como
+       respaldo, porque el modelo de visión aún es experimental.
+
+       Solo para chat normal con streaming. El modo agente necesita JSON
+       (varias burbujas) y edición de imagen necesita el criterio de Claude,
+       así que esos siguen por el camino de abajo. */
+    const visionImages = filterUsableImages(imagesToProcess);
+    const priorHistory = messages
+      .slice(0, -1)
+      .filter((m: any) => (m.role === 'user' || m.role === 'assistant') && m.content)
+      .map((m: any) => ({
+        role: m.role,
+        content: String(m.content).replace(/<think>[\s\S]*?<\/think>/g, '').trim(),
+      }));
+
+    const canUseNativeVision = !isAgent && visionImages.usable.length > 0;
+
+    if (canUseNativeVision) {
+      try {
+        const nativeRes = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekKey}`,
+          },
+          body: JSON.stringify({
+            model: VISION_MODEL,
+            messages: buildVisionMessages(systemPrompt, priorHistory, lastUserMsg, visionImages.usable),
+            stream: true,
+          }),
+          signal: AbortSignal.timeout(45_000),
+        });
+
+        if (nativeRes.ok && nativeRes.body) {
+          console.log(`Visión nativa OK (${visionImages.usable.length} img)`);
+          return new Response(streamDeepSeekSSE(nativeRes.body), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' },
+          });
+        }
+
+        // No sirvió: seguimos al respaldo con Claude en lugar de fallar.
+        console.warn('Visión nativa falló, usando respaldo Claude:',
+          nativeRes.status, (await nativeRes.text().catch(() => '')).slice(0, 200));
+      } catch (e: any) {
+        console.warn('Visión nativa no disponible, usando respaldo Claude:', e?.message || e);
+      }
+    }
+
+    // ── RESPALDO: Claude Haiku describe la imagen y luego DeepSeek redacta ──
+    // Se llega aquí si la visión nativa no aplicó o falló.
+    if (!anthropicKey) {
+      return new Response(JSON.stringify({
+        error: 'No pude analizar la imagen en este momento. Intenta de nuevo.'
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        system: `You are a vision analysis system. You have two jobs depending on the user request:
+
+JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image, respond ONLY with the appropriate XML tag (no other text):
+- Minor edits (hair color, clothing, background, accessories): <generate_image mode="img2img" strength="0.7">Extremely detailed english description of the final image, including all original facial features, body, pose, setting + the requested changes</generate_image>
+- Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
+Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.
+
+JOB 2 — IMAGE ANALYSIS: If the user wants to understand, describe, or ask questions about the image, provide a comprehensive factual analysis in English covering: all visible objects, text/labels, people, colors, context, numbers, ingredients, brands, or any relevant details. Be thorough and precise — this analysis will be used by another AI to answer the user.
+
+UNIVERSAL FORMATTING RULES (when you produce user-facing text — e.g. brief intro before generate_image tag):
+- Use # H1 large title to introduce major topics or analyses
+- Use **bold** for key terms, names, products
+- Use ## for subsections, ### for details
+- Use emoji anchors at section starts (✅ ⚠️ 💡 🔴 🟡 🟢 🥩 🍎)
+- Short paragraphs (2-3 lines max)
+- NEVER use --- (horizontal rule), it's visual noise — use headings instead
+- AVOID tables (|col|col|) unless strictly necessary. Prefer bullet lists instead`,
+        messages: [{
+          role: 'user',
+          content: contentBlock
+        }]
+      })
+    });
+
+    if (!claudeRes.ok) {
+      const err = await claudeRes.text();
+      return new Response(JSON.stringify({ error: `Claude vision error: ${err}` }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const claudeData = await claudeRes.json();
+    const claudeAnalysis = claudeData.content?.[0]?.text || '';
+
+    // ── If Claude returned an image editing tag, stream it directly ──
+    if (claudeAnalysis.includes('<generate_image')) {
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(claudeAnalysis));
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
+      });
+    }
+
+
 
     // Build DeepSeek messages with Claude's image analysis injected
     const history = isAgent
@@ -359,56 +466,8 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
       });
     }
 
-    // Transform DeepSeek SSE stream into plain text stream
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        const reader = deepseekRes.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let inReasoning = false;
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || !trimmed.startsWith('data: ')) continue;
-              const data = trimmed.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-
-                if (reasoning) {
-                  if (!inReasoning) { controller.enqueue(encoder.encode('<think>')); inReasoning = true; }
-                  controller.enqueue(encoder.encode(reasoning));
-                }
-                if (content) {
-                  if (inReasoning) { controller.enqueue(encoder.encode('</think>')); inReasoning = false; }
-                  controller.enqueue(encoder.encode(content));
-                }
-              } catch { /* skip malformed */ }
-            }
-          }
-        } catch (e) {
-          console.error('Vision stream error:', e);
-        } finally {
-          if (inReasoning) controller.enqueue(encoder.encode('</think>'));
-          controller.close();
-        }
-      }
-    });
-
-    return new Response(readable, {
+    // Mismo transformador de SSE que usa la visión nativa
+    return new Response(streamDeepSeekSSE(deepseekRes.body!), {
       headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
     });
 
