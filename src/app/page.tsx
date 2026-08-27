@@ -10,6 +10,11 @@ import { useReminders } from "../lib/use-reminders";
 import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parsers";
 import { buildApiHistory, trimHistory } from "../lib/chat-context";
 import { startActivity, finishActivity, settlePendingActivities, activityLabel, type ToolActivity } from "../lib/activities";
+import {
+  parsearAnalisis, categoriaNota, cargarHistorial, guardarEnHistorial,
+  alternarFavorito, borrarDelHistorial,
+  type AnalisisEtiqueta, type ItemHistorial,
+} from "../lib/food-label";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -224,6 +229,94 @@ function ActivityTrail({ activities }: { activities: ToolActivity[] }) {
           <span className="activity-label">{activityLabel(a)}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* Resultado del análisis de una etiqueta: dos notas separadas, veredicto,
+   desglose e ingredientes con los problemáticos resaltados. */
+function FoodResultCard({ analisis, onClose }: { analisis: AnalisisEtiqueta; onClose: () => void }) {
+  const catIng = categoriaNota(analisis.notaIngredientes);
+  const catNut = categoriaNota(analisis.notaNutricional);
+  const sinTabla = analisis.notaNutricional === 0;
+
+  return (
+    <div className="food-card">
+      <button className="food-card-close" onClick={onClose} aria-label="Cerrar análisis">
+        <X size={16} />
+      </button>
+
+      <div className="food-card-head">
+        <h2 className="food-product">{analisis.producto}</h2>
+        {analisis.marca && <p className="food-brand">{analisis.marca}</p>}
+      </div>
+
+      {/* Las dos notas, nunca mezcladas */}
+      <div className="food-scores">
+        <div className={`food-score nivel-${catIng.nivel}`}>
+          <span className="food-score-num">{analisis.notaIngredientes}</span>
+          <span className="food-score-label">Ingredientes</span>
+          <span className="food-score-cat">{catIng.texto}</span>
+        </div>
+        <div className={`food-score ${sinTabla ? 'sin-datos' : `nivel-${catNut.nivel}`}`}>
+          <span className="food-score-num">{sinTabla ? '—' : analisis.notaNutricional}</span>
+          <span className="food-score-label">Nutrición</span>
+          <span className="food-score-cat">{sinTabla ? 'Sin tabla' : catNut.texto}</span>
+        </div>
+      </div>
+
+      {analisis.sellos.length > 0 && (
+        <div className="food-sellos">
+          {analisis.sellos.map((s, i) => (
+            <span key={i} className="food-sello">{s}</span>
+          ))}
+        </div>
+      )}
+
+      {analisis.analisis && (
+        <div className="food-analysis">
+          <span className="food-section-label">El veredicto</span>
+          <p>{analisis.analisis}</p>
+        </div>
+      )}
+
+      {analisis.puntos.length > 0 && (
+        <div className="food-breakdown">
+          <span className="food-section-label">Desglose</span>
+          {analisis.puntos.map((p, i) => (
+            <div key={i} className="food-point">
+              <span className="food-point-label">{p.etiqueta}</span>
+              <span className={`food-point-value nivel-${p.nivel}`}>{p.valor}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {analisis.ingredientes.length > 0 && (
+        <div className="food-ingredients">
+          <span className="food-section-label">Ingredientes</span>
+          <p className="food-ing-list">
+            {analisis.ingredientes.map((ing, i) => (
+              <span key={i}>
+                <span
+                  className={ing.destacado ? `food-ing destacado-${ing.destacado}` : 'food-ing'}
+                  title={ing.nota || undefined}
+                >
+                  {ing.nombre}
+                </span>
+                {i < analisis.ingredientes.length - 1 && ', '}
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
+
+      {/* Solo aparece cuando el propio modelo reconoce que algo está en debate */}
+      {analisis.matiz && (
+        <p className="food-matiz">
+          <Sparkles size={11} /> {analisis.matiz}
+        </p>
+      )}
     </div>
   );
 }
@@ -963,9 +1056,58 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery" | "food">("chat");
   const [agentSearch, setAgentSearch] = useState("");
   const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
+
+  /* ── Etiquetas: análisis de productos por foto ── */
+  const [foodHistory, setFoodHistory] = useState<ItemHistorial[]>([]);
+  const [foodResult, setFoodResult] = useState<AnalisisEtiqueta | null>(null);
+  const [foodLoading, setFoodLoading] = useState(false);
+  const [foodError, setFoodError] = useState<string | null>(null);
+  const [foodOnlyFavs, setFoodOnlyFavs] = useState(false);
+  const foodInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setFoodHistory(cargarHistorial()); }, []);
+
+  const analizarEtiqueta = useCallback(async (file: File) => {
+    setFoodLoading(true);
+    setFoodError(null);
+    setFoodResult(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('No pude leer la foto'));
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const comprimida = await compressImage(base64);
+
+      const res = await fetch('/api/food-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagesBase64: [comprimida] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No pude analizar la foto.');
+
+      const analisis = parsearAnalisis(data.raw || '');
+      if (!analisis) throw new Error('No logré leer la etiqueta. Prueba con una foto más cerca y enfocada.');
+
+      setFoodResult(analisis);
+      const item: ItemHistorial = {
+        ...analisis,
+        id: `${Date.now()}`,
+        fecha: Date.now(),
+        imagen: comprimida,
+      };
+      setFoodHistory(guardarEnHistorial(item));
+    } catch (e: any) {
+      setFoodError(e?.message || 'Algo salió mal. Intenta de nuevo.');
+    } finally {
+      setFoodLoading(false);
+    }
+  }, []);
   const remindersHook = useReminders();
   const [newReminderText, setNewReminderText] = useState("");
   const [newReminderWhen, setNewReminderWhen] = useState("");
@@ -1060,7 +1202,7 @@ export default function Home() {
   const prevMaxScrollTop = useRef<number>(0);
   const forceScrollNext = useRef<boolean>(true);
   const skipAutoScrollRef = useRef<boolean>(false);
-  const prevViewMode = useRef<"chat" | "university" | "agents" | "gallery">("chat");
+  const prevViewMode = useRef<"chat" | "university" | "agents" | "gallery" | "food">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
@@ -3577,6 +3719,13 @@ export default function Home() {
               <ImageIcon size={15} />
               <span>Galería</span>
             </button>
+            <button
+              className={`sb-row ${viewMode === 'food' ? 'active' : ''}`}
+              onClick={() => { prevViewMode.current = 'chat'; setViewMode('food'); setSidebarOpen(false); }}
+            >
+              <Search size={15} />
+              <span>Etiquetas</span>
+            </button>
           </div>
 
           {/* CHATS */}
@@ -4414,7 +4563,125 @@ export default function Home() {
             }
           }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
-          {viewMode === "gallery" ? (
+          {viewMode === "food" ? (
+            <div className="food-page">
+              <div className="food-header">
+                <h1 className="food-title">Etiquetas</h1>
+                <p className="food-sub">Sácale una foto a los ingredientes y te digo qué estás comiendo de verdad.</p>
+              </div>
+
+              {/* Entrada por foto: cámara en móvil, archivos en PC */}
+              <input
+                id="food-photo-input"
+                ref={foodInputRef}
+                type="file"
+                accept="image/*"
+                {...(!isDesktopPointer ? { capture: 'environment' as const } : {})}
+                className="visually-hidden-input"
+                aria-label="Foto de la etiqueta"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  try { e.target.value = ''; } catch {}
+                  if (f) analizarEtiqueta(f);
+                }}
+              />
+              <label htmlFor="food-photo-input" className="food-scan-btn" role="button" tabIndex={0}>
+                <Camera size={20} />
+                <span>{foodLoading ? 'Analizando…' : 'Analizar un producto'}</span>
+              </label>
+
+              {foodLoading && (
+                <div className="food-loading">
+                  <span className="activity-spinner" aria-hidden="true" />
+                  <span>Leyendo la etiqueta…</span>
+                </div>
+              )}
+
+              {foodError && (
+                <div className="food-error">
+                  <XCircle size={15} />
+                  <span>{foodError}</span>
+                </div>
+              )}
+
+              {foodResult && !foodLoading && (
+                <FoodResultCard analisis={foodResult} onClose={() => setFoodResult(null)} />
+              )}
+
+              {/* Historial */}
+              {foodHistory.length > 0 && (
+                <div className="food-history">
+                  <div className="food-history-head">
+                    <span className="food-history-title">
+                      {foodOnlyFavs ? 'Favoritos' : 'Analizados'}
+                    </span>
+                    <button
+                      className={`food-fav-filter ${foodOnlyFavs ? 'active' : ''}`}
+                      onClick={() => setFoodOnlyFavs(v => !v)}
+                    >
+                      <Star size={13} fill={foodOnlyFavs ? 'currentColor' : 'none'} />
+                      {foodOnlyFavs ? 'Ver todos' : 'Solo favoritos'}
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const lista = foodOnlyFavs ? foodHistory.filter(i => i.favorito) : foodHistory;
+                    if (lista.length === 0) {
+                      return <p className="food-empty-favs">Marca con ⭐ los productos que compras siempre.</p>;
+                    }
+                    return (
+                      <div className="food-history-list">
+                        {lista.map(item => {
+                          const cat = categoriaNota(item.notaIngredientes);
+                          return (
+                            <div key={item.id} className="food-history-item">
+                              <button
+                                className="food-history-main"
+                                onClick={() => { setFoodResult(item); setFoodError(null); }}
+                              >
+                                <span className={`food-mini-score nivel-${cat.nivel}`}>{item.notaIngredientes}</span>
+                                <span className="food-history-info">
+                                  <span className="food-history-name">{item.producto}</span>
+                                  {item.marca && <span className="food-history-brand">{item.marca}</span>}
+                                </span>
+                              </button>
+                              <button
+                                className={`food-history-fav ${item.favorito ? 'on' : ''}`}
+                                aria-label={item.favorito ? 'Quitar de favoritos' : 'Marcar favorito'}
+                                onClick={() => setFoodHistory(alternarFavorito(item.id))}
+                              >
+                                <Star size={15} fill={item.favorito ? 'currentColor' : 'none'} />
+                              </button>
+                              <button
+                                className="food-history-del"
+                                aria-label="Borrar"
+                                onClick={() => {
+                                  setFoodHistory(borrarDelHistorial(item.id));
+                                  if (foodResult && 'id' in (foodResult as any) && (foodResult as any).id === item.id) setFoodResult(null);
+                                }}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {foodHistory.length === 0 && !foodResult && !foodLoading && (
+                <div className="food-empty">
+                  <div className="food-empty-icon">🥫</div>
+                  <p className="food-empty-title">Tu primer producto</p>
+                  <p className="food-empty-sub">
+                    Enfoca la lista de ingredientes y la tabla nutricional. Mientras más nítida la foto, mejor el análisis.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : viewMode === "gallery" ? (
             /* ── GALERÍA DE CREACIONES ── */
             (() => {
               const items = extractGalleryItems(chats);
