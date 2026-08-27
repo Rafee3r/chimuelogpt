@@ -1126,6 +1126,15 @@ const MusicPlayer = ({ url, prompt }: { url: string; prompt?: string }) => {
   );
 };
 
+/* ─────────── Secciones ocultas del panel ───────────
+   Galería y Modo Universitario quedan fuera del menú porque casi nadie
+   las usaba y llenaban el panel. NO están eliminadas: el código, las
+   vistas y sus datos siguen intactos, solo se ocultan los accesos.
+
+   Para devolver una al panel, basta con poner su valor en true. */
+const MOSTRAR_GALERIA = false;
+const MOSTRAR_MODO_UNIVERSITARIO = false;
+
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -3390,7 +3399,9 @@ export default function Home() {
   const paletteItems = useMemo<PaletteItem[]>(() => {
     const actions: PaletteItem[] = [
       { id: 'a_new', icon: SquarePen, label: 'Nuevo chat', hint: '⌘/', run: () => { handleSwitchChat(null); } },
-      { id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } },
+      ...(MOSTRAR_MODO_UNIVERSITARIO
+        ? [{ id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } }]
+        : []),
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
       { id: 'a_model_fast', icon: Zap, label: 'Modelo: ⚡ Rápido', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
       { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Pro (opus 4.8)', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
@@ -3753,8 +3764,9 @@ export default function Home() {
         {/* ── SCROLL: Materias + Chats ── */}
         <div className="sb-scroll">
 
-          {/* MATERIAS (Subjects = Notebooks) */}
+          {/* MATERIAS (Subjects = Notebooks) — ocultas junto al Modo Universitario */}
           {(() => {
+            if (!MOSTRAR_MODO_UNIVERSITARIO) return null;
             const q = sidebarSearch.trim().toLowerCase();
             const filteredSubjects = q
               ? subjects.filter(s => s.name.toLowerCase().includes(q))
@@ -3785,13 +3797,15 @@ export default function Home() {
 
           {/* MODO UNIVERSITARIO (entrada sin subject seleccionado) */}
           <div className="sb-section" style={{ paddingTop: '0px' }}>
-            <button
-              className={`sb-row ${viewMode === 'university' && !activeSubjectId ? 'active' : ''}`}
-              onClick={() => { prevViewMode.current = 'chat'; setViewMode('university'); setSidebarOpen(false); }}
-            >
-              <GraduationCap size={15} />
-              <span>Modo Universitario</span>
-            </button>
+            {MOSTRAR_MODO_UNIVERSITARIO && (
+              <button
+                className={`sb-row ${viewMode === 'university' && !activeSubjectId ? 'active' : ''}`}
+                onClick={() => { prevViewMode.current = 'chat'; setViewMode('university'); setSidebarOpen(false); }}
+              >
+                <GraduationCap size={15} />
+                <span>Modo Universitario</span>
+              </button>
+            )}
             <button
               className={`sb-row ${viewMode === 'agents' ? 'active' : ''}`}
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('agents'); setSidebarOpen(false); }}
@@ -3799,13 +3813,15 @@ export default function Home() {
               <Sparkles size={15} />
               <span>Agentes</span>
             </button>
-            <button
-              className={`sb-row ${viewMode === 'gallery' ? 'active' : ''}`}
-              onClick={() => { prevViewMode.current = 'chat'; setViewMode('gallery'); setSidebarOpen(false); }}
-            >
-              <ImageIcon size={15} />
-              <span>Galería</span>
-            </button>
+            {MOSTRAR_GALERIA && (
+              <button
+                className={`sb-row ${viewMode === 'gallery' ? 'active' : ''}`}
+                onClick={() => { prevViewMode.current = 'chat'; setViewMode('gallery'); setSidebarOpen(false); }}
+              >
+                <ImageIcon size={15} />
+                <span>Galería</span>
+              </button>
+            )}
             <button
               className={`sb-row ${viewMode === 'food' ? 'active' : ''}`}
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('food'); setSidebarOpen(false); }}
@@ -4070,12 +4086,14 @@ export default function Home() {
             >
               <MessageSquare size={14} /> Chat
             </button>
-            <button
-              className={`segment-btn ${viewMode === 'university' ? 'active' : ''}`}
-              onClick={() => setViewMode('university')}
-            >
-              <GraduationCap size={14} /> Académico
-            </button>
+            {MOSTRAR_MODO_UNIVERSITARIO && (
+              <button
+                className={`segment-btn ${viewMode === 'university' ? 'active' : ''}`}
+                onClick={() => setViewMode('university')}
+              >
+                <GraduationCap size={14} /> Académico
+              </button>
+            )}
           </div>
           
           <div style={{ display: viewMode === 'agents' ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
