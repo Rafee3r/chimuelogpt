@@ -233,6 +233,93 @@ function ActivityTrail({ activities }: { activities: ToolActivity[] }) {
   );
 }
 
+/* Tutorial de la primera vez. Se muestra solo mientras no haya nada
+   analizado y desaparece solo. Pensado para que lo entienda cualquiera
+   de la familia, sin jerga: qué hacer, qué significan las notas y qué
+   buscar para comer mejor. */
+function FoodTutorial() {
+  return (
+    <div className="food-tuto">
+      {/* Paso a paso */}
+      <div className="food-tuto-steps">
+        <div className="food-tuto-step">
+          <div className="food-tuto-num">1</div>
+          <div className="food-tuto-text">
+            <strong>Da vuelta el envase</strong>
+            <span>Busca donde dice “Ingredientes”. Ahí está la verdad, no en el frente del paquete.</span>
+          </div>
+        </div>
+        <div className="food-tuto-step">
+          <div className="food-tuto-num">2</div>
+          <div className="food-tuto-text">
+            <strong>Saca la foto de cerca</strong>
+            <span>Que se lean las letras chicas. Si cabe también la tabla nutricional, mejor.</span>
+          </div>
+        </div>
+        <div className="food-tuto-step">
+          <div className="food-tuto-num">3</div>
+          <div className="food-tuto-text">
+            <strong>Listo, te doy dos notas</strong>
+            <span>En segundos sabes si ese producto te suma o te frena.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Qué significan las notas, con ejemplo visual real */}
+      <div className="food-tuto-block">
+        <span className="food-tuto-label">Qué significan las dos notas</span>
+        <div className="food-tuto-scores">
+          <div className="food-tuto-score nivel-bueno">
+            <span className="food-tuto-score-num">100</span>
+            <span className="food-tuto-score-name">Ingredientes</span>
+          </div>
+          <div className="food-tuto-score nivel-medio">
+            <span className="food-tuto-score-num">62</span>
+            <span className="food-tuto-score-name">Nutrición</span>
+          </div>
+        </div>
+        <p className="food-tuto-explain">
+          <strong>Ingredientes</strong> = qué tan real es la comida. Frutos secos y fruta suben la nota;
+          aceites refinados, azúcares raros y saborizantes la bajan.
+          <br />
+          <strong>Nutrición</strong> = lo que dicen los números. Proteína y fibra suman; azúcar y sodio de más restan.
+        </p>
+        <p className="food-tuto-note">
+          Van separadas porque miden cosas distintas. Un maní salteado en aceite de oliva puede tener
+          ingredientes perfectos y aun así ser puro calorías: eso te sirve saberlo si estás cuidando el peso.
+        </p>
+      </div>
+
+      {/* Guía rápida para quien entrena / cuida su alimentación */}
+      <div className="food-tuto-block">
+        <span className="food-tuto-label">Para leer etiquetas como pro</span>
+        <div className="food-tuto-tips">
+          <div className="food-tuto-tip">
+            <span className="food-tuto-tip-icon">👀</span>
+            <span><strong>Mira los 3 primeros.</strong> Los ingredientes van de mayor a menor cantidad. Si el azúcar aparece ahí, es un postre disfrazado.</span>
+          </div>
+          <div className="food-tuto-tip">
+            <span className="food-tuto-tip-icon">📏</span>
+            <span><strong>Lista corta gana.</strong> Cinco ingredientes que sabes pronunciar valen más que veinte que no.</span>
+          </div>
+          <div className="food-tuto-tip">
+            <span className="food-tuto-tip-icon">🍬</span>
+            <span><strong>El azúcar se esconde.</strong> Jarabe de maíz, maltodextrina, dextrosa, jugo de caña: todos son azúcar con otro nombre.</span>
+          </div>
+          <div className="food-tuto-tip">
+            <span className="food-tuto-tip-icon">🥤</span>
+            <span><strong>Ojo con la porción.</strong> Los datos son “por porción”, no por envase. A veces el paquete trae 2,5 porciones.</span>
+          </div>
+        </div>
+      </div>
+
+      <p className="food-tuto-cta">
+        Empieza por algo que comas siempre — tu cereal, tu barrita, tu yogurt. Ahí es donde más se nota el cambio.
+      </p>
+    </div>
+  );
+}
+
 /* Resultado del análisis de una etiqueta: dos notas separadas, veredicto,
    desglose e ingredientes con los problemáticos resaltados. */
 function FoodResultCard({ analisis, onClose }: { analisis: AnalisisEtiqueta; onClose: () => void }) {
@@ -3724,7 +3811,7 @@ export default function Home() {
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('food'); setSidebarOpen(false); }}
             >
               <Search size={15} />
-              <span>Etiquetas</span>
+              <span>Ingredientes</span>
             </button>
           </div>
 
@@ -4566,8 +4653,8 @@ export default function Home() {
           {viewMode === "food" ? (
             <div className="food-page">
               <div className="food-header">
-                <h1 className="food-title">Etiquetas</h1>
-                <p className="food-sub">Sácale una foto a los ingredientes y te digo qué estás comiendo de verdad.</p>
+                <h1 className="food-title">Ingredientes</h1>
+                <p className="food-sub">Sácale una foto a la etiqueta y te digo qué le estás metiendo de verdad a tu cuerpo.</p>
               </div>
 
               {/* Entrada por foto: cámara en móvil, archivos en PC */}
@@ -4578,7 +4665,7 @@ export default function Home() {
                 accept="image/*"
                 {...(!isDesktopPointer ? { capture: 'environment' as const } : {})}
                 className="visually-hidden-input"
-                aria-label="Foto de la etiqueta"
+                aria-label="Foto de los ingredientes"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   try { e.target.value = ''; } catch {}
@@ -4671,15 +4758,8 @@ export default function Home() {
                 </div>
               )}
 
-              {foodHistory.length === 0 && !foodResult && !foodLoading && (
-                <div className="food-empty">
-                  <div className="food-empty-icon">🥫</div>
-                  <p className="food-empty-title">Tu primer producto</p>
-                  <p className="food-empty-sub">
-                    Enfoca la lista de ingredientes y la tabla nutricional. Mientras más nítida la foto, mejor el análisis.
-                  </p>
-                </div>
-              )}
+              {/* Tutorial: solo la primera vez, cuando aún no hay nada analizado */}
+              {foodHistory.length === 0 && !foodResult && !foodLoading && <FoodTutorial />}
             </div>
           ) : viewMode === "gallery" ? (
             /* ── GALERÍA DE CREACIONES ── */
