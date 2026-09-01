@@ -1,13 +1,13 @@
 /* ─────────── Análisis de etiquetas de alimentos ───────────
-   El usuario le saca una foto a los ingredientes y Chimuelo devuelve dos
-   notas separadas:
-     - Ingredientes: qué tan real es la comida (procesamiento, aceites de
-       semilla, azúcares añadidos, aditivos).
-     - Nutricional: lo que dice la tabla (azúcar, sodio, grasas, fibra…).
+   El usuario le saca una foto a los ingredientes y Chimuelo devuelve UNA
+   nota: qué tan real es la comida (procesamiento, aceites de semilla,
+   azúcares añadidos, aditivos).
 
-   Van separadas a propósito: unas papas fritas de 3 ingredientes sacan nota
-   alta en la primera y baja en la segunda, y mezclarlas escondería esa
-   diferencia.
+   Antes había una segunda nota nutricional al lado. Se quitó a propósito:
+   dos notas compiten entre sí y la nutricional amortiguaba a la de
+   ingredientes. Un producto lleno de aditivos que sacaba 20 en ingredientes
+   y 70 en nutrición se leía como "regular nomás", cuando el mensaje real
+   era el de los aditivos. Una sola nota no deja dónde esconderse.
 
    El modelo responde en JSON. Aquí vive el parseo defensivo: si la respuesta
    viene incompleta o con basura, se normaliza en vez de romper la pantalla.
@@ -29,11 +29,21 @@ export type IngredienteAnalizado = {
   nota?: string;
 };
 
+/** Explicación en lenguaje simple de un ingrediente problemático. */
+export type QuimicoExplicado = {
+  nombre: string;
+  /** Qué es y de dónde sale, en una frase. */
+  queEs: string;
+  /** Por qué conviene evitarlo. */
+  porQue: string;
+  /** 'malo' si hay consenso; 'medio' si está en discusión o solo importa en exceso. */
+  gravedad: NivelPunto;
+};
+
 export type AnalisisEtiqueta = {
   producto: string;
   marca?: string;
   notaIngredientes: number;   // 0-100
-  notaNutricional: number;    // 0-100
   veredicto: string;          // "Excelente", "Aceptable", "Evitar"…
   analisis: string;           // párrafo narrativo
   puntos: PuntoAnalisis[];
@@ -48,6 +58,9 @@ export type ItemHistorial = AnalisisEtiqueta & {
   fecha: number;
   favorito?: boolean;
   imagen?: string;            // miniatura para reconocerlo en la lista
+  /* Se guardan para no volver a pedirlos —y pagarlos— al reabrir el
+     producto desde el historial. */
+  quimicos?: QuimicoExplicado[];
 };
 
 const NIVELES: NivelPunto[] = ['bueno', 'medio', 'malo'];
@@ -113,7 +126,6 @@ export function parsearAnalisis(raw: string): AnalisisEtiqueta | null {
   if (!producto && !analisis) return null;
 
   const notaIngredientes = clampNota(data.notaIngredientes);
-  const notaNutricional = clampNota(data.notaNutricional);
 
   const puntos: PuntoAnalisis[] = Array.isArray(data.puntos)
     ? data.puntos
@@ -149,7 +161,6 @@ export function parsearAnalisis(raw: string): AnalisisEtiqueta | null {
     producto: producto || 'Producto sin nombre',
     marca: data.marca ? String(data.marca).trim() : undefined,
     notaIngredientes,
-    notaNutricional,
     veredicto: String(data.veredicto || categoriaNota(notaIngredientes).texto).trim(),
     analisis,
     puntos,
@@ -157,6 +168,27 @@ export function parsearAnalisis(raw: string): AnalisisEtiqueta | null {
     sellos,
     matiz: data.matiz ? String(data.matiz).trim() : null,
   };
+}
+
+/**
+ * Normaliza la explicación de los ingredientes problemáticos.
+ * Devuelve [] ante cualquier basura: esta sección es complementaria y su
+ * ausencia nunca debe romper la tarjeta ni ocultar el análisis principal.
+ */
+export function parsearQuimicos(raw: string): QuimicoExplicado[] {
+  const data = extraerJson(raw);
+  const lista = Array.isArray(data) ? data : data?.quimicos;
+  if (!Array.isArray(lista)) return [];
+
+  return lista
+    .filter((q: any) => q && q.nombre && (q.queEs || q.porQue))
+    .slice(0, 12)
+    .map((q: any) => ({
+      nombre: String(q.nombre).trim(),
+      queEs: String(q.queEs ?? '').trim(),
+      porQue: String(q.porQue ?? '').trim(),
+      gravedad: nivelValido(q.gravedad),
+    }));
 }
 
 /* ─────────── Historial (localStorage) ─────────── */

@@ -15,14 +15,15 @@ FILOSOFÍA (aplícala con carácter):
 - Premia: ingredientes enteros, grasas estables (coco, oliva, palta, mantequilla), fermentados, fibra real, sin aditivos.
 - Sé claro y directo en el veredicto. Nada de tibiezas tipo "todo con moderación".
 
-DOS NOTAS SEPARADAS (0-100), nunca las mezcles:
+UNA SOLA NOTA (0-100):
 - notaIngredientes: qué tan real es la comida. Ultraprocesado con lista larga = bajo. Ingredientes enteros = alto.
-- notaNutricional: lo que dice la tabla (azúcar, sodio, grasas saturadas, fibra, proteína).
-Un producto puede tener 100 en ingredientes y 40 en nutrición (ej: papas fritas en aceite de oliva): eso es correcto y debe verse así.
+No des una nota nutricional aparte. Lo que decide la nota es la LISTA DE INGREDIENTES, no las calorías: un producto "light" lleno de edulcorantes y aditivos es malo aunque su tabla se vea bien.
+
+Las cifras de la tabla (azúcar, sodio, grasas saturadas) van en "puntos" como evidencia concreta, no como nota separada.
 
 HONESTIDAD (importante):
-- Si en la foto NO se ve la tabla nutricional, pon notaNutricional en 0 y agrega un punto con etiqueta "Tabla nutricional" y valor "No visible en la foto". NO inventes cifras.
 - Si no logras leer los ingredientes, dilo en "analisis" y deja las listas vacías.
+- No inventes cifras que no se vean en la foto.
 - Usa "matiz" SOLO cuando penalices algo que está genuinamente en discusión científica (ej. aceites de semilla). Una frase corta y honesta. Si no aplica, null.
 
 SELLOS CHILENOS: si ves los octágonos negros ("ALTO EN AZÚCARES", "ALTO EN SODIO", "ALTO EN GRASAS SATURADAS", "ALTO EN CALORÍAS"), inclúyelos en "sellos".
@@ -32,7 +33,6 @@ Responde ÚNICAMENTE con este JSON, sin texto alrededor ni bloques de código:
   "producto": "nombre del producto",
   "marca": "marca si se ve, si no omite",
   "notaIngredientes": 0-100,
-  "notaNutricional": 0-100,
   "veredicto": "Excelente" | "Bueno" | "Aceptable" | "Regular" | "Evitar",
   "analisis": "2-4 frases directas sobre lo que importa de este producto. Español chileno natural, sin markdown.",
   "puntos": [
@@ -47,7 +47,9 @@ Responde ÚNICAMENTE con este JSON, sin texto alrededor ni bloques de código:
   "sellos": ["ALTO EN AZÚCARES"],
   "matiz": null
 }
-"nivel" solo acepta: "bueno", "medio", "malo".`;
+"nivel" solo acepta: "bueno", "medio", "malo".
+
+IMPORTANTE — marca con "destacado": "malo" TODOS los ingredientes problemáticos (aceites de semilla refinados, azúcares añadidos, colorantes, conservantes sintéticos, saborizantes artificiales, edulcorantes artificiales). Esa marca es la que dispara la explicación detallada que se le muestra al usuario después, así que no dejes ninguno fuera.`;
 
 export async function POST(req: Request) {
   try {

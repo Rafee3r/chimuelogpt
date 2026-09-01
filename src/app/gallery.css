@@ -622,6 +622,36 @@
 .food-score.nivel-malo  { border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.07);  color: #ef4444; }
 .food-score.sin-datos   { border-color: var(--border-color);  background: transparent;           color: var(--text-secondary); }
 
+/* Nota única: ocupa todo el ancho y el número manda, porque ahora es el
+   único veredicto numérico de la tarjeta. */
+.food-score.unica { padding: 20px 12px; }
+.food-score.unica .food-score-num { font-size: 2.6rem; }
+
+/* ── Por qué te conviene evitarlos ──
+   Llega después del análisis, en una segunda llamada. */
+.food-quimicos { margin-top: 18px; }
+.food-quimicos-loading {
+  display: flex; align-items: center; gap: 9px;
+  padding: 12px 2px;
+  font-size: 0.85rem; color: var(--text-secondary);
+}
+.food-quimicos-error { font-size: 0.85rem; color: var(--text-secondary); padding: 6px 2px; }
+
+.food-quimico {
+  padding: 12px 14px;
+  margin-top: 8px;
+  border-radius: 12px;
+  border-left: 3px solid;
+  background: var(--bg-secondary, rgba(127,127,127,0.06));
+}
+.food-quimico.gravedad-malo  { border-left-color: #ef4444; }
+.food-quimico.gravedad-medio { border-left-color: #f59e0b; }
+.food-quimico.gravedad-bueno { border-left-color: #22c55e; }
+
+.food-quimico-nombre { display: block; font-weight: 700; font-size: 0.92rem; margin-bottom: 5px; }
+.food-quimico-es  { font-size: 0.85rem; line-height: 1.5; opacity: 0.85; margin: 0 0 5px; }
+.food-quimico-por { font-size: 0.85rem; line-height: 1.5; margin: 0; }
+
 /* Sellos chilenos */
 .food-sellos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .food-sello {

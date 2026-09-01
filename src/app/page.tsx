@@ -11,9 +11,9 @@ import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parse
 import { buildApiHistory, trimHistory } from "../lib/chat-context";
 import { startActivity, finishActivity, settlePendingActivities, activityLabel, type ToolActivity } from "../lib/activities";
 import {
-  parsearAnalisis, categoriaNota, cargarHistorial, guardarEnHistorial,
+  parsearAnalisis, parsearQuimicos, categoriaNota, cargarHistorial, guardarEnHistorial,
   alternarFavorito, borrarDelHistorial,
-  type AnalisisEtiqueta, type ItemHistorial,
+  type AnalisisEtiqueta, type ItemHistorial, type QuimicoExplicado,
 } from "../lib/food-label";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
@@ -322,10 +322,16 @@ function FoodTutorial() {
 
 /* Resultado del análisis de una etiqueta: dos notas separadas, veredicto,
    desglose e ingredientes con los problemáticos resaltados. */
-function FoodResultCard({ analisis, onClose }: { analisis: AnalisisEtiqueta; onClose: () => void }) {
+function FoodResultCard({
+  analisis, onClose, quimicos, quimicosLoading, quimicosError,
+}: {
+  analisis: AnalisisEtiqueta;
+  onClose: () => void;
+  quimicos: QuimicoExplicado[];
+  quimicosLoading: boolean;
+  quimicosError: string | null;
+}) {
   const catIng = categoriaNota(analisis.notaIngredientes);
-  const catNut = categoriaNota(analisis.notaNutricional);
-  const sinTabla = analisis.notaNutricional === 0;
 
   return (
     <div className="food-card">
@@ -338,17 +344,14 @@ function FoodResultCard({ analisis, onClose }: { analisis: AnalisisEtiqueta; onC
         {analisis.marca && <p className="food-brand">{analisis.marca}</p>}
       </div>
 
-      {/* Las dos notas, nunca mezcladas */}
+      {/* Una sola nota. Antes había una nutricional al lado y amortiguaba
+          a esta: 20 en ingredientes junto a 70 en nutrición se leía como
+          "regular nomás". Lo que se juzga es la lista de ingredientes. */}
       <div className="food-scores">
-        <div className={`food-score nivel-${catIng.nivel}`}>
+        <div className={`food-score unica nivel-${catIng.nivel}`}>
           <span className="food-score-num">{analisis.notaIngredientes}</span>
-          <span className="food-score-label">Ingredientes</span>
+          <span className="food-score-label">Calidad de ingredientes</span>
           <span className="food-score-cat">{catIng.texto}</span>
-        </div>
-        <div className={`food-score ${sinTabla ? 'sin-datos' : `nivel-${catNut.nivel}`}`}>
-          <span className="food-score-num">{sinTabla ? '—' : analisis.notaNutricional}</span>
-          <span className="food-score-label">Nutrición</span>
-          <span className="food-score-cat">{sinTabla ? 'Sin tabla' : catNut.texto}</span>
         </div>
       </div>
 
@@ -395,6 +398,33 @@ function FoodResultCard({ analisis, onClose }: { analisis: AnalisisEtiqueta; onC
               </span>
             ))}
           </p>
+        </div>
+      )}
+
+      {/* Por qué son malos: se pide aparte y llega después, para no alargar
+          el análisis de la foto. Ver /api/food-label/quimicos. */}
+      {(quimicosLoading || quimicos.length > 0 || quimicosError) && (
+        <div className="food-quimicos">
+          <span className="food-section-label">Por qué te conviene evitarlos</span>
+
+          {quimicosLoading && (
+            <div className="food-quimicos-loading">
+              <span className="activity-spinner" aria-hidden="true" />
+              <span>Generando la información de los químicos dañinos enlistados…</span>
+            </div>
+          )}
+
+          {!quimicosLoading && quimicosError && (
+            <p className="food-quimicos-error">{quimicosError}</p>
+          )}
+
+          {!quimicosLoading && quimicos.map((q, i) => (
+            <div key={i} className={`food-quimico gravedad-${q.gravedad}`}>
+              <span className="food-quimico-nombre">{q.nombre}</span>
+              {q.queEs && <p className="food-quimico-es">{q.queEs}</p>}
+              {q.porQue && <p className="food-quimico-por">{q.porQue}</p>}
+            </div>
+          ))}
         </div>
       )}
 
@@ -1162,6 +1192,12 @@ export default function Home() {
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodError, setFoodError] = useState<string | null>(null);
 
+  /* Explicación de los aditivos: se pide en una segunda llamada, después
+     de que la foto ya fue analizada, para no alargar la primera espera. */
+  const [foodQuimicos, setFoodQuimicos] = useState<QuimicoExplicado[]>([]);
+  const [foodQuimicosLoading, setFoodQuimicosLoading] = useState(false);
+  const [foodQuimicosError, setFoodQuimicosError] = useState<string | null>(null);
+
   /* El análisis tarda ~18s de mediana (medido en produccion). Un spinner
      inmóvil tanto rato se lee como "se colgó" — que fue justo la queja.
      A los 12s avisamos que sigue trabajando. No inventamos un porcentaje
@@ -1176,6 +1212,61 @@ export default function Home() {
   const foodInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setFoodHistory(cargarHistorial()); }, []);
+
+  /**
+   * Segunda llamada: explica por qué son malos los ingredientes que el
+   * análisis marcó como problemáticos. Corre en flash (texto contra texto,
+   * sin imagen) y solo si de verdad hay algo marcado.
+   */
+  const pedirQuimicos = useCallback(async (item: ItemHistorial) => {
+    const malos = item.ingredientes.filter(i => i.destacado === 'malo');
+
+    // Producto limpio: no hay nada que explicar y no gastamos una llamada.
+    if (malos.length === 0) {
+      setFoodQuimicos([]);
+      setFoodQuimicosError(null);
+      setFoodQuimicosLoading(false);
+      return;
+    }
+
+    setFoodQuimicosLoading(true);
+    setFoodQuimicosError(null);
+    setFoodQuimicos([]);
+    try {
+      const res = await fetch('/api/food-label/quimicos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ producto: item.producto, ingredientes: malos.map(i => i.nombre) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No pude generar el detalle.');
+
+      const lista = parsearQuimicos(data.raw || '');
+      setFoodQuimicos(lista);
+
+      /* Se guardan junto al producto: al reabrirlo desde el historial no
+         hay que volver a pedirlos ni pagarlos. */
+      if (lista.length > 0) setFoodHistory(guardarEnHistorial({ ...item, quimicos: lista }));
+    } catch (e: any) {
+      setFoodQuimicosError(e?.message || 'No pude generar el detalle de los aditivos.');
+    } finally {
+      setFoodQuimicosLoading(false);
+    }
+  }, []);
+
+  /* Abrir desde el historial: si ya tiene la explicación guardada la
+     reutiliza; si es de antes de esta función, la pide una sola vez. */
+  const abrirDesdeHistorial = useCallback((item: ItemHistorial) => {
+    setFoodResult(item);
+    setFoodError(null);
+    setFoodQuimicosError(null);
+    if (item.quimicos && item.quimicos.length > 0) {
+      setFoodQuimicos(item.quimicos);
+      setFoodQuimicosLoading(false);
+    } else {
+      pedirQuimicos(item);
+    }
+  }, [pedirQuimicos]);
 
   const analizarEtiqueta = useCallback(async (file: File) => {
     setFoodLoading(true);
@@ -1209,12 +1300,16 @@ export default function Home() {
         imagen: comprimida,
       };
       setFoodHistory(guardarEnHistorial(item));
+
+      /* Sin await a propósito: la tarjeta se muestra ya y la explicación
+         de los aditivos aterriza mientras el usuario la está leyendo. */
+      pedirQuimicos(item);
     } catch (e: any) {
       setFoodError(e?.message || 'Algo salió mal. Intenta de nuevo.');
     } finally {
       setFoodLoading(false);
     }
-  }, []);
+  }, [pedirQuimicos]);
   const remindersHook = useReminders();
   const [newReminderText, setNewReminderText] = useState("");
   const [newReminderWhen, setNewReminderWhen] = useState("");
@@ -4721,7 +4816,13 @@ export default function Home() {
               )}
 
               {foodResult && !foodLoading && (
-                <FoodResultCard analisis={foodResult} onClose={() => setFoodResult(null)} />
+                <FoodResultCard
+                  analisis={foodResult}
+                  onClose={() => { setFoodResult(null); setFoodQuimicos([]); setFoodQuimicosError(null); }}
+                  quimicos={foodQuimicos}
+                  quimicosLoading={foodQuimicosLoading}
+                  quimicosError={foodQuimicosError}
+                />
               )}
 
               {/* Historial */}
@@ -4753,7 +4854,7 @@ export default function Home() {
                             <div key={item.id} className="food-history-item">
                               <button
                                 className="food-history-main"
-                                onClick={() => { setFoodResult(item); setFoodError(null); }}
+                                onClick={() => abrirDesdeHistorial(item)}
                               >
                                 <span className={`food-mini-score nivel-${cat.nivel}`}>{item.notaIngredientes}</span>
                                 <span className="food-history-info">

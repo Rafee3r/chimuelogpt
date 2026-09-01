@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  parsearAnalisis, extraerJson, categoriaNota,
+  parsearAnalisis, parsearQuimicos, extraerJson, categoriaNota,
   cargarHistorial, guardarEnHistorial, alternarFavorito, borrarDelHistorial,
   HISTORIAL_KEY, type ItemHistorial,
 } from '../food-label';
@@ -19,7 +19,6 @@ const respuestaModelo = JSON.stringify({
   producto: 'Granola Frutilla y Plátano',
   marca: 'Seven Sundays',
   notaIngredientes: 100,
-  notaNutricional: 72,
   veredicto: 'Excelente',
   analisis: 'Las frutillas y plátanos hacen todo el trabajo de endulzar.',
   puntos: [
@@ -39,7 +38,6 @@ describe('parsearAnalisis', () => {
     expect(a.producto).toBe('Granola Frutilla y Plátano');
     expect(a.marca).toBe('Seven Sundays');
     expect(a.notaIngredientes).toBe(100);
-    expect(a.notaNutricional).toBe(72);
     expect(a.puntos).toHaveLength(2);
     expect(a.ingredientes[1]).toEqual({
       nombre: 'Aceite de coco', destacado: 'bueno', nota: 'Grasa estable',
@@ -59,10 +57,16 @@ describe('parsearAnalisis', () => {
   });
 
   it('acota las notas fuera de rango en vez de mostrar basura', () => {
-    const raw = JSON.stringify({ producto: 'X', analisis: 'y', notaIngredientes: 250, notaNutricional: -30 });
-    const a = parsearAnalisis(raw)!;
-    expect(a.notaIngredientes).toBe(100);
-    expect(a.notaNutricional).toBe(0);
+    expect(parsearAnalisis(JSON.stringify({ producto: 'X', analisis: 'y', notaIngredientes: 250 }))!.notaIngredientes).toBe(100);
+    expect(parsearAnalisis(JSON.stringify({ producto: 'X', analisis: 'y', notaIngredientes: -30 }))!.notaIngredientes).toBe(0);
+  });
+
+  it('ignora una nota nutricional aunque el modelo la mande', () => {
+    const a = parsearAnalisis(JSON.stringify({
+      producto: 'X', analisis: 'y', notaIngredientes: 20, notaNutricional: 90,
+    }))!;
+    expect(a.notaIngredientes).toBe(20);
+    expect('notaNutricional' in a).toBe(false);
   });
 
   it('corrige un nivel inventado por el modelo', () => {
@@ -104,6 +108,54 @@ describe('extraerJson', () => {
   });
 });
 
+describe('parsearQuimicos', () => {
+  const respuesta = JSON.stringify({
+    quimicos: [
+      {
+        nombre: 'Jarabe de maíz de alta fructosa',
+        queEs: 'Un azúcar líquido hecho de maíz.',
+        porQue: 'El cuerpo lo procesa casi entero en el hígado.',
+        gravedad: 'malo',
+      },
+      { nombre: 'Lecitina de soya', queEs: 'Un emulsionante.', porQue: 'Bastante inofensivo.', gravedad: 'medio' },
+    ],
+  });
+
+  it('convierte la respuesta en una lista renderizable', () => {
+    const q = parsearQuimicos(respuesta);
+    expect(q).toHaveLength(2);
+    expect(q[0].nombre).toBe('Jarabe de maíz de alta fructosa');
+    expect(q[0].gravedad).toBe('malo');
+    expect(q[1].gravedad).toBe('medio');
+  });
+
+  it('acepta el array pelado, sin la llave quimicos', () => {
+    const raw = JSON.stringify([{ nombre: 'Colorante caramelo', queEs: 'Un tinte.', gravedad: 'malo' }]);
+    expect(parsearQuimicos(raw)[0].nombre).toBe('Colorante caramelo');
+  });
+
+  it('corrige una gravedad inventada por el modelo', () => {
+    const raw = JSON.stringify({ quimicos: [{ nombre: 'X', queEs: 'y', gravedad: 'letal' }] });
+    expect(parsearQuimicos(raw)[0].gravedad).toBe('medio');
+  });
+
+  it('descarta entradas sin nombre o sin contenido', () => {
+    const raw = JSON.stringify({ quimicos: [
+      { nombre: '', queEs: 'sin nombre' },
+      { nombre: 'Solo nombre' },
+      { nombre: 'Válido', porQue: 'una razón' },
+    ]});
+    expect(parsearQuimicos(raw).map(q => q.nombre)).toEqual(['Válido']);
+  });
+
+  it('devuelve [] ante basura: la sección es complementaria y no debe romper la tarjeta', () => {
+    expect(parsearQuimicos('no es json')).toEqual([]);
+    expect(parsearQuimicos('')).toEqual([]);
+    expect(parsearQuimicos('{}')).toEqual([]);
+    expect(parsearQuimicos(JSON.stringify({ quimicos: 'no soy lista' }))).toEqual([]);
+  });
+});
+
 describe('categoriaNota', () => {
   it('clasifica en los tres tramos', () => {
     expect(categoriaNota(90).texto).toBe('Excelente');
@@ -117,7 +169,7 @@ describe('historial', () => {
   let st: ReturnType<typeof fakeStore>;
   const item = (id: string, favorito = false): ItemHistorial => ({
     id, fecha: Date.now(), favorito,
-    producto: `Producto ${id}`, notaIngredientes: 50, notaNutricional: 50,
+    producto: `Producto ${id}`, notaIngredientes: 50,
     veredicto: 'Aceptable', analisis: '', puntos: [], ingredientes: [], sellos: [],
   });
 
