@@ -88,6 +88,17 @@ export async function POST(req: Request) {
             model: VISION_MODEL,
             messages,
             response_format: { type: 'json_object' },
+            /* ⚠️ Sin esto la API razona por defecto, y eso costaba ~25s con una
+               etiqueta PLANA, nítida y de alto contraste. Una foto real de
+               celular (fondo, ángulo, brillo, letra chica) se pasaba de los
+               60s de Vercel y el usuario solo veía "tardó demasiado".
+               Leer una etiqueta es OCR + criterio, no razonamiento profundo:
+               'low' alcanza de sobra. Mismo aprendizaje que en /api/chat. */
+            reasoning_effort: 'low',
+            /* Techo de seguridad: el JSON completo ronda los 600 tokens.
+               Evita que una lista de ingredientes eterna se coma el
+               presupuesto y termine en timeout. */
+            max_tokens: 1500,
             stream: false,
           }),
           signal: AbortSignal.timeout(restante),
@@ -119,9 +130,14 @@ export async function POST(req: Request) {
       }
     }
 
-    const amigable = lastStatus
-      ? friendlyApiError(lastStatus, lastBody)
-      : { message: 'No pude conectar para analizar la foto. Intenta de nuevo.' };
+    /* El texto genérico de timeout habla de "modo Rápido", que aquí no
+       existe: en Ingredientes lo único accionable es la foto. */
+    const amigable =
+      lastStatus === 504
+        ? { message: 'La foto tardó demasiado en analizarse. Prueba de nuevo acercando la cámara a la etiqueta, con buena luz y sin reflejos.' }
+        : lastStatus
+        ? friendlyApiError(lastStatus, lastBody)
+        : { message: 'No pude conectar para analizar la foto. Intenta de nuevo.' };
     console.error('food-label falló:', lastStatus, lastBody.slice(0, 200));
     return Response.json({ error: amigable.message }, { status: lastStatus === 504 ? 504 : 503 });
 
