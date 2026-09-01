@@ -1161,6 +1161,17 @@ export default function Home() {
   const [foodResult, setFoodResult] = useState<AnalisisEtiqueta | null>(null);
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodError, setFoodError] = useState<string | null>(null);
+
+  /* El análisis tarda ~18s de mediana (medido en produccion). Un spinner
+     inmóvil tanto rato se lee como "se colgó" — que fue justo la queja.
+     A los 12s avisamos que sigue trabajando. No inventamos un porcentaje
+     ni etapas falsas: no podemos medir el progreso real del modelo. */
+  const [foodDemora, setFoodDemora] = useState(false);
+  useEffect(() => {
+    if (!foodLoading) { setFoodDemora(false); return; }
+    const t = setTimeout(() => setFoodDemora(true), 12_000);
+    return () => clearTimeout(t);
+  }, [foodLoading]);
   const [foodOnlyFavs, setFoodOnlyFavs] = useState(false);
   const foodInputRef = useRef<HTMLInputElement>(null);
 
@@ -4698,7 +4709,7 @@ export default function Home() {
               {foodLoading && (
                 <div className="food-loading">
                   <span className="activity-spinner" aria-hidden="true" />
-                  <span>Leyendo la etiqueta…</span>
+                  <span>{foodDemora ? 'Sigo leyendo… la letra chica toma unos segundos más.' : 'Leyendo la etiqueta…'}</span>
                 </div>
               )}
 

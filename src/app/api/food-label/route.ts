@@ -73,12 +73,20 @@ export async function POST(req: Request) {
     /* Reintento ante saturación: los 503/429 de DeepSeek son transitorios.
        Deadline por debajo del límite de la función para no morir por timeout. */
     const deadline = Date.now() + 50_000;
+
+    /* Un análisis medido en produccion tarda ~18s de mediana y hasta ~32s en
+       el peor caso observado. Arrancar un intento con menos de esto en el
+       reloj es tiempo quemado: no alcanza a terminar y encima convierte un
+       "servicio saturado" (claro y accionable) en un "tardó demasiado"
+       (confuso). Mejor cortar y devolver el error real. */
+    const MINIMO_PARA_INTENTAR = 20_000;
+
     let lastStatus = 0;
     let lastBody = '';
 
     for (let intento = 0; intento <= 2; intento++) {
       const restante = deadline - Date.now();
-      if (restante < 5_000) break;
+      if (restante < MINIMO_PARA_INTENTAR) break;
 
       try {
         const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
         lastBody = await res.text().catch(() => '');
         if (!isRetryableStatus(res.status) || intento === 2) break;
 
-        const espera = Math.min(backoffDelay(intento), Math.max(0, deadline - Date.now() - 3_000));
+        const espera = Math.min(backoffDelay(intento), Math.max(0, deadline - Date.now() - MINIMO_PARA_INTENTAR));
         if (espera <= 0) break;
         console.warn(`food-label: DeepSeek ${res.status}, reintento ${intento + 1}/2`);
         await new Promise(r => setTimeout(r, espera));
