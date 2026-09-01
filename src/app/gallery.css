@@ -635,6 +635,9 @@
   padding: 12px 2px;
   font-size: 0.85rem; color: var(--text-secondary);
 }
+/* El mensaje ocupa dos líneas en móvil y el flex aplastaba el spinner
+   hasta dejarlo ovalado (8.7px de ancho por 11 de alto). */
+.food-quimicos-loading .activity-spinner { flex-shrink: 0; }
 .food-quimicos-error { font-size: 0.85rem; color: var(--text-secondary); padding: 6px 2px; }
 
 .food-quimico {
