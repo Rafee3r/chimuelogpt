@@ -95,10 +95,14 @@ export async function POST(req: Request) {
                Leer una etiqueta es OCR + criterio, no razonamiento profundo:
                'low' alcanza de sobra. Mismo aprendizaje que en /api/chat. */
             reasoning_effort: 'low',
-            /* Techo de seguridad: el JSON completo ronda los 600 tokens.
-               Evita que una lista de ingredientes eterna se coma el
-               presupuesto y termine en timeout. */
-            max_tokens: 1500,
+            /* ⚠️ TRAMPA: max_tokens cuenta razonamiento + respuesta JUNTOS.
+               Con 1500 el razonamiento se comía el presupuesto y el JSON
+               llegaba cortado a media frase (y a veces vacío), que para el
+               usuario se ve peor que el timeout: "no logré leer la etiqueta"
+               con una foto perfecta. El JSON completo ronda los 600 tokens,
+               así que 8000 es un techo que jamás corta una respuesta real
+               y solo ataja un caso patológico. Quien lo baje, que mida. */
+            max_tokens: 8000,
             stream: false,
           }),
           signal: AbortSignal.timeout(restante),
