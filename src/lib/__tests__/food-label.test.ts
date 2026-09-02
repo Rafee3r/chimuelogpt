@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  parsearAnalisis, parsearQuimicos, extraerJson, categoriaNota,
+  parsearAnalisis, parsearQuimicos, esPuntoDeAusencia, extraerJson, categoriaNota,
   cargarHistorial, guardarEnHistorial, alternarFavorito, borrarDelHistorial,
   HISTORIAL_KEY, type ItemHistorial,
 } from '../food-label';
@@ -22,8 +22,8 @@ const respuestaModelo = JSON.stringify({
   veredicto: 'Excelente',
   analisis: 'Las frutillas y plátanos hacen todo el trabajo de endulzar.',
   puntos: [
-    { etiqueta: 'Aceites de semilla', valor: 'Ninguno', nivel: 'bueno' },
     { etiqueta: 'Procesamiento', valor: 'Bajo', nivel: 'bueno' },
+    { etiqueta: 'Azúcar añadida', valor: '6g por porción', nivel: 'medio' },
   ],
   ingredientes: [
     { nombre: 'Almendras' },
@@ -89,6 +89,48 @@ describe('parsearAnalisis', () => {
     expect(a.ingredientes).toEqual([]);
     expect(a.sellos).toEqual([]);
     expect(a.matiz).toBeNull();
+  });
+});
+
+describe('puntos de ausencia', () => {
+  /* Bug real: el modelo copiaba del ejemplo del prompt una fila
+     "Aceites de semilla: Ninguno" y la pegaba en cualquier producto.
+     En una bebida sin una gota de aceite aparecía en 4 de 8 análisis, y
+     el usuario la leía como si la bebida SÍ llevara aceite: en el
+     desglose el ojo agarra la etiqueta, no el valor. */
+  it('reconoce las formas de decir "no tiene"', () => {
+    for (const v of ['Ninguno', 'ninguna', 'No contiene', 'no aplica', 'N/A', 'Cero', '—', '-']) {
+      expect(esPuntoDeAusencia(v)).toBe(true);
+    }
+  });
+
+  it('no confunde un valor real con una ausencia', () => {
+    for (const v of ['21g por porción', '0,8 g', 'Aceite de maravilla', 'Alto', '195 mg']) {
+      expect(esPuntoDeAusencia(v)).toBe(false);
+    }
+  });
+
+  it('saca del desglose la fila que acusa de algo que el producto no tiene', () => {
+    const raw = JSON.stringify({
+      producto: 'Bebida cola', analisis: 'pura azúcar',
+      puntos: [
+        { etiqueta: 'Aceites de semilla', valor: 'Ninguno', nivel: 'bueno' },
+        { etiqueta: 'Azúcar añadida', valor: '21g por porción', nivel: 'malo' },
+      ],
+    });
+    const puntos = parsearAnalisis(raw)!.puntos;
+    expect(puntos).toHaveLength(1);
+    expect(puntos[0].etiqueta).toBe('Azúcar añadida');
+  });
+
+  it('el recorte a 8 se aplica DESPUÉS de filtrar, para no perder puntos reales', () => {
+    const puntos = [
+      ...Array.from({ length: 4 }, () => ({ etiqueta: 'Vacío', valor: 'Ninguno', nivel: 'bueno' })),
+      ...Array.from({ length: 8 }, (_, i) => ({ etiqueta: `Real ${i}`, valor: `${i}g`, nivel: 'malo' })),
+    ];
+    const res = parsearAnalisis(JSON.stringify({ producto: 'X', analisis: 'y', puntos }))!;
+    expect(res.puntos).toHaveLength(8);
+    expect(res.puntos.every(p => p.etiqueta.startsWith('Real'))).toBe(true);
   });
 });
 

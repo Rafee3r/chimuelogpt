@@ -36,20 +36,26 @@ Responde ÚNICAMENTE con este JSON, sin texto alrededor ni bloques de código:
   "veredicto": "Excelente" | "Bueno" | "Aceptable" | "Regular" | "Evitar",
   "analisis": "2-4 frases directas sobre lo que importa de este producto. Español chileno natural, sin markdown.",
   "puntos": [
-    {"etiqueta": "Aceites de semilla", "valor": "Ninguno", "nivel": "bueno"},
-    {"etiqueta": "Procesamiento", "valor": "Bajo", "nivel": "bueno"},
-    {"etiqueta": "Azúcar añadida", "valor": "12g por porción", "nivel": "malo"}
+    {"etiqueta": "<un aspecto real de ESTE producto>", "valor": "<lo que mediste o leíste>", "nivel": "malo"}
   ],
   "ingredientes": [
-    {"nombre": "Almendras"},
-    {"nombre": "Aceite de maravilla", "destacado": "malo", "nota": "Aceite de semilla refinado"}
+    {"nombre": "<ingrediente tal como está escrito>"},
+    {"nombre": "<ingrediente problemático>", "destacado": "malo", "nota": "<por qué>"}
   ],
   "sellos": ["ALTO EN AZÚCARES"],
   "matiz": null
 }
 "nivel" solo acepta: "bueno", "medio", "malo".
 
-IMPORTANTE — marca con "destacado": "malo" TODOS los ingredientes problemáticos (aceites de semilla refinados, azúcares añadidos, colorantes, conservantes sintéticos, saborizantes artificiales, edulcorantes artificiales). Esa marca es la que dispara la explicación detallada que se le muestra al usuario después, así que no dejes ninguno fuera.`;
+⚠️ EL EJEMPLO DE ARRIBA ES SOLO EL FORMATO. No copies su contenido. Todo lo que devuelvas tiene que venir de la foto que estás mirando.
+
+SOLO LO QUE VES (la regla más importante):
+- Lista únicamente ingredientes que LEES en la etiqueta. Si no lo leíste, no existe.
+- Nunca completes con lo que "suele traer" ese tipo de producto.
+- Marca con "destacado": "malo" los ingredientes problemáticos QUE APAREZCAN escritos (azúcares añadidos, aceites de semilla refinados, colorantes, conservantes sintéticos, saborizantes artificiales, edulcorantes artificiales). Esa marca dispara la explicación que ve el usuario, así que no dejes fuera ninguno de los que estén. Pero jamás marques uno que no esté en la lista.
+
+NO REPORTES AUSENCIAS:
+"puntos" es el desglose de lo que ESTE producto TIENE, no una lista de cosas descartadas. Nunca pongas un punto cuyo valor sea "Ninguno", "No contiene" o "No aplica": una bebida sin grasas no necesita una fila sobre grasas, y ponerla se lee como si tuviera. Si el producto es bueno, eso ya lo dicen la nota y el veredicto.`;
 
 export async function POST(req: Request) {
   try {

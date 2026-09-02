@@ -75,6 +75,20 @@ function nivelValido(v: unknown): NivelPunto {
   return NIVELES.includes(v as NivelPunto) ? (v as NivelPunto) : 'medio';
 }
 
+/* El desglose es para lo que el producto TIENE, no para descartar una lista.
+   El modelo emitía filas del tipo "Aceites de semilla: Ninguno" —copiadas
+   del ejemplo del prompt— y en una bebida esa fila se lee como acusación
+   aunque el valor diga que no tiene: el ojo agarra la etiqueta, no el valor.
+   Medido: aparecía en 4 de 8 análisis de una bebida sin una gota de aceite.
+
+   El prompt ya lo prohíbe, pero un prompt es probabilístico. Esto lo hace
+   determinista. */
+const AUSENCIA = /^(ninguno|ninguna|no|no contiene|no aplica|no tiene|no hay|n\/?a|ausente|cero|[-–—]{1,2})$/i;
+
+export function esPuntoDeAusencia(valor: string): boolean {
+  return AUSENCIA.test((valor || '').trim());
+}
+
 /** Color/etiqueta según la nota. Usado por la UI y por el veredicto. */
 export function categoriaNota(nota: number): { nivel: NivelPunto; texto: string } {
   if (nota >= 75) return { nivel: 'bueno', texto: 'Excelente' };
@@ -130,12 +144,13 @@ export function parsearAnalisis(raw: string): AnalisisEtiqueta | null {
   const puntos: PuntoAnalisis[] = Array.isArray(data.puntos)
     ? data.puntos
         .filter((p: any) => p && (p.etiqueta || p.label))
-        .slice(0, 8)
         .map((p: any) => ({
           etiqueta: String(p.etiqueta || p.label).trim(),
           valor: String(p.valor ?? p.value ?? '').trim(),
           nivel: nivelValido(p.nivel ?? p.level),
         }))
+        .filter((p: PuntoAnalisis) => !esPuntoDeAusencia(p.valor))
+        .slice(0, 8)
     : [];
 
   const ingredientes: IngredienteAnalizado[] = Array.isArray(data.ingredientes)
