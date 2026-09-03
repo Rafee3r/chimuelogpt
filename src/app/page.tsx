@@ -15,6 +15,7 @@ import {
   alternarFavorito, borrarDelHistorial,
   type AnalisisEtiqueta, type ItemHistorial, type QuimicoExplicado,
 } from "../lib/food-label";
+import { verificarClave, sesionVigente, EPOCA_SESION, AUTH_KEY } from "../lib/auth";
 import "./gallery.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1643,8 +1644,16 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const savedAuth = localStorage.getItem("chimuelo_auth");
-    if (savedAuth === "true") setIsAuthenticated(true);
+    const savedAuth = localStorage.getItem(AUTH_KEY);
+    if (sesionVigente(savedAuth)) {
+      setIsAuthenticated(true);
+    } else if (savedAuth) {
+      /* Sesión de una época anterior. Se quita SOLO esta llave: los chats,
+         las materias, el historial de Ingredientes, los recordatorios y los
+         ajustes quedan intactos. Al volver a entrar con la clave nueva está
+         todo donde estaba. */
+      localStorage.removeItem(AUTH_KEY);
+    }
 
     const savedChats = localStorage.getItem("chimuelo_chats");
     if (savedChats) setChats(JSON.parse(savedChats));
@@ -2144,15 +2153,14 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const val = passwordInput.toLowerCase().trim();
-    if (val === "chimuelo26") {
+    const resultado = verificarClave(passwordInput);
+    if (resultado === 'ok') {
       setIsAuthenticated(true);
-      localStorage.setItem("chimuelo_auth", "true");
+      // Se guarda la ÉPOCA, no un "true": ver src/lib/auth.ts
+      localStorage.setItem(AUTH_KEY, EPOCA_SESION);
       setAuthError(null);
-    } else if (val === "chimuelo") {
-      setAuthError("old");
     } else {
-      setAuthError("wrong");
+      setAuthError(resultado);
     }
   };
 
@@ -4700,7 +4708,7 @@ export default function Home() {
                   <button onClick={clearAllHistory} className="settings-action-btn danger">
                     <Trash2 size={16} /> Borrar todos los chats
                   </button>
-                  <button onClick={() => { localStorage.removeItem("chimuelo_auth"); window.location.reload(); }} className="settings-action-btn logout">
+                  <button onClick={() => { localStorage.removeItem(AUTH_KEY); window.location.reload(); }} className="settings-action-btn logout">
                     <LogOut size={16} /> Cerrar sesión
                   </button>
                 </div>
