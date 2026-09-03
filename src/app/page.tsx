@@ -1980,8 +1980,16 @@ export default function Home() {
      Con height:100dvh + overflow:hidden, al abrir el teclado iOS hace
      scroll de la página para revelar el input y empuja el header fuera
      de la pantalla. Medimos el viewport REAL (visualViewport, que sí
-     descuenta el teclado) y devolvemos el scroll a 0 en cada cambio. */
+     descuenta el teclado) y devolvemos el scroll a 0 en cada cambio.
+
+     ⚠️ SOLO con la sesión iniciada. En la pantalla de login no hay header
+     que rescatar, y aquí este efecto estorbaba: al tocar el campo de la
+     clave, iOS hace scroll para revelarlo y pinToTop() se lo devolvía a
+     cero. Ese forcejeo era el movimiento raro que se veía al escribir.
+     Sin nosotros en el medio, iOS revela el campo como corresponde. */
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const vv = typeof window !== 'undefined' ? window.visualViewport : undefined;
     if (!vv) return;
 
@@ -2031,7 +2039,7 @@ export default function Home() {
       window.removeEventListener('scroll', pinToTop);
       document.documentElement.style.removeProperty('--app-height');
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const triggerAgentNudge = async (chatId: string) => {
     const chat = chatsRef.current.find(c => c.id === chatId) || chats.find(c => c.id === chatId);
