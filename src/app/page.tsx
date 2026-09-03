@@ -3857,6 +3857,21 @@ export default function Home() {
 
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
 
+        {/* ── CABECERA (solo móvil) ──
+            El panel ahora entra como un bloque a pantalla completa, así que
+            ya no queda backdrop donde tocar para cerrar: necesita su propio
+            botón, igual que la referencia. */}
+        <div className="sb-head">
+          <span className="sb-head-title">Chimuelo</span>
+          <button
+            className="sb-head-close"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar panel"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
         {/* ── SEARCH ── */}
         <div className="sb-search">
           <Search size={14} className="sb-search-icon" />
@@ -4045,9 +4060,6 @@ export default function Home() {
 
         {/* ── FOOTER ── */}
         <div className="sb-footer sb-footer-profile" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-          <div style={{ color: '#84cc16', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '10px', paddingLeft: '8px', letterSpacing: '0.05em' }}>
-            Suscripción Activa
-          </div>
           <div className="sb-profile-card" style={{ width: '100%' }}>
             <div className="sb-profile-avatar">
               {userName ? userName.charAt(0).toUpperCase() : '🐾'}
@@ -4189,7 +4201,7 @@ export default function Home() {
         );
       })()}
 
-      <div className="main-content">
+      <div className={`main-content ${sidebarOpen ? 'con-panel-abierto' : ''}`}>
         {/* Sin position inline: el CSS lo fija como sticky para que el header
             no se vaya de la pantalla al abrirse el teclado en iOS. */}
         <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>

@@ -630,38 +630,79 @@ a {
   .app-layout { transition: none; }
 }
 
+/* ─────────── Panel lateral: bloque sólido por encima ───────────
+   Antes era una tarjeta de 310px con esquinas redondeadas que se deslizaba
+   sobre un fondo borroso. Ahora entra como un BLOQUE: ocupa el ancho
+   completo del teléfono, sin esquinas ni transparencia, y el contenido de
+   atrás se aparta y se encoge mientras el bloque avanza. Esa profundidad
+   —una capa que tapa a la otra— es lo que se lee como "por encima".
+
+   La curva es la de iOS (arranca decidido, frena largo): un deslizamiento
+   lineal se siente barato en un panel de este tamaño. */
 .sidebar {
-  width: 310px;
+  width: min(100%, 420px);
   background-color: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 50;
   position: fixed;
   top: 0;
   left: 0;
   height: 100dvh;
-  border-top-right-radius: 24px;
-  border-bottom-right-radius: 24px;
-  box-shadow: 4px 0 40px rgba(0,0,0,0.08);
+  border-radius: 0;
+  box-shadow: 12px 0 48px rgba(0,0,0,0.30);
+  will-change: transform;
 }
 
+/* El contenido retrocede: se encoge, se redondea y se apaga un poco.
+   Solo se ve durante la animación —al final el bloque lo tapa— pero es
+   justo ese instante el que da la sensación de capas. */
+.main-content {
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+              border-radius 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transform-origin: center left;
+}
+.main-content.con-panel-abierto {
+  transform: translateX(7%) scale(0.9);
+  border-radius: 28px;
+}
+/* Se probó además oscurecer el contenido con filter: brightness(). Se
+   descartó por dos razones: con el tema OLED (negro puro) no lo atenúa,
+   lo hace DESAPARECER —se pierde la sensación de que hay algo detrás—, y
+   un filter sobre todo el árbol obliga a recomponer en cada fotograma,
+   que es caro justo mientras se anima. El encogido y las esquinas
+   redondeadas ya cuentan la profundidad solos. */
+
+@media (min-width: 768px) {
+  /* En escritorio el panel es fijo y convive con el contenido: nada se mueve. */
+  .main-content.con-panel-abierto {
+    transform: none;
+    border-radius: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .main-content { transition-duration: 0.01ms; }
+  .main-content.con-panel-abierto { transform: none; }
+}
+
+/* Queda por debajo del bloque, sin desenfoque: el oscurecido del contenido
+   ahora lo hace el propio .main-content al retroceder. Sigue existiendo para
+   los anchos donde el panel no llega a cubrir todo (tablets angostas). */
 .sidebar-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.5);
   z-index: 45;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.42s ease;
 }
 
 .sidebar-mobile-hidden {
-  transform: translateX(-110%);
+  transform: translateX(-100%);
   box-shadow: none;
 }
 
@@ -674,6 +715,7 @@ a {
     box-shadow: none;
     border-right: 1px solid var(--border-color);
   }
+
   .sidebar-mobile-hidden {
     transform: translateX(0);
   }
@@ -4623,30 +4665,32 @@ a {
   color: var(--text-secondary); cursor: pointer;
 }
 
+/* Estructura de la fila. OJO: el TAMAÑO (font-size, padding, gap) no se
+   define aquí sino en el bloque consolidado de más abajo — había dos
+   reglas .sb-row peleando y ganaba la última, así que tocar esta no
+   surtía efecto. */
 .sb-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: calc(100% - 16px);
-  margin: var(--sb-gap) 8px;
-  padding: var(--sb-row-py) var(--sb-row-px);
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 0.88rem;
+  color: var(--text-primary);
   text-align: left;
-  border-radius: var(--sb-radius);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.14s, color 0.14s;
 }
 .sb-row > span {
   flex: 1; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sb-row:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+/* Píldora neutra, como la referencia. Antes era el color de acento con
+   texto blanco: gritaba más que el propio contenido del panel y competía
+   con los botones de acción. Un relleno suave basta para decir "estás
+   aquí". */
 .sb-row.active {
-  background: var(--accent-color);
-  color: #fff;
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
   font-weight: 600;
 }
 /* sb-row-primary peso definido en bloque consolidado más abajo */
@@ -4673,14 +4717,17 @@ a {
 
 /* ── Section labels con icono visible + tipografía clara ── */
 .sb-section-label {
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 400;
   color: var(--text-secondary);
-  opacity: 0.9;
-  padding: 4px 18px 12px;
+  opacity: 0.75;
+  padding: 6px 24px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+@media (min-width: 768px) {
+  .sb-section-label { font-size: 0.8rem; padding: 4px 18px 10px; }
 }
 .sb-section-label svg {
   color: var(--text-secondary);
@@ -4710,15 +4757,23 @@ a {
 .sb-row-primary svg { color: var(--text-primary); }
 
 /* ── Filas regulares con mejor padding + radius ── */
+/* Tamaño de la referencia: texto grande y mucho aire. 14px de padding
+   dejan la fila en ~48px de alto, por encima de los 44px mínimos que
+   pide iOS para algo que se toca con el dedo (antes quedaba en 42px). */
 .sb-row {
-  padding: 12px 18px;
-  font-size: 0.95rem;
+  padding: 14px 18px;
+  font-size: 1rem;
   font-weight: 500;
   border-radius: 9999px;
   margin: 2px 12px;
   width: calc(100% - 24px);
   gap: 16px;
   border: none;
+}
+@media (min-width: 768px) {
+  /* En escritorio el panel es una columna angosta y permanente: el tamaño
+     pensado para el dedo sobra y desperdicia altura. */
+  .sb-row { font-size: 0.9rem; padding: 10px 14px; gap: 12px; }
 }
 .sb-row svg { color: var(--text-primary); opacity: 0.7; flex-shrink: 0; }
 
@@ -8243,4 +8298,41 @@ label.v2-attach-dropdown-item:active {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* ─────────── Cabecera del panel (bloque móvil) ─────────── */
+.sb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 6px;
+  flex-shrink: 0;
+}
+.sb-head-title {
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.sb-head-close {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s, transform 0.14s;
+}
+.sb-head-close:active { transform: scale(0.92); }
+
+/* La cabecera con el botón de cerrar pertenece solo al bloque móvil.
+   Va DESPUÉS de definir .sb-head: misma especificidad, gana la última. */
+@media (min-width: 768px) {
+  .sb-head { display: none; }
 }
