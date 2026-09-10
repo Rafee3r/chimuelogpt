@@ -2920,6 +2920,10 @@ a {
   padding-top: 4px;
 }
 
+.v2-input-actions-row.no-attach {
+  justify-content: flex-end;
+}
+
 .v2-input-actions-left {
   display: flex;
   align-items: center;

@@ -223,6 +223,16 @@ html[data-ios28] .v2-input-actions-row {
   padding: 0 2px;
 }
 
+html[data-ios28] .v2-input-actions-row.no-attach {
+  justify-content: flex-end;
+}
+
+html[data-ios28] .v2-input-actions-left {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 html[data-ios28] .v2-input-actions-left,
 html[data-ios28] .v2-input-actions-right {
   align-self: auto;
