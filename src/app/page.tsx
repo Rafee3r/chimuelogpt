@@ -1901,9 +1901,6 @@ export default function Home() {
     }
   }, [displayMessages.length, viewMode, fetchSmartPills]);
 
-  useEffect(() => {
-    if (displayMessages.length === 0) setAttachMenuOpen(false);
-  }, [displayMessages.length]);
 
   useEffect(() => {
     if (theme === "system") {
@@ -3717,7 +3714,6 @@ export default function Home() {
 
   const activeChat = chats.find(c => c.id === currentChatId);
   const activeAgent = activeChat?.agentId ? AGENTS.find(a => a.id === activeChat.agentId) : null;
-  const canAttach = displayMessages.length > 0;
 
 
   return (
@@ -4348,12 +4344,16 @@ export default function Home() {
             )}
           </div>
 
-          {!(currentChatId && displayMessages.length === 0) ? (
-            <button onClick={() => createNewChat()} className="icon-btn" title="Nuevo chat" style={{ position: 'absolute', right: '16px' }}>
-              <Plus size={24} />
+          {displayMessages.length > 0 ? (
+            <button
+              onClick={() => createNewChat()}
+              className="icon-btn header-new-chat"
+              title="Nuevo chat"
+            >
+              <Plus size={22} />
             </button>
           ) : (
-            <span style={{ display: 'none' }} aria-hidden="true" />
+            <span className="header-new-chat-spacer" aria-hidden="true" />
           )}
         </div>
 
@@ -6023,8 +6023,7 @@ export default function Home() {
                   rows={1}
                 />
                 
-                <div className={`v2-input-actions-row ${canAttach ? '' : 'no-attach'}`}>
-                  {canAttach && (
+                <div className="v2-input-actions-row">
                   <div className="v2-input-actions-left" style={{ position: 'relative' }}>
                     {isDesktopPointer ? (
                       /* ── PC: <label> directo abre file picker sin menú intermedio ── */
@@ -6087,7 +6086,6 @@ export default function Home() {
                       </>
                     )}
                   </div>
-                  )}
                   
                   <div className="v2-input-actions-right">
                     <button

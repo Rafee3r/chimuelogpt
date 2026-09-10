@@ -109,6 +109,7 @@ html[data-ios28] .mobile-header {
 html[data-ios28] .mobile-header > .icon-btn {
   position: static !important;
   left: auto !important;
+  right: auto !important;
   flex: 0 0 var(--ios-ctrl);
   width: var(--ios-ctrl);
   height: var(--ios-ctrl);
@@ -136,9 +137,9 @@ html[data-ios28] .mobile-header > div:not(.mobile-segmented-control) {
   min-width: 0;
 }
 
-html[data-ios28] .mobile-header::after {
-  content: '';
+html[data-ios28] .header-new-chat-spacer {
   flex: 0 0 var(--ios-ctrl);
+  width: var(--ios-ctrl);
   height: var(--ios-ctrl);
 }
 
@@ -169,9 +170,6 @@ html[data-ios28] .v2-header-model-btn svg {
   html[data-ios28] .mobile-header {
     margin: 10px 18px 0;
     padding: 4px 10px !important;
-  }
-  html[data-ios28] .mobile-header::after {
-    display: none;
   }
 }
 
@@ -221,16 +219,6 @@ html[data-ios28] .v2-input-actions-row {
   align-items: center;
   width: 100%;
   padding: 0 2px;
-}
-
-html[data-ios28] .v2-input-actions-row.no-attach {
-  justify-content: flex-end;
-}
-
-html[data-ios28] .v2-input-actions-left {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
 }
 
 html[data-ios28] .v2-input-actions-left,

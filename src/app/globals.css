@@ -854,6 +854,12 @@ a {
   .mobile-header .icon-btn {
     display: none;
   }
+  .mobile-header .icon-btn.header-new-chat {
+    display: flex;
+  }
+  .header-new-chat-spacer {
+    display: none;
+  }
 }
 
 .icon-btn {
@@ -2920,9 +2926,6 @@ a {
   padding-top: 4px;
 }
 
-.v2-input-actions-row.no-attach {
-  justify-content: flex-end;
-}
 
 .v2-input-actions-left {
   display: flex;
