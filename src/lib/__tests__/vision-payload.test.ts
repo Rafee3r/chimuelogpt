@@ -94,7 +94,7 @@ describe('base64ByteSize', () => {
 });
 
 describe('modelo de visión', () => {
-  it('usa el único modelo con soporte de imágenes', () => {
-    expect(VISION_MODEL).toBe('deepseek-v4-flash-vision-exp');
+  it('usa DeepSeek-V4.1-Flash (visión nativa)', () => {
+    expect(VISION_MODEL).toBe('deepseek-flash');
   });
 });

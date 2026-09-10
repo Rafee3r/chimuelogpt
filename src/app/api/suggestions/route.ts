@@ -1,3 +1,5 @@
+import { DEEPSEEK_FLASH } from '../../../lib/models';
+
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -47,7 +49,7 @@ Ejemplo de FORMATO (no de contenido):
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash',
+        model: DEEPSEEK_FLASH,
         reasoning_effort: 'low', // pills cortas: prioriza latencia sobre razonamiento
         messages: [{ role: 'user', content: systemPrompt }],
         max_tokens: 500,

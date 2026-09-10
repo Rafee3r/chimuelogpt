@@ -1,4 +1,5 @@
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../lib/api-errors';
+import { DEEPSEEK_PRO, resolveDeepSeekModel } from '../../../lib/models';
 
 export const maxDuration = 60;
 
@@ -96,16 +97,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Modelos V4: los nombres de la API son directos (ya no deepseek-chat /
-    // deepseek-reasoner). Pro se usa cuando el usuario lo elige o al pedir
+    // UI manda deepseek-v4-flash / deepseek-v4-pro. En la API, el rápido es
+    // deepseek-flash (V4.1 Flash). Pro se usa si el usuario lo elige o pide
     // razonamiento extendido.
-    const actualModel = (model === 'deepseek-v4-pro' || thinkingLevel === 'extended') ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    const actualModel = resolveDeepSeekModel(model, thinkingLevel);
     const apiModel = actualModel;
 
     /* reasoning_effort — valores válidos: 'low' | 'high' | 'max' (no existe 'medium').
-       Mapeo interno de DeepSeek:
-         v4-flash: low→low, high→high, max→max
-         v4-pro:   low→high, high→high, max→max  (pro nunca baja de 'high')
 
        ⚠️ LÍMITE DURO: las funciones serverless de Vercel cortan a los 60s.
        Poner 'high' en flash colgaba la app: el modelo razonaba tanto antes
@@ -114,12 +112,12 @@ export async function POST(req: Request) {
        no cabe en esta ventana.
 
        Por eso:
-         - "Rápido" (flash)  → 'low'  : su propósito es responder ya.
-         - "Pro"             → 'high' : es su mínimo posible de todas formas.
+         - "Rápido" (V4.1 Flash) → 'low'  : su propósito es responder ya.
+         - "Pro"                 → 'high' : es su mínimo posible de todas formas.
          - Pensamiento extendido → 'max' (solo Pro, el usuario lo pide a sabiendas). */
     const reasoningEffort =
       thinkingLevel === 'extended' ? 'max'
-      : actualModel === 'deepseek-v4-pro' ? 'high'
+      : actualModel === DEEPSEEK_PRO ? 'high'
       : 'low';
 
     let extendedThinkingPrompt = '';
@@ -263,7 +261,7 @@ INSTRUCCIONES PARA EL HTML:
     ];
 
     if (isAgent) {
-      const useJsonMode = actualModel !== 'deepseek-v4-pro';
+      const useJsonMode = actualModel !== DEEPSEEK_PRO;
       const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {

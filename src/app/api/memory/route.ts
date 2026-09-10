@@ -1,3 +1,5 @@
+import { DEEPSEEK_FLASH } from '../../../lib/models';
+
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -30,7 +32,7 @@ REGLAS ESTRICTAS:
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash',
+        model: DEEPSEEK_FLASH,
         reasoning_effort: 'low', // tarea mecánica de extracción: no necesita razonar
         messages: [
           { role: 'system', content: systemPrompt },

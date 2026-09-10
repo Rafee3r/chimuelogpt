@@ -1,4 +1,5 @@
 import { VISION_MODEL, buildVisionMessages, filterUsableImages } from '../../../lib/vision-payload';
+import { DEEPSEEK_PRO, resolveDeepSeekModel } from '../../../lib/models';
 
 export const maxDuration = 90;
 
@@ -174,14 +175,13 @@ export async function POST(req: Request) {
     contentBlock.push({ type: 'text', text: lastUserMsg });
 
     // ── Configuración de modelo y prompts (la usan ambos caminos) ──
-    // V4: los nombres de la API son directos (ya no deepseek-chat/reasoner)
-    const actualModel = model === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
+    const actualModel = resolveDeepSeekModel(model);
     const apiModel = actualModel;
     /* 'low' salvo en Pro. Este flujo ya hace DOS llamadas (Claude analiza la
        imagen y luego DeepSeek redacta), así que el presupuesto de 60s de
        Vercel se consume rápido; razonar de más aquí provoca timeout.
        Ver el comentario extendido en api/chat/route.ts. */
-    const reasoningEffort = actualModel === 'deepseek-v4-pro' ? 'high' : 'low';
+    const reasoningEffort = actualModel === DEEPSEEK_PRO ? 'high' : 'low';
 
     let personaPrompt = "Eres ChimueloGPT, un asistente útil y amigable creado por Rafael para su familia. Debes responder SIEMPRE en Español, a menos que se te pida lo contrario.";
     if (persona === 'serio') personaPrompt = "Eres ChimueloGPT, un asistente analítico, directo y muy serio, creado por Rafael. Tus respuestas deben ser formales, al grano, sin usar emojis. Responde SIEMPRE en Español.";
@@ -248,7 +248,7 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 
-    const useJsonMode = isAgent && actualModel !== 'deepseek-v4-pro';
+    const useJsonMode = isAgent && actualModel !== DEEPSEEK_PRO;
 
     /* ═══ CAMINO PRINCIPAL: visión nativa de DeepSeek ═══
        Una sola llamada: el modelo MIRA la foto y responde. El camino

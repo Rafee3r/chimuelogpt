@@ -1,3 +1,5 @@
+import { DEEPSEEK_FLASH } from './models';
+
 /* ─────────── Visión nativa de DeepSeek ───────────
    Antes cada imagen costaba DOS llamadas encadenadas: Claude Haiku la
    describía en texto y después DeepSeek redactaba a partir de esa
@@ -12,8 +14,8 @@
    petición, y solo se aceptan imágenes en mensajes `user`.
 */
 
-/** Único modelo con visión hoy; el resto devuelve 400. */
-export const VISION_MODEL = 'deepseek-v4-flash-vision-exp';
+/** V4.1 Flash trae visión nativa. El ID viejo `deepseek-v4-flash-vision-exp` ya está retirado. */
+export const VISION_MODEL = DEEPSEEK_FLASH;
 
 /** 32 MiB por imagen (límite de la API). */
 export const MAX_IMAGE_BYTES = 32 * 1024 * 1024;

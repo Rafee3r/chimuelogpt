@@ -4275,7 +4275,7 @@ export default function Home() {
                       onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
                     >
                       <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Sonnet 5)</span></span>
+                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(V4.1 Flash)</span></span>
                         <span className="v2-model-opt-desc">Respuestas más rápidas</span>
                       </div>
                       {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}

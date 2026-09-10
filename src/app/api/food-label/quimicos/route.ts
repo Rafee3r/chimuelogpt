@@ -1,4 +1,5 @@
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../../lib/api-errors';
+import { DEEPSEEK_FLASH } from '../../../../lib/models';
 
 export const maxDuration = 60;
 
@@ -15,7 +16,7 @@ export const maxDuration = 60;
       en flash —mucho más barato y rápido que el modelo de visión— y solo
       se llama cuando de verdad hay algo marcado como problemático.
 */
-const MODELO = 'deepseek-v4-flash';
+const MODELO = DEEPSEEK_FLASH;
 
 const SYSTEM_PROMPT = `Eres el explicador de aditivos de Chimuelo. Te llega la lista de ingredientes que ya fueron marcados como problemáticos en un producto, y explicas qué es cada uno y por qué conviene evitarlo.
 
