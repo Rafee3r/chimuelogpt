@@ -7,45 +7,46 @@
 */
 
 html[data-ios28] {
-  --ios-radius-xl: 34px;
-  --ios-radius-lg: 26px;
-  --ios-radius-md: 18px;
+  --ios-radius-xl: 28px;
+  --ios-radius-lg: 22px;
+  --ios-radius-md: 16px;
   --ios-radius-sm: 12px;
   --ios-radius-xs: 8px;
-  --glass-blur: blur(40px) saturate(190%);
-  --glass-bg: color-mix(in srgb, var(--bg-primary) 62%, transparent);
-  --glass-bg-strong: color-mix(in srgb, var(--bg-primary) 78%, transparent);
-  --glass-bg-chip: color-mix(in srgb, var(--bg-primary) 55%, transparent);
-  --glass-stroke: color-mix(in srgb, var(--text-primary) 12%, transparent);
-  --glass-highlight: rgba(255, 255, 255, 0.62);
+  --ios-ctrl: 32px;
+  --glass-blur: blur(36px) saturate(170%);
+  --glass-bg: color-mix(in srgb, var(--bg-primary) 72%, transparent);
+  --glass-bg-strong: color-mix(in srgb, var(--bg-primary) 82%, rgba(255, 255, 255, 0.55));
+  --glass-bg-chip: rgba(0, 0, 0, 0.05);
+  --glass-stroke: rgba(0, 0, 0, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.78);
   --glass-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 var(--glass-highlight),
-    inset 0 -0.5px 0 rgba(0, 0, 0, 0.06);
+    0 1px 1px rgba(0, 0, 0, 0.03),
+    0 8px 28px rgba(0, 0, 0, 0.06),
+    inset 0 0.5px 0 var(--glass-highlight);
 }
 
 html[data-ios28][data-theme="dark"],
 html[data-ios28][data-theme="oled"] {
-  --glass-bg: rgba(18, 18, 20, 0.55);
-  --glass-bg-strong: rgba(22, 22, 24, 0.72);
-  --glass-bg-chip: rgba(255, 255, 255, 0.08);
-  --glass-stroke: rgba(255, 255, 255, 0.16);
-  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-bg: rgba(28, 28, 30, 0.62);
+  --glass-bg-strong: rgba(44, 44, 46, 0.72);
+  --glass-bg-chip: rgba(255, 255, 255, 0.10);
+  --glass-stroke: rgba(255, 255, 255, 0.10);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
   --glass-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 var(--glass-highlight);
+    0 8px 28px rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 0 var(--glass-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
   html[data-ios28]:not([data-theme]) {
-    --glass-bg: rgba(18, 18, 20, 0.55);
-    --glass-bg-strong: rgba(22, 22, 24, 0.72);
-    --glass-bg-chip: rgba(255, 255, 255, 0.08);
-    --glass-stroke: rgba(255, 255, 255, 0.16);
-    --glass-highlight: rgba(255, 255, 255, 0.22);
+    --glass-bg: rgba(28, 28, 30, 0.62);
+    --glass-bg-strong: rgba(44, 44, 46, 0.72);
+    --glass-bg-chip: rgba(255, 255, 255, 0.10);
+    --glass-stroke: rgba(255, 255, 255, 0.10);
+    --glass-highlight: rgba(255, 255, 255, 0.18);
     --glass-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.38),
-      inset 0 1px 0 var(--glass-highlight);
+      0 8px 28px rgba(0, 0, 0, 0.35),
+      inset 0 0.5px 0 var(--glass-highlight);
   }
 }
 
@@ -67,9 +68,8 @@ html[data-ios28][data-theme="snow"] {
   }
 }
 
-/* ── Superficie de vidrio reutilizable ── */
+/* ── Superficie de vidrio reutilizable (no el header: es una isla) ── */
 html[data-ios28] .ios-glass,
-html[data-ios28] .mobile-header,
 html[data-ios28] .v2-input-container,
 html[data-ios28] .v2-model-dropdown,
 html[data-ios28] .v2-attach-dropdown,
@@ -89,87 +89,200 @@ html[data-ios28] .doc-preview-chip {
   box-shadow: var(--glass-shadow);
 }
 
-/* ── Header flotante ── */
+/* ── Header: una sola isla de vidrio (menú + título) ── */
 html[data-ios28] .mobile-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 0;
+  margin: calc(6px + env(safe-area-inset-top, 0px)) 14px 6px;
+  padding: 4px !important;
+  min-height: 48px;
+  border-radius: 999px;
   background: var(--glass-bg-strong);
-  border-bottom: 0.5px solid var(--glass-stroke);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+}
+
+html[data-ios28] .mobile-header > .icon-btn {
+  position: static !important;
+  left: auto !important;
+  flex: 0 0 var(--ios-ctrl);
+  width: var(--ios-ctrl);
+  height: var(--ios-ctrl);
+  border-radius: 999px;
+  padding: 0;
+  background: var(--glass-bg-chip);
+  border: none;
+  color: var(--text-primary);
+}
+
+html[data-ios28] .mobile-header > .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+html[data-ios28] .mobile-header > .icon-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+html[data-ios28] .mobile-header > div:not(.mobile-segmented-control) {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+html[data-ios28] .mobile-header::after {
+  content: '';
+  flex: 0 0 var(--ios-ctrl);
+  height: var(--ios-ctrl);
+}
+
+html[data-ios28] .v2-header-model-btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 999px !important;
+  padding: 6px 10px !important;
+  font-size: 0.98rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+  gap: 3px !important;
+}
+
+html[data-ios28] .v2-header-model-btn .model-label-swap {
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+html[data-ios28] .v2-header-model-btn svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.45;
 }
 
 @media (min-width: 768px) {
   html[data-ios28] .mobile-header {
-    margin: 10px 14px 0;
-    border-radius: var(--ios-radius-lg);
-    border-bottom: 0.5px solid var(--glass-stroke);
+    margin: 10px 18px 0;
+    padding: 4px 10px !important;
+  }
+  html[data-ios28] .mobile-header::after {
+    display: none;
   }
 }
 
-html[data-ios28] .icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  padding: 0;
-  background: var(--glass-bg-chip);
-  border: 0.5px solid var(--glass-stroke);
+/* ── Composer: una fila, como Mensajes ── */
+html[data-ios28] .v2-input-area {
+  padding: 0.55rem 0.9rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
 }
 
-html[data-ios28] .icon-btn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-}
-
-html[data-ios28] .v2-header-model-btn {
-  border-radius: 999px !important;
-  padding: 6px 12px !important;
-  background: var(--glass-bg-chip) !important;
-  border: 0.5px solid var(--glass-stroke) !important;
-}
-
-/* ── Composer (Messages-style capsule) ── */
 html[data-ios28] .v2-input-area::before {
+  height: 36px;
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--bg-primary) 55%, transparent) 0%,
+    color-mix(in srgb, var(--bg-primary) 70%, transparent) 0%,
     transparent 100%
   );
 }
 
 html[data-ios28] .v2-input-container {
-  border-radius: var(--ios-radius-xl);
+  border-radius: 26px;
   background: var(--glass-bg-strong);
-  padding: 10px 14px 8px;
+  padding: 6px 6px 6px 8px;
 }
 
 html[data-ios28] .v2-input-container:focus-within {
-  border-color: color-mix(in srgb, var(--accent-color) 45%, var(--glass-stroke));
-  box-shadow:
-    var(--glass-shadow),
-    0 0 0 3.5px color-mix(in srgb, var(--accent-color) 18%, transparent);
+  border-color: var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+}
+
+html[data-ios28] .v2-input-row {
+  display: grid;
+  grid-template-columns: var(--ios-ctrl) minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 4px;
+}
+
+html[data-ios28] .v2-input-textarea {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: var(--ios-ctrl) !important;
+  max-height: 160px;
+  padding: 6px 6px !important;
+  font-size: 17px !important;
+  line-height: 1.35 !important;
+}
+
+html[data-ios28] .v2-input-actions-row {
+  display: contents;
+}
+
+html[data-ios28] .v2-input-actions-left {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+}
+
+html[data-ios28] .v2-input-actions-right {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+  gap: 4px !important;
+}
+
+html[data-ios28] .v2-attach-btn,
+html[data-ios28] .v2-mic-btn,
+html[data-ios28] .v2-send-btn {
+  width: var(--ios-ctrl) !important;
+  height: var(--ios-ctrl) !important;
+  border-radius: 999px !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+html[data-ios28] .v2-attach-btn,
+html[data-ios28] .v2-mic-btn {
+  background: var(--glass-bg-chip) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-ios28] .v2-attach-btn:hover,
+html[data-ios28] .v2-mic-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent) !important;
+  transform: none;
+}
+
+html[data-ios28] .v2-attach-icon-wrapper {
+  background: transparent !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+html[data-ios28] .v2-attach-btn svg,
+html[data-ios28] .v2-mic-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 html[data-ios28] .v2-send-btn {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--text-primary) 10%, transparent) !important;
+  background: var(--glass-bg-chip) !important;
+  color: color-mix(in srgb, var(--text-primary) 40%, transparent) !important;
 }
 
 html[data-ios28] .v2-send-btn.active {
   background: var(--text-primary) !important;
   color: var(--bg-primary) !important;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--text-primary) 28%, transparent) !important;
 }
 
-html[data-ios28] .v2-mic-btn {
-  background: var(--glass-bg-chip) !important;
-  border: 0.5px solid var(--glass-stroke) !important;
-}
-
-html[data-ios28] .v2-attach-btn {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 999px !important;
-  background: var(--glass-bg-chip) !important;
-  border: 0.5px solid var(--glass-stroke) !important;
+html[data-ios28] .v2-send-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
 }
 
 /* ── Menús / sheets ── */
@@ -242,12 +355,10 @@ html[data-ios28] .new-chat-btn {
 html[data-ios28] .message.user .message-text,
 html[data-ios28] .chat-area.style-bubbles .message.user .message-text {
   background: var(--glass-bg-chip);
-  border: 0.5px solid var(--glass-stroke);
-  border-radius: 22px;
+  border: none;
+  border-radius: 20px;
   border-bottom-right-radius: 6px;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow: none;
 }
 
 html[data-ios28][data-theme="dark"] .chat-area.style-bubbles .message.user .message-text,
