@@ -1,0 +1,380 @@
+/* ─────────── iOS 28 / Liquid Glass ───────────
+   Capa visual reversible. Si no gusta:
+     1. borrar este archivo
+     2. quitar el import en layout.tsx
+     3. quitar data-ios28 del <html>
+   El resto de la app queda igual.
+*/
+
+html[data-ios28] {
+  --ios-radius-xl: 34px;
+  --ios-radius-lg: 26px;
+  --ios-radius-md: 18px;
+  --ios-radius-sm: 12px;
+  --ios-radius-xs: 8px;
+  --glass-blur: blur(40px) saturate(190%);
+  --glass-bg: color-mix(in srgb, var(--bg-primary) 62%, transparent);
+  --glass-bg-strong: color-mix(in srgb, var(--bg-primary) 78%, transparent);
+  --glass-bg-chip: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+  --glass-stroke: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --glass-highlight: rgba(255, 255, 255, 0.62);
+  --glass-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.06);
+}
+
+html[data-ios28][data-theme="dark"],
+html[data-ios28][data-theme="oled"] {
+  --glass-bg: rgba(18, 18, 20, 0.55);
+  --glass-bg-strong: rgba(22, 22, 24, 0.72);
+  --glass-bg-chip: rgba(255, 255, 255, 0.08);
+  --glass-stroke: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-ios28]:not([data-theme]) {
+    --glass-bg: rgba(18, 18, 20, 0.55);
+    --glass-bg-strong: rgba(22, 22, 24, 0.72);
+    --glass-bg-chip: rgba(255, 255, 255, 0.08);
+    --glass-stroke: rgba(255, 255, 255, 0.16);
+    --glass-highlight: rgba(255, 255, 255, 0.22);
+    --glass-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.38),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+}
+
+html[data-ios28][data-theme="pink"] {
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+}
+html[data-ios28][data-theme="orange"] {
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+}
+html[data-ios28][data-theme="snow"] {
+  --glass-highlight: rgba(255, 255, 255, 0.85);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-ios28] {
+    --glass-bg: var(--bg-primary);
+    --glass-bg-strong: var(--bg-primary);
+    --glass-blur: none;
+  }
+}
+
+/* ── Superficie de vidrio reutilizable ── */
+html[data-ios28] .ios-glass,
+html[data-ios28] .mobile-header,
+html[data-ios28] .v2-input-container,
+html[data-ios28] .v2-model-dropdown,
+html[data-ios28] .v2-attach-dropdown,
+html[data-ios28] .sb-menu,
+html[data-ios28] .sidebar,
+html[data-ios28] .settings-page-header,
+html[data-ios28] .settings-card,
+html[data-ios28] .auth-field-v2,
+html[data-ios28] .smart-pill,
+html[data-ios28] .uni-v2-pill,
+html[data-ios28] .uni-v2-pill-new,
+html[data-ios28] .doc-preview-chip {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Header flotante ── */
+html[data-ios28] .mobile-header {
+  background: var(--glass-bg-strong);
+  border-bottom: 0.5px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+@media (min-width: 768px) {
+  html[data-ios28] .mobile-header {
+    margin: 10px 14px 0;
+    border-radius: var(--ios-radius-lg);
+    border-bottom: 0.5px solid var(--glass-stroke);
+  }
+}
+
+html[data-ios28] .icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  padding: 0;
+  background: var(--glass-bg-chip);
+  border: 0.5px solid var(--glass-stroke);
+}
+
+html[data-ios28] .icon-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+html[data-ios28] .v2-header-model-btn {
+  border-radius: 999px !important;
+  padding: 6px 12px !important;
+  background: var(--glass-bg-chip) !important;
+  border: 0.5px solid var(--glass-stroke) !important;
+}
+
+/* ── Composer (Messages-style capsule) ── */
+html[data-ios28] .v2-input-area::before {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--bg-primary) 55%, transparent) 0%,
+    transparent 100%
+  );
+}
+
+html[data-ios28] .v2-input-container {
+  border-radius: var(--ios-radius-xl);
+  background: var(--glass-bg-strong);
+  padding: 10px 14px 8px;
+}
+
+html[data-ios28] .v2-input-container:focus-within {
+  border-color: color-mix(in srgb, var(--accent-color) 45%, var(--glass-stroke));
+  box-shadow:
+    var(--glass-shadow),
+    0 0 0 3.5px color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+
+html[data-ios28] .v2-send-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent) !important;
+}
+
+html[data-ios28] .v2-send-btn.active {
+  background: var(--text-primary) !important;
+  color: var(--bg-primary) !important;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--text-primary) 28%, transparent) !important;
+}
+
+html[data-ios28] .v2-mic-btn {
+  background: var(--glass-bg-chip) !important;
+  border: 0.5px solid var(--glass-stroke) !important;
+}
+
+html[data-ios28] .v2-attach-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  background: var(--glass-bg-chip) !important;
+  border: 0.5px solid var(--glass-stroke) !important;
+}
+
+/* ── Menús / sheets ── */
+html[data-ios28] .v2-model-dropdown,
+html[data-ios28] .v2-attach-dropdown,
+html[data-ios28] .sb-menu {
+  border-radius: var(--ios-radius-lg);
+  background: var(--glass-bg-strong);
+  padding: 8px;
+}
+
+html[data-ios28] .v2-model-option,
+html[data-ios28] .v2-attach-dropdown-item,
+html[data-ios28] .sb-menu button {
+  border-radius: var(--ios-radius-sm);
+}
+
+html[data-ios28] .v2-model-option.active {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+html[data-ios28] .sb-menu-sep {
+  background: var(--glass-stroke);
+  margin: 5px 8px;
+}
+
+/* ── Sidebar ── */
+html[data-ios28] .sidebar {
+  background: var(--glass-bg-strong);
+  border-right: 0.5px solid var(--glass-stroke);
+}
+
+@media (max-width: 767px) {
+  html[data-ios28] .sidebar {
+    border-right: none;
+    border-radius: 0 var(--ios-radius-xl) var(--ios-radius-xl) 0;
+  }
+  html[data-ios28] .sidebar-backdrop {
+    background: rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+}
+
+html[data-ios28] .sidebar-item {
+  border-radius: var(--ios-radius-md);
+}
+
+html[data-ios28] .sidebar-item.active {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+html[data-ios28] .sidebar-footer {
+  border-top: 0.5px solid var(--glass-stroke);
+  box-shadow: none;
+  background: transparent;
+}
+
+html[data-ios28] .sidebar-model-badge {
+  background: var(--glass-bg-chip);
+  border: 0.5px solid var(--glass-stroke);
+}
+
+html[data-ios28] .new-chat-btn {
+  border-radius: var(--ios-radius-md);
+}
+
+/* ── Burbujas (iMessage) ── */
+html[data-ios28] .message.user .message-text,
+html[data-ios28] .chat-area.style-bubbles .message.user .message-text {
+  background: var(--glass-bg-chip);
+  border: 0.5px solid var(--glass-stroke);
+  border-radius: 22px;
+  border-bottom-right-radius: 6px;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+html[data-ios28][data-theme="dark"] .chat-area.style-bubbles .message.user .message-text,
+html[data-ios28][data-theme="oled"] .chat-area.style-bubbles .message.user .message-text {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-ios28] .markdown-body img {
+  border-radius: var(--ios-radius-md);
+}
+
+/* ── Pills / chips ── */
+html[data-ios28] .smart-pill,
+html[data-ios28] .uni-v2-pill,
+html[data-ios28] .uni-v2-pill-new,
+html[data-ios28] .doc-preview-chip {
+  border-radius: 999px;
+}
+
+html[data-ios28] .smart-pill:hover,
+html[data-ios28] .uni-v2-pill-new:hover {
+  transform: translateY(-1px) scale(1.02);
+  border-color: color-mix(in srgb, var(--accent-color) 40%, var(--glass-stroke));
+}
+
+/* ── Settings (listas agrupadas iOS) ── */
+html[data-ios28] .settings-page-header {
+  background: var(--glass-bg-strong);
+  border-bottom: 0.5px solid var(--glass-stroke);
+}
+
+html[data-ios28] .settings-back-btn {
+  background: var(--glass-bg-chip);
+  border: 0.5px solid var(--glass-stroke);
+  border-radius: 999px;
+}
+
+html[data-ios28] .settings-card,
+html[data-ios28] .settings-group {
+  border-radius: var(--ios-radius-lg);
+  overflow: hidden;
+}
+
+html[data-ios28] .settings-select {
+  border-radius: var(--ios-radius-sm);
+  background: var(--glass-bg-chip);
+  border: 0.5px solid var(--glass-stroke);
+}
+
+html[data-ios28] .danger-btn {
+  border-radius: var(--ios-radius-md);
+}
+
+/* ── Login ── */
+html[data-ios28] .auth-container {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 60%),
+    var(--bg-primary);
+}
+
+html[data-ios28] .auth-field-v2 {
+  border-radius: var(--ios-radius-md);
+  background: var(--glass-bg-strong);
+}
+
+html[data-ios28] .auth-submit-v2 {
+  border-radius: var(--ios-radius-md);
+}
+
+html[data-ios28] .auth-icon-wrap {
+  border-radius: 24px;
+  background: var(--glass-bg-strong);
+  border: 0.5px solid var(--glass-stroke);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* ── Modales ── */
+html[data-ios28] .modal-overlay {
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+html[data-ios28] .uni-v2-input-box,
+html[data-ios28] .uni-v2-notes-textarea {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-stroke);
+  border-radius: var(--ios-radius-lg);
+  box-shadow: var(--glass-shadow);
+}
+
+html[data-ios28] .uni-v2-send-btn {
+  border-radius: 999px;
+}
+
+/* ── Contenido detrás: un poco de profundidad para que el vidrio refracte ── */
+html[data-ios28] .main-content {
+  background:
+    radial-gradient(900px 420px at 80% -10%, color-mix(in srgb, var(--accent-color) 10%, transparent), transparent 55%),
+    var(--bg-primary);
+}
+
+html[data-ios28] .main-content.con-panel-abierto {
+  border-radius: var(--ios-radius-xl);
+}
+
+/* ── Scrollbars discretas ── */
+html[data-ios28] .chat-area,
+html[data-ios28] .sidebar-chat-list,
+html[data-ios28] .settings-page-body {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-primary) 18%, transparent) transparent;
+}
+
+html[data-ios28] .gallery-card,
+html[data-ios28] .gallery-music-card,
+html[data-ios28] .food-card,
+html[data-ios28] .reminder-item,
+html[data-ios28] .university-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--ios-radius-lg);
+}
