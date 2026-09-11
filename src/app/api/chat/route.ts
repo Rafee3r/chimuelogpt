@@ -1,5 +1,6 @@
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../lib/api-errors';
 import { DEEPSEEK_PRO, resolveDeepSeekModel } from '../../../lib/models';
+import { userWantsGeneratedMedia } from '../../../lib/message-parsers';
 
 export const maxDuration = 60;
 
@@ -115,6 +116,11 @@ export async function POST(req: Request) {
          - "Rápido" (V4.1 Flash) → 'low'  : su propósito es responder ya.
          - "Pro"                 → 'high' : es su mínimo posible de todas formas.
          - Pensamiento extendido → 'max' (solo Pro, el usuario lo pide a sabiendas). */
+    const lastUserText = String(
+      [...messages].reverse().find((m: any) => m.role === 'user')?.content || '',
+    );
+    const disableThinking = userWantsGeneratedMedia(lastUserText);
+
     const reasoningEffort =
       thinkingLevel === 'extended' ? 'max'
       : actualModel === DEEPSEEK_PRO ? 'high'
@@ -228,7 +234,7 @@ FORMATO DE RESPUESTA (SOLO cuando la Regla #0 permite una respuesta larga — pa
 - NO agregues una sección de "Resumen" o "Conclusión" repitiendo lo que ya dijiste. Solo si la respuesta fue genuinamente larga y compleja.
 REGLA PARA BÚSQUEDA WEB: Si la pregunta involucra: noticias recientes, eventos actuales, precios, clima, partidos o resultados deportivos, personas vivas, nuevos productos/lanzamientos, tasas de cambio, estadísticas actualizadas, leyes recientes, o cualquier dato que pueda haber cambiado — responde ÚNICAMENTE con esta etiqueta XML, sin ningún texto antes ni después: <search_web>specific english search query</search_web>. Haz la query lo más específica posible para obtener los mejores resultados. Si NO necesitas buscar (conceptos atemporales, matemáticas, historia antigua, código, creatividad), responde normalmente sin usar la etiqueta.
 REGLA PARA CÁLCULOS EXACTOS: Para CUALQUIER operación aritmética con números de más de 2 cifras, decimales, porcentajes o varios pasos, NO calcules mentalmente (te equivocas): responde ÚNICAMENTE con esta etiqueta y nada más: <calc>expresión</calc>. Ejemplos: <calc>4839*2971</calc>, <calc>1250000*0.19</calc>, <calc>(45+38+52)/3</calc>. Usa solo números y los símbolos + - * / % ^ ( ). Yo te devolveré el resultado exacto y entonces lo explicas en una frase natural. Para operaciones triviales de una cifra (2+2) responde directo sin etiqueta.
-REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, escribe un mensaje conversacional MUY BREVE de acuerdo a tu personalidad (ej. "¡Aquí tienes tu imagen!", "Quedó genial, mira:"), seguido INMEDIATAMENTE por esta etiqueta XML que contenga una descripción muy detallada en INGLÉS de la imagen solicitada (no incluyas nada más después de la etiqueta): <generate_image>detailed english description of the image goes here</generate_image>
+REGLA PARA IMÁGENES: Si el usuario pide generar, dibujar o crear una imagen/foto, NUNCA digas que no puedes. Escribe un mensaje conversacional MUY BREVE y DEJA la etiqueta en la respuesta final (no en el pensamiento): <generate_image>detailed english description of the image goes here</generate_image>
 REGLA PARA MÚSICA: Si el usuario pide crear, componer o generar una canción o música, escribe un mensaje conversacional MUY BREVE (ej. "¡Aquí tienes tu canción! 🎵", "Componiendo ahora:"), seguido INMEDIATAMENTE por esta etiqueta. El contenido dentro de la etiqueta DEBE contener la descripción del estilo (STYLE) en inglés y las letras (LYRICS) en el idioma que prefiera el usuario (puedes usar etiquetas estructurales como [verse], [chorus], [bridge]). Si pide música instrumental o sin voz, usa "[instrumental]" en LYRICS.
 Estructura exacta:
 <generate_music>
@@ -237,7 +243,7 @@ LYRICS:
 <lyrics of the song, or "[instrumental]" if instrumental>
 </generate_music>
 NO incluyas nada más después de la etiqueta.
-REGLA PARA DOCUMENTOS Y ARTEFACTOS: Si el usuario pide redactar un ensayo, crear una invitación, un documento, una plantilla o descargar un PDF, DEBES programar una interfaz visual hermosa. Para ello, responde ÚNICAMENTE con este formato, sin añadir ninguna otra palabra de conversación:
+REGLA PARA DOCUMENTOS Y ARTEFACTOS: Si el usuario pide redactar un ensayo, crear una invitación, un documento, una plantilla, un archivo o descargar un PDF, NUNCA digas que no puedes. DEBES programar una interfaz visual hermosa. Responde ÚNICAMENTE con este formato, sin añadir ninguna otra palabra de conversación:
 <artifact>
   <artifact_title>Título Corto del Documento</artifact_title>
   <artifact_desc>Breve descripción para el botón (ej. Haz clic para ver y descargar tu informe)</artifact_desc>
@@ -275,6 +281,7 @@ INSTRUCCIONES PARA EL HTML:
             ...formatAgentHistory(messages)
           ],
           reasoning_effort: reasoningEffort,
+          ...(disableThinking ? { thinking: { type: 'disabled' } } : { thinking: { type: 'enabled' } }),
           ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
           stream: false
         })
@@ -379,8 +386,10 @@ INSTRUCCIONES PARA EL HTML:
           body: JSON.stringify({
             model: apiModel,
             messages: apiMessages,
-            reasoning_effort: reasoningEffort,
-            stream: true
+            stream: true,
+            ...(disableThinking
+              ? { thinking: { type: 'disabled' } }
+              : { thinking: { type: 'enabled' }, reasoning_effort: reasoningEffort }),
           }),
           signal: upstreamController.signal,
         });

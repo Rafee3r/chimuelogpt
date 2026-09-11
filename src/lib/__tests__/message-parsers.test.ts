@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag, resolveDisplayContent } from '../message-parsers';
+import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag, resolveDisplayContent, userWantsImage, userWantsDocument, userWantsGeneratedMedia, liftToolTagsFromThink, unwrapFencedToolTags, wrapTextAsArtifact } from '../message-parsers';
 
 describe('resolveDisplayContent — nunca burbuja fantasma', () => {
   it('devuelve el texto limpio en el caso normal', () => {
@@ -107,5 +107,43 @@ describe('parseSetReminderTag', () => {
 
   it('retorna null si no hay texto', () => {
     expect(parseSetReminderTag('<set_reminder date="2026-06-11"></set_reminder>')).toBeNull();
+  });
+});
+
+describe('generación de media', () => {
+  it('detecta pedido de imagen', () => {
+    expect(userWantsImage('generame una imagen de un gato')).toBe(true);
+    expect(userWantsImage('hola qué hora es')).toBe(false);
+  });
+
+  it('detecta pedido de pdf/documento', () => {
+    expect(userWantsDocument('hazme un pdf de mi CV')).toBe(true);
+    expect(userWantsDocument('te mando un archivo')).toBe(false);
+  });
+
+  it('userWantsGeneratedMedia cubre imagen, pdf y música', () => {
+    expect(userWantsGeneratedMedia('crea una canción de cumbia')).toBe(true);
+    expect(userWantsGeneratedMedia('genera una imagen de un dragón')).toBe(true);
+  });
+
+  it('saca etiquetas del bloque think', () => {
+    const raw = '<think>voy a generar <generate_image>a red cat</generate_image></think>Listo.';
+    const out = liftToolTagsFromThink(raw);
+    expect(out).toContain('</think>');
+    expect(out).toContain('<generate_image>a red cat</generate_image>');
+    expect(out.indexOf('<generate_image>')).toBeGreaterThan(out.indexOf('</think>'));
+  });
+
+  it('desenvuelve fences markdown', () => {
+    const raw = '```xml\n<generate_image>a dog</generate_image>\n```';
+    expect(unwrapFencedToolTags(raw)).toContain('<generate_image>a dog</generate_image>');
+    expect(unwrapFencedToolTags(raw)).not.toContain('```');
+  });
+
+  it('wrapTextAsArtifact arma un artifact descargable', () => {
+    const html = wrapTextAsArtifact('Informe', 'Hola mundo');
+    expect(html).toContain('<artifact>');
+    expect(html).toContain('Informe');
+    expect(html).toContain('Hola mundo');
   });
 });

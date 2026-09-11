@@ -7,7 +7,7 @@ import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
-import { parseSetReminderTag, resolveDisplayContent } from "../lib/message-parsers";
+import { parseSetReminderTag, resolveDisplayContent, liftToolTagsFromThink, userWantsImage, userWantsDocument, wrapTextAsArtifact } from "../lib/message-parsers";
 import { buildApiHistory, trimHistory } from "../lib/chat-context";
 import { startActivity, finishActivity, settlePendingActivities, activityLabel, type ToolActivity } from "../lib/activities";
 import {
@@ -2998,6 +2998,7 @@ export default function Home() {
       }
 
       // Extract reasoning FIRST to avoid replacing tags inside the think block
+      fullText = liftToolTagsFromThink(fullText);
       const reasoningMatch = fullText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
       let reasoning = reasoningMatch ? reasoningMatch[1] : undefined;
       let cleanContent = fullText.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
@@ -3026,6 +3027,14 @@ export default function Home() {
           // Tag sin fecha válida: quitar el tag, dejar el resto
           cleanContent = parsed.rest || cleanContent.replace(/<set_reminder[^>]*>[\s\S]*?(?:<\/set_reminder>|$)/i, '').trim();
         }
+      }
+
+      if (userWantsImage(messageText) && !/<generate_image/i.test(cleanContent)) {
+        cleanContent = `${cleanContent}\n<generate_image>${messageText.slice(0, 400)}</generate_image>`.trim();
+      }
+      if (userWantsDocument(messageText) && !/<artifact/i.test(cleanContent)) {
+        const title = (messageText.replace(/^(genera|crea|hazme|haz|arma|redacta)\w*\s+/i, '').trim() || 'Documento').slice(0, 60);
+        cleanContent = wrapTextAsArtifact(title, cleanContent || messageText);
       }
 
       // Post-process: intercept image generation tags on the clean content

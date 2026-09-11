@@ -129,3 +129,79 @@ export function parseSetReminderTag(content: string): {
     rest: content.replace(SET_REMINDER_RE, '').trim(),
   };
 }
+
+/* ─────────── Generación de imagen / PDF / archivo ───────────
+   V4.1 Flash piensa por defecto y a veces deja las etiquetas XML
+   dentro de <think> o en un fence markdown. El cliente las saca
+   de ahí; si el modelo no las emite, page.tsx hace un fallback. */
+
+export const TOOL_TAG_RE =
+  /<(generate_image|generate_music|artifact|search_web|calc)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
+
+function toolTagRe(): RegExp {
+  return new RegExp(TOOL_TAG_RE.source, 'gi');
+}
+
+export function userWantsImage(text: string): boolean {
+  const t = text || '';
+  return /(?:genera|crea|hazme|haz |dibuja|pinta|diseña)\w*.{0,50}(?:imagen|foto|dibujo|ilustraci)|(?:imagen|foto|dibujo) de\b/i.test(t);
+}
+
+export function userWantsDocument(text: string): boolean {
+  const t = text || '';
+  return /(?:genera|crea|hazme|haz |arma|redacta|exporta|descarga)\w*.{0,50}(?:pdf|documento|ensayo|informe|invitaci[oó]n|plantilla|archivo)|(?:pdf|documento) (?:de|con|para)\b/i.test(t);
+}
+
+export function userWantsGeneratedMedia(text: string): boolean {
+  const t = text || '';
+  return userWantsImage(t) || userWantsDocument(t)
+    || /(?:genera|crea|comp[oó]n|hazme)\w*.{0,40}(?:canci[oó]n|m[uú]sica)/i.test(t);
+}
+
+export function unwrapFencedToolTags(content: string): string {
+  return content
+    .replace(
+      /```(?:xml|html|text)?\s*(<(?:generate_image|generate_music|artifact|search_web|calc)[\s\S]*?<\/(?:generate_image|generate_music|artifact|search_web|calc)>)\s*```/gi,
+      '$1',
+    )
+    .replace(
+      /&lt;(\/??(?:generate_image|generate_music|artifact|artifact_title|artifact_desc|artifact_html|search_web|calc)[^&]*)&gt;/gi,
+      '<$1>',
+    );
+}
+
+export function liftToolTagsFromThink(fullText: string): string {
+  const unwrapped = unwrapFencedToolTags(fullText || '');
+  const thinkMatch = unwrapped.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  if (!thinkMatch) return unwrapped;
+  const tags = thinkMatch[1].match(toolTagRe()) || [];
+  if (tags.length === 0) return unwrapped;
+  const afterThink = unwrapped.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, '');
+  const missing = tags.filter(tag => !afterThink.includes(tag.slice(0, Math.min(48, tag.length))));
+  if (missing.length === 0) return unwrapped;
+  const thinkBody = thinkMatch[1].replace(toolTagRe(), '').trim();
+  const lifted = missing.join('\n');
+  if (/<\/think>/i.test(unwrapped)) {
+    return unwrapped.replace(/<think>[\s\S]*?<\/think>/i, `<think>${thinkBody}</think>\n${lifted}\n`);
+  }
+  return `<think>${thinkBody}</think>\n${lifted}\n${afterThink}`;
+}
+
+export function wrapTextAsArtifact(title: string, body: string): string {
+  const safeTitle = (title || 'Documento').replace(/</g, '').slice(0, 80);
+  const escaped = (body || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+  return `<artifact>
+  <artifact_title>${safeTitle}</artifact_title>
+  <artifact_desc>Haz clic para ver y descargar</artifact_desc>
+  <artifact_html>
+    <html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:32px;max-width:720px;margin:auto;color:#111;line-height:1.55;background:#fff">
+      <h1 style="letter-spacing:-0.03em;font-size:1.6rem">${safeTitle}</h1>
+      <div style="font-size:1rem">${escaped}</div>
+    </body></html>
+  </artifact_html>
+</artifact>`;
+}
