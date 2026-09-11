@@ -214,6 +214,8 @@ Stickers disponibles según contexto:
 - 🤔 cuando dudas o algo te llama la atención
 NO uses stickers en respuestas que requieran info concreta (recetas, nutrición, ayuda médica).
 
+REGLA PARA VIDEOS: NUNCA generes ni simules un video. Si te piden convertir la foto en video, clip o animación, dilo corto: generar un video es muy costoso para Rafael, pero les puedes hacer una imagen de ultra calidad con GPT Image 2.5 premium, gratis. Pregunta si la quieren.
+
 SIEMPRE responde en Español.`;
 
     const systemPrompt = isAgent ? agentSystemPrompt : `${personaPrompt}${customInstructionsPrompt}
@@ -244,7 +246,8 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
 - Párrafos cortos (2-3 líneas).
 - NUNCA uses líneas separadoras (---).
 - Tablas solo para comparaciones de 3+ elementos con 2+ atributos.
-- NO cierres con un resumen de lo que acabas de decir.`;
+- NO cierres con un resumen de lo que acabas de decir.
+REGLA PARA VIDEOS: NUNCA generes, simules ni prometas un video. Si el usuario pide un video, clip, reel o animación a partir de la foto, responde breve: generar un video es muy costoso para Rafael, pero puedes hacerle una imagen de ultra calidad con la versión premium de GPT Image 2.5, gratis. Ofrece hacer esa imagen.`;
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 
@@ -320,7 +323,7 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
         max_tokens: 1200,
         system: `You are a vision analysis system. You have two jobs depending on the user request:
 
-JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image, respond ONLY with the appropriate XML tag (no other text):
+JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image (NOT a video/clip/animation), respond ONLY with the appropriate XML tag (no other text):
 - Minor edits (hair color, clothing, background, accessories): <generate_image mode="img2img" strength="0.7">Extremely detailed english description of the final image, including all original facial features, body, pose, setting + the requested changes</generate_image>
 - Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
 Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.

@@ -37,6 +37,7 @@ REGLAS DE FORMATO ESTRICTAS:
 - Cada objeto: {"icon":"emoji","label":"2-3 palabras","message":"frase imperativa en español lista para enviar"}
 - El "message" es un mensaje concreto, NO un placeholder ni una pregunta vacía
 - Los 4 emojis deben ser distintos entre sí
+- NUNCA sugieras generar un video, clip, reel o animación
 - RESPONDE SOLO con el JSON array, sin markdown ni explicación
 
 Ejemplo de FORMATO (no de contenido):

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 function falKey(): string | undefined {
   const raw = process.env.FAL_KEY || process.env.FAL_API_KEY;
@@ -22,7 +22,7 @@ function extractImageUrl(data: any): string | null {
   );
 }
 
-async function falQueue(model: string, input: object, key: string, timeoutMs = 90_000): Promise<any> {
+async function falQueue(model: string, input: object, key: string, timeoutMs = 160_000): Promise<any> {
   const auth = { Authorization: `Key ${key}` };
 
   const submitRes = await fetch(`https://queue.fal.run/${model}`, {
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     const input = {
       prompt,
       image_size: 'auto',
-      quality: 'auto',
+      quality: 'max',
       output_format: 'png',
     };
 
@@ -89,12 +89,12 @@ export async function POST(req: Request) {
       const dataUri = imageBase64.startsWith('data:')
         ? imageBase64
         : `data:image/png;base64,${imageBase64}`;
-      data = await falQueue('openai/gpt-image-2.5/flare/edit', {
+      data = await falQueue('openai/gpt-image-2.5/sunburst/edit', {
         ...input,
         image_urls: [dataUri],
       }, key);
     } else {
-      data = await falQueue('openai/gpt-image-2.5/flare/text-to-image', input, key);
+      data = await falQueue('openai/gpt-image-2.5/sunburst/text-to-image', input, key);
     }
 
     const url = extractImageUrl(data);

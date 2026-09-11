@@ -147,6 +147,11 @@ export function userWantsImage(text: string): boolean {
   return /(?:genera|crea|hazme|haz |dibuja|pinta|diseña)\w*.{0,50}(?:imagen|foto|dibujo|ilustraci)|(?:imagen|foto|dibujo) de\b/i.test(t);
 }
 
+export function userWantsVideo(text: string): boolean {
+  const t = text || '';
+  return /(?:genera|crea|hazme|haz |arma|anima|graba|render)\w*.{0,50}(?:v[ií]deo|clip|reel|tiktok|short|pel[ií]cula|animaci[oó]n)|(?:v[ií]deo|clip|reel|animaci[oó]n) de\b/i.test(t);
+}
+
 export function userWantsDocument(text: string): boolean {
   const t = text || '';
   return /(?:genera|crea|hazme|haz |arma|redacta|exporta|descarga)\w*.{0,50}(?:pdf|documento|ensayo|informe|invitaci[oó]n|plantilla|archivo)|(?:pdf|documento) (?:de|con|para)\b/i.test(t);
@@ -154,7 +159,7 @@ export function userWantsDocument(text: string): boolean {
 
 export function userWantsGeneratedMedia(text: string): boolean {
   const t = text || '';
-  return userWantsImage(t) || userWantsDocument(t)
+  return userWantsImage(t) || userWantsDocument(t) || userWantsVideo(t)
     || /(?:genera|crea|comp[oó]n|hazme)\w*.{0,40}(?:canci[oó]n|m[uú]sica)/i.test(t);
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag, resolveDisplayContent, userWantsImage, userWantsDocument, userWantsGeneratedMedia, liftToolTagsFromThink, unwrapFencedToolTags, wrapTextAsArtifact } from '../message-parsers';
+import { stripThinkTags, parseMusicMarker, parseSticker, extractImageUrls, parseSetReminderTag, resolveDisplayContent, userWantsImage, userWantsDocument, userWantsVideo, userWantsGeneratedMedia, liftToolTagsFromThink, unwrapFencedToolTags, wrapTextAsArtifact } from '../message-parsers';
 
 describe('resolveDisplayContent — nunca burbuja fantasma', () => {
   it('devuelve el texto limpio en el caso normal', () => {
@@ -121,9 +121,16 @@ describe('generación de media', () => {
     expect(userWantsDocument('te mando un archivo')).toBe(false);
   });
 
-  it('userWantsGeneratedMedia cubre imagen, pdf y música', () => {
+  it('detecta pedido de video', () => {
+    expect(userWantsVideo('generame un video de un gato')).toBe(true);
+    expect(userWantsVideo('hazme un reel de la playa')).toBe(true);
+    expect(userWantsVideo('generame una imagen de un gato')).toBe(false);
+  });
+
+  it('userWantsGeneratedMedia cubre imagen, pdf, música y video', () => {
     expect(userWantsGeneratedMedia('crea una canción de cumbia')).toBe(true);
     expect(userWantsGeneratedMedia('genera una imagen de un dragón')).toBe(true);
+    expect(userWantsGeneratedMedia('crea un video de un auto')).toBe(true);
   });
 
   it('saca etiquetas del bloque think', () => {
