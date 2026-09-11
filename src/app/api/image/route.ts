@@ -67,7 +67,7 @@ async function falQueue(model: string, input: object, key: string, timeoutMs = 9
 
 export async function POST(req: Request) {
   try {
-    const { prompt, imageBase64, imageSize } = await req.json();
+    const { prompt, imageBase64 } = await req.json();
     const key = falKey();
 
     if (!key) {
@@ -77,24 +77,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
     }
 
+    const input = {
+      prompt,
+      image_size: 'auto',
+      quality: 'auto',
+      output_format: 'png',
+    };
+
     let data: any;
     if (imageBase64) {
       const dataUri = imageBase64.startsWith('data:')
         ? imageBase64
         : `data:image/png;base64,${imageBase64}`;
-      data = await falQueue('openai/gpt-image-2/edit', {
-        prompt,
+      data = await falQueue('openai/gpt-image-2.5/flare/edit', {
+        ...input,
         image_urls: [dataUri],
-        quality: 'low',
-        image_size: imageSize || 'auto',
       }, key);
     } else {
-      data = await falQueue('openai/gpt-image-2', {
-        prompt,
-        image_size: 'landscape_16_9',
-        quality: 'low',
-        output_format: 'png',
-      }, key);
+      data = await falQueue('openai/gpt-image-2.5/flare/text-to-image', input, key);
     }
 
     const url = extractImageUrl(data);
