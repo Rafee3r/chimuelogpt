@@ -75,8 +75,6 @@ html[data-ios28] .v2-model-dropdown,
 html[data-ios28] .v2-attach-dropdown,
 html[data-ios28] .sb-menu,
 html[data-ios28] .sidebar,
-html[data-ios28] .settings-page-header,
-html[data-ios28] .settings-card,
 html[data-ios28] .auth-field-v2,
 html[data-ios28] .smart-pill,
 html[data-ios28] .uni-v2-pill,
@@ -466,28 +464,92 @@ html[data-ios28] .uni-v2-pill-new:hover {
   border-color: color-mix(in srgb, var(--accent-color) 40%, var(--glass-stroke));
 }
 
-/* ── Settings (listas agrupadas iOS) ── */
+/* ── Settings (pantalla iOS, no recortada) ── */
+html[data-ios28] .settings-page {
+  background: var(--bg-secondary);
+  min-height: 0;
+}
+
 html[data-ios28] .settings-page-header {
-  background: var(--glass-bg-strong);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
   border-bottom: 0.5px solid var(--glass-stroke);
+  box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 6;
 }
 
 html[data-ios28] .settings-back-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
   background: var(--glass-bg-chip);
-  border: 0.5px solid var(--glass-stroke);
+  border: none;
   border-radius: 999px;
+  color: var(--text-primary);
 }
 
-html[data-ios28] .settings-card,
+html[data-ios28] .settings-page-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+html[data-ios28] .settings-page-body {
+  padding: 12px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+  gap: 1.15rem;
+}
+
+html[data-ios28] .settings-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-stroke);
+  border-radius: 18px;
+  box-shadow: none;
+  overflow: visible;
+  padding: 18px 16px;
+}
+
 html[data-ios28] .settings-group {
-  border-radius: var(--ios-radius-lg);
-  overflow: hidden;
+  overflow: visible;
+  border-radius: 0;
+  margin-bottom: 0;
 }
 
 html[data-ios28] .settings-select {
-  border-radius: var(--ios-radius-sm);
+  border: none;
   background: var(--glass-bg-chip);
-  border: 0.5px solid var(--glass-stroke);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+}
+
+html[data-ios28] .settings-toggle-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--glass-bg-chip);
+}
+
+html[data-ios28] .settings-toggle-btn.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+html[data-ios28] .settings-action-btn {
+  border: none;
+  background: var(--glass-bg-chip);
+  border-radius: 14px;
+  padding: 13px 16px;
 }
 
 html[data-ios28] .danger-btn {

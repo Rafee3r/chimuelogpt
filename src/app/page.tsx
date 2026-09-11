@@ -4360,8 +4360,12 @@ export default function Home() {
         {viewMode === "settings" && (
           <div className="settings-page">
             <div className="settings-page-header">
-              <button className="settings-back-btn" onClick={() => setViewMode(prevViewMode.current)}>
-                <ChevronLeft size={20} /> Volver
+              <button
+                className="settings-back-btn"
+                onClick={() => setViewMode(prevViewMode.current)}
+                aria-label="Volver"
+              >
+                <ChevronLeft size={22} />
               </button>
               <h1 className="settings-page-title">Configuración</h1>
             </div>
