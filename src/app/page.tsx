@@ -1655,7 +1655,14 @@ export default function Home() {
     }
 
     const savedChats = localStorage.getItem("chimuelo_chats");
-    if (savedChats) setChats(JSON.parse(savedChats));
+    if (savedChats) {
+      const parsed = JSON.parse(savedChats);
+      const kept = Array.isArray(parsed)
+        ? parsed.filter((c: Chat) => (c.messages?.length ?? 0) > 0)
+        : [];
+      setChats(kept);
+      if (Array.isArray(parsed) && kept.length !== parsed.length) safeSetChats(kept);
+    }
 
     const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
     if (savedTheme) setTheme(savedTheme);
@@ -2174,20 +2181,12 @@ export default function Home() {
 
   const createNewChat = () => {
     stopGeneration();
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      title: "Nuevo Chat",
-      messages: [],
-      updatedAt: Date.now()
-    };
-    setChats(prev => {
-      const updated = [newChat, ...prev];
-      safeSetChats(updated);
-      return updated;
-    });
-    setCurrentChatId(newChat.id);
-    localStorage.setItem("chimuelo_current_chat", newChat.id);
+    setCurrentChatId(null);
+    localStorage.removeItem("chimuelo_current_chat");
     setDisplayMessages([]);
+    setAttachedImages([]);
+    setAttachedDocs([]);
+    setInputMessage("");
     setSidebarOpen(false);
     setViewMode("chat");
   };
@@ -2482,21 +2481,9 @@ export default function Home() {
     const isAgentChat = !!(activeAgent || chatBefore?.agentId);
 
     if (!targetChatId) {
-      const newChatId = Date.now().toString();
-      targetChatId = newChatId;
-      setCurrentChatId(newChatId);
-      localStorage.setItem("chimuelo_current_chat", newChatId);
-      
-      setChats(prev => {
-        const newChat: Chat = {
-          id: newChatId,
-          title: messageText ? messageText.slice(0, 30) : (imageName || "Nuevo Chat"),
-          messages: [],
-          updatedAt: Date.now(),
-          ...(activeAgent ? { agentId: activeAgent.id, systemPrompt: activeAgent.prompt } : {})
-        };
-        return [newChat, ...prev];
-      });
+      targetChatId = Date.now().toString();
+      setCurrentChatId(targetChatId);
+      localStorage.setItem("chimuelo_current_chat", targetChatId);
     }
 
     const userMsgId = Date.now().toString();
@@ -2515,7 +2502,15 @@ export default function Home() {
     setChats(prev => {
       const updated = [...prev];
       const chatIndex = updated.findIndex(c => c.id === targetChatId);
-      if (chatIndex !== -1) {
+      if (chatIndex === -1) {
+        updated.unshift({
+          id: targetChatId!,
+          title: messageText ? messageText.slice(0, 30) : (imageName || "Nuevo Chat"),
+          messages: [userMsg],
+          updatedAt: Date.now(),
+          ...(activeAgent ? { agentId: activeAgent.id, systemPrompt: activeAgent.prompt } : {})
+        });
+      } else {
         updated[chatIndex] = {
           ...updated[chatIndex],
           messages: [...updated[chatIndex].messages, userMsg],
@@ -3971,15 +3966,16 @@ export default function Home() {
           {/* CHATS */}
           <div className="sb-section sb-section-chats">
             {(() => {
+              const listed = chats.filter(c => (c.messages?.length ?? 0) > 0);
               const q = sidebarSearch.trim().toLowerCase();
               const filtered = q
-                ? chats.filter(c =>
+                ? listed.filter(c =>
                     (c.title || '').toLowerCase().includes(q) ||
                     c.messages.some(m => (m.content || '').toLowerCase().includes(q))
                   )
-                : chats;
+                : listed;
 
-              if (chats.length === 0) {
+              if (listed.length === 0) {
                 return (
                   <div className="sb-empty sb-empty-v2">
                     <div className="sb-empty-icon">💬</div>
