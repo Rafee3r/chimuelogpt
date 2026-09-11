@@ -2,75 +2,19 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 120;
 
-// ── Subir base64 a FAL Storage → devuelve URL pública ──
-async function uploadToFalStorage(imageBase64: string, falKey: string): Promise<string> {
-  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-  const mimeType = imageBase64.match(/data:([^;]+);/)?.[1] || 'image/png';
-  const buffer = Buffer.from(base64Data, 'base64');
-
-  const res = await fetch('https://fal.ai/api/storage/upload/initiate', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Key ${falKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      content_type: mimeType,
-      file_name: 'input.png',
-    }),
-  });
-
-  if (!res.ok) {
-    // Fallback: intentar endpoint legacy
-    const legacyRes = await fetch('https://fal.run/fal-ai/any/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Key ${falKey}`,
-        'Content-Type': mimeType,
-        'X-Fal-File-Name': 'input.png',
-      },
-      body: buffer,
-    });
-
-    if (!legacyRes.ok) {
-      // Último fallback: fal storage v1
-      const storageRes = await fetch('https://storage.fal.ai/v1/files', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Key ${falKey}`,
-          'Content-Type': mimeType,
-        },
-        body: buffer,
-      });
-      if (!storageRes.ok) {
-        const err = await storageRes.text();
-        throw new Error(`FAL storage upload failed: ${err}`);
-      }
-      const data = await storageRes.json();
-      return data.url || data.cdn_url;
-    }
-
-    const legacyData = await legacyRes.json();
-    return legacyData.url || legacyData.file_url;
-  }
-
-  const initData = await res.json();
-  // Upload al presigned URL
-  await fetch(initData.upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': mimeType },
-    body: buffer,
-  });
-  return initData.file_url;
+function falKey(): string | undefined {
+  const raw = process.env.FAL_KEY || process.env.FAL_API_KEY;
+  if (!raw) return undefined;
+  const trimmed = raw.trim().replace(/^["']|["']$/g, '');
+  return trimmed || undefined;
 }
 
-// ── Extraer URL de imagen del response de FAL ──
 function extractImageUrl(data: any): string | null {
   return (
-    data?.output?.images?.[0]?.url ||
     data?.images?.[0]?.url ||
-    data?.output?.image?.url ||
+    data?.output?.images?.[0]?.url ||
     data?.image?.url ||
+    data?.output?.image?.url ||
     data?.output?.url ||
     data?.url ||
     data?.data?.[0]?.url ||
@@ -78,81 +22,87 @@ function extractImageUrl(data: any): string | null {
   );
 }
 
+async function falQueue(model: string, input: object, key: string, timeoutMs = 90_000): Promise<any> {
+  const auth = { Authorization: `Key ${key}` };
+
+  const submitRes = await fetch(`https://queue.fal.run/${model}`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const queued = await submitRes.json().catch(() => ({}));
+  if (!submitRes.ok) {
+    const err = typeof queued === 'object' ? JSON.stringify(queued).slice(0, 400) : String(queued);
+    throw new Error(`FAL ${submitRes.status}: ${err}`);
+  }
+
+  if (extractImageUrl(queued)) return queued;
+
+  const statusUrl: string | undefined = queued.status_url;
+  const responseUrl: string | undefined = queued.response_url;
+  if (!statusUrl || !responseUrl) {
+    throw new Error(`FAL no devolvió cola ni imagen: ${JSON.stringify(queued).slice(0, 300)}`);
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 2000));
+    const statusRes = await fetch(statusUrl, { headers: auth });
+    if (!statusRes.ok) continue;
+    const status = await statusRes.json();
+    if (status.status === 'FAILED') {
+      throw new Error(`FAL falló: ${JSON.stringify(status).slice(0, 300)}`);
+    }
+    if (status.status === 'COMPLETED') {
+      const resultRes = await fetch(responseUrl, { headers: auth });
+      if (!resultRes.ok) {
+        const err = await resultRes.text();
+        throw new Error(`FAL resultado ${resultRes.status}: ${err.slice(0, 300)}`);
+      }
+      return resultRes.json();
+    }
+  }
+  throw new Error('Tiempo de espera agotado generando la imagen.');
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt, imageBase64, imageSize } = await req.json();
-    const falKey = process.env.FAL_KEY;
+    const key = falKey();
 
-    if (!falKey) {
+    if (!key) {
       return NextResponse.json({ error: 'FAL_KEY no configurada.' }, { status: 500 });
     }
-
-    if (imageBase64) {
-      // ── IMG2IMG: gpt-image-2 edit vía fal.ai con base64 directo ──
-      const dataUri = imageBase64.startsWith('data:') 
-        ? imageBase64 
-        : `data:image/png;base64,${imageBase64}`;
-
-      // Llamar al endpoint de edición
-      const res = await fetch('https://fal.run/openai/gpt-image-2/edit', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Key ${falKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          image_urls: [dataUri],
-          quality: 'low',
-          image_size: imageSize || 'auto',
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        console.error('FAL gpt-image-2 edit error:', err);
-        return NextResponse.json({ error: `Error editando imagen: ${err}` }, { status: 500 });
-      }
-
-      const data = await res.json();
-      const url = extractImageUrl(data);
-      if (!url) {
-        console.error('FAL edit response sin URL:', JSON.stringify(data));
-        return NextResponse.json({ error: 'No se generó imagen (edición)' }, { status: 500 });
-      }
-      return NextResponse.json({ url });
-
-    } else {
-      // ── TEXT-TO-IMAGE: gpt-image-2 vía fal.ai ──
-      const res = await fetch('https://fal.run/openai/gpt-image-2', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Key ${falKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          image_size: 'landscape_16_9',
-          quality: 'low',
-          output_format: 'png',
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        console.error('FAL gpt-image-2 gen error:', err);
-        return NextResponse.json({ error: `Error generando imagen: ${err}` }, { status: 500 });
-      }
-
-      const data = await res.json();
-      const url = extractImageUrl(data);
-      if (!url) {
-        console.error('FAL gen response sin URL:', JSON.stringify(data));
-        return NextResponse.json({ error: 'No se generó imagen' }, { status: 500 });
-      }
-      return NextResponse.json({ url });
+    if (!prompt || typeof prompt !== 'string') {
+      return NextResponse.json({ error: 'Prompt requerido.' }, { status: 400 });
     }
 
+    let data: any;
+    if (imageBase64) {
+      const dataUri = imageBase64.startsWith('data:')
+        ? imageBase64
+        : `data:image/png;base64,${imageBase64}`;
+      data = await falQueue('openai/gpt-image-2/edit', {
+        prompt,
+        image_urls: [dataUri],
+        quality: 'low',
+        image_size: imageSize || 'auto',
+      }, key);
+    } else {
+      data = await falQueue('openai/gpt-image-2', {
+        prompt,
+        image_size: 'landscape_16_9',
+        quality: 'low',
+        output_format: 'png',
+      }, key);
+    }
+
+    const url = extractImageUrl(data);
+    if (!url) {
+      console.error('FAL response sin URL:', JSON.stringify(data).slice(0, 400));
+      return NextResponse.json({ error: 'No se generó imagen' }, { status: 500 });
+    }
+    return NextResponse.json({ url });
   } catch (error: any) {
     console.error('Image API Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
