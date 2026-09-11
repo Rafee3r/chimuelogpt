@@ -1350,7 +1350,6 @@ export default function Home() {
   const [userMemory, setUserMemory] = useState<{id: string; content: string; createdAt: number}[]>([]);
   const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
   const [userName, setUserName] = useState<string>("");
-  const [editingName, setEditingName] = useState<boolean>(false);
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [showCatMascot, setShowCatMascot] = useState<boolean>(false);
   const [customInstructions, setCustomInstructions] = useState<string>("");
@@ -4061,58 +4060,31 @@ export default function Home() {
 
         {/* ── FOOTER ── */}
         <div className="sb-footer sb-footer-profile" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-          <div className="sb-profile-card" style={{ width: '100%' }}>
+          <button
+            type="button"
+            className="sb-profile-card"
+            style={{ width: '100%' }}
+            onClick={() => {
+              prevViewMode.current = viewMode === 'settings' ? 'chat' : viewMode;
+              setViewMode('settings');
+              setSidebarOpen(false);
+            }}
+            aria-label="Abrir configuración"
+            title="Configuración"
+          >
             <div className="sb-profile-avatar">
               {userName ? userName.charAt(0).toUpperCase() : '🐾'}
             </div>
             <div className="sb-profile-info">
-              {editingName ? (
-                <input
-                  className="sb-profile-name-input"
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  onBlur={() => {
-                    setEditingName(false);
-                    const trimmed = userName.trim().slice(0, 20);
-                    setUserName(trimmed);
-                    if (trimmed) localStorage.setItem("chimuelo_user_name", trimmed);
-                    else localStorage.removeItem("chimuelo_user_name");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
-                    if (e.key === 'Escape') setEditingName(false);
-                  }}
-                  placeholder="Tu nombre"
-                  autoFocus
-                  maxLength={20}
-                />
-              ) : (
-                <button
-                  className="sb-profile-name sb-profile-name-btn"
-                  onClick={() => setEditingName(true)}
-                  title="Toca para cambiar tu nombre"
-                >
-                  {userName || 'Tú'}
-                </button>
-              )}
+              <span className="sb-profile-name">{userName || 'Tú'}</span>
               <div className="sb-profile-plan">
                 <Sparkles size={10} /> Plan activo: Familia
               </div>
             </div>
-            <button
-              className="sb-profile-settings"
-              onClick={() => {
-                prevViewMode.current = viewMode === 'settings' ? 'chat' : viewMode;
-                setViewMode('settings');
-                setSidebarOpen(false);
-              }}
-              aria-label="Ajustes"
-              title="Ajustes"
-            >
+            <span className="sb-profile-settings" aria-hidden="true">
               <Settings size={16} />
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -4714,6 +4686,27 @@ export default function Home() {
 
               <div className="settings-card">
                 <h3 className="settings-card-title">Cuenta y Datos</h3>
+                <div className="settings-group" style={{ marginBottom: '1rem' }}>
+                  <label className="settings-label" htmlFor="settings-user-name">Tu nombre</label>
+                  <input
+                    id="settings-user-name"
+                    className="settings-select"
+                    type="text"
+                    value={userName}
+                    maxLength={20}
+                    placeholder="Cómo te llama Chimuelo"
+                    onChange={(e) => setUserName(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = userName.trim().slice(0, 20);
+                      setUserName(trimmed);
+                      if (trimmed) localStorage.setItem("chimuelo_user_name", trimmed);
+                      else localStorage.removeItem("chimuelo_user_name");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+                    }}
+                  />
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <button
                     onClick={async () => {

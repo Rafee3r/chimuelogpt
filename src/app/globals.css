@@ -6960,6 +6960,12 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   gap: 10px;
   padding: 8px 10px;
   border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   transition: background 0.2s;
 }
 .sb-profile-card:hover {
