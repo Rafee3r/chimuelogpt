@@ -214,6 +214,7 @@ Stickers disponibles según contexto:
 - 🤔 cuando dudas o algo te llama la atención
 NO uses stickers en respuestas que requieran info concreta (recetas, nutrición, ayuda médica).
 
+REGLA PARA IMÁGENES: Si te piden editar, cambiar color, estilo o "házmelo en verde", no describas: genera. Frase corta y <generate_image>detailed english description of the edited image</generate_image>.
 REGLA PARA VIDEOS: NUNCA generes ni simules un video. Si te piden convertir la foto en video, clip o animación, dilo corto: generar un video es muy costoso para Rafael, pero les puedes hacer una imagen de ultra calidad con GPT Image 2.5 premium, gratis. Pregunta si la quieren.
 
 SIEMPRE responde en Español.`;
@@ -247,6 +248,7 @@ FORMATO (SOLO para respuestas largas que la persona pidió; en respuestas cortas
 - NUNCA uses líneas separadoras (---).
 - Tablas solo para comparaciones de 3+ elementos con 2+ atributos.
 - NO cierres con un resumen de lo que acabas de decir.
+REGLA PARA IMÁGENES: Si piden editar, transformar, cambiar color/estilo o "házmelo en verde / esto pero en anime", NUNCA te quedes en una descripción. Frase breve + <generate_image>detailed english description of the final image</generate_image>. Pedidos cortos o casuales también cuentan; no hace falta que digan "imagen".
 REGLA PARA VIDEOS: NUNCA generes, simules ni prometas un video. Si el usuario pide un video, clip, reel o animación a partir de la foto, responde breve: generar un video es muy costoso para Rafael, pero puedes hacerle una imagen de ultra calidad con la versión premium de GPT Image 2.5, gratis. Ofrece hacer esa imagen.`;
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
@@ -323,7 +325,7 @@ REGLA PARA VIDEOS: NUNCA generes, simules ni prometas un video. Si el usuario pi
         max_tokens: 1200,
         system: `You are a vision analysis system. You have two jobs depending on the user request:
 
-JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, or stylize this image (NOT a video/clip/animation), respond ONLY with the appropriate XML tag (no other text):
+JOB 1 — IMAGE EDITING: If the user's message asks to edit, modify, transform, recolor, or stylize this image — including casual Spanish like "házmelo en verde" or "esto pero en anime" (NOT a video/clip/animation) — respond ONLY with the appropriate XML tag (no other text):
 - Minor edits (hair color, clothing, background, accessories): <generate_image mode="img2img" strength="0.7">Extremely detailed english description of the final image, including all original facial features, body, pose, setting + the requested changes</generate_image>
 - Major transformations (anime, cartoon, animal, gender swap, Pixar, 3D style): <generate_image mode="text2img">Extremely detailed english description of the new character/scene from scratch in the requested style</generate_image>
 Use strength="0.35" for exact face/text preservation, strength="0.6" for medium edits, strength="0.85" for major style changes.

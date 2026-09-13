@@ -2782,6 +2782,10 @@ export default function Home() {
 
         updateMessageStatus(userMsgId, 'read');
 
+        if (userWantsImage(messageText) && !fragments.some((f: string) => /<generate_image/i.test(f))) {
+          fragments[fragments.length - 1] = `${fragments[fragments.length - 1]}\n<generate_image>${messageText.slice(0, 400)}</generate_image>`;
+        }
+
         for (let fIdx = 0; fIdx < fragments.length; fIdx++) {
           let fragment = fragments[fIdx];
 

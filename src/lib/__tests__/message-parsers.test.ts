@@ -113,7 +113,15 @@ describe('parseSetReminderTag', () => {
 describe('generación de media', () => {
   it('detecta pedido de imagen', () => {
     expect(userWantsImage('generame una imagen de un gato')).toBe(true);
+    expect(userWantsImage('hazme una imagen de un auto')).toBe(true);
+    expect(userWantsImage('quiero una foto de un atardecer')).toBe(true);
+    expect(userWantsImage('dibújame un dragón')).toBe(true);
+    expect(userWantsImage('quiero q me hagas esto en verde')).toBe(true);
+    expect(userWantsImage('házmelo en rojo')).toBe(true);
+    expect(userWantsImage('crea un logo para mi marca')).toBe(true);
     expect(userWantsImage('hola qué hora es')).toBe(false);
+    expect(userWantsImage('hazme un resumen')).toBe(false);
+    expect(userWantsImage('cómo saco una buena foto')).toBe(false);
   });
 
   it('detecta pedido de pdf/documento', () => {

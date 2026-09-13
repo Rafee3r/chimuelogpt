@@ -142,9 +142,33 @@ function toolTagRe(): RegExp {
   return new RegExp(TOOL_TAG_RE.source, 'gi');
 }
 
+const VISUAL_NOUN =
+  /(?:imagen(?:es)?|foto(?:s)?|dibujo(?:s)?|ilustraci[oó]n(?:es)?|pintura(?:s)?|render(?:s)?|wallpaper(?:s)?|banner(?:s)?|p[oó]ster(?:es)?|poster(?:s)?|sticker(?:s)?|meme(?:s)?|logo(?:s)?|retrato(?:s)?|escena(?:s)?|portada(?:s)?)/i;
+
+const MAKE_VISUAL =
+  /(?:genera|crea|hazme|h[aá]zme|h[aá]z\b|hacer|dibuja|pinta|dise[nñ]a|quiero|necesito|puedes|podr[ií]as|me haces|me hagas|m[aá]ndame|s[aá]came|mu[eé]strame|arma|dame)\w*/i;
+
+const COLOR_OR_STYLE =
+  /(?:verde|rojo|azul|negro|blanco|amarillo|rosa|naranja|morado|gris|dorado|plateado|celeste|caf[eé]|beige|ne[oó]n|anime|pixel|3d|realista|oscuro|claro|cyberpunk|acuarela|[oó]leo)/i;
+
 export function userWantsImage(text: string): boolean {
   const t = text || '';
-  return /(?:genera|crea|hazme|haz |dibuja|pinta|diseña)\w*.{0,50}(?:imagen|foto|dibujo|ilustraci)|(?:imagen|foto|dibujo) de\b/i.test(t);
+  if (!t.trim() || userWantsVideo(t)) return false;
+  if (/\b(?:qu[eé] es|c[oó]mo (?:saco|hago|tomo|funciona|se (?:saca|hace|toma)))\b/i.test(t) && VISUAL_NOUN.test(t)) {
+    return false;
+  }
+  if (VISUAL_NOUN.test(t) && MAKE_VISUAL.test(t)) return true;
+  if (/(?:una|un)\s+(?:imagen|foto|dibujo|ilustraci[oó]n|logo|p[oó]ster|poster|wallpaper|banner)\s+de\b/i.test(t)) {
+    return true;
+  }
+  if (/\b(?:dib[uú]jame|dib[uú]ja(?:me)?|p[ií]ntame|pinta(?:me)?|il[uú]strame)\b/i.test(t)) return true;
+  if (
+    /(?:h[aá]zmelo|h[aá]zmela|me hagas esto|me lo hagas|esto pero|esto en |quiero q(?:ue)? me hagas esto|p[oó]nlo(?: en)?|c[aá]mbialo|p[aá]salo a )/i.test(t)
+    && COLOR_OR_STYLE.test(t)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function userWantsVideo(text: string): boolean {
