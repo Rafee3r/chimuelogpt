@@ -1280,7 +1280,7 @@ export default function Home() {
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
-      const comprimida = await compressImage(base64);
+      const comprimida = await compressImage(base64, { max: 2048, quality: 0.85 });
 
       const res = await fetch('/api/food-label', {
         method: 'POST',
@@ -2191,35 +2191,42 @@ export default function Home() {
     setViewMode("chat");
   };
 
-  const compressImage = (base64Str: string): Promise<string> => {
+  const compressImage = (base64Str: string, opts?: { max?: number; quality?: number }): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
-      img.src = base64Str;
+      const max = opts?.max ?? 1200;
+      const quality = opts?.quality ?? 0.7;
+      let done = false;
+      const finish = (v: string) => { if (done) return; done = true; resolve(v); };
+      const t = window.setTimeout(() => finish(base64Str), 12_000);
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1200;
-        let width = img.width;
-        let height = img.height;
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+          if (width > height) {
+            if (width > max) {
+              height *= max / width;
+              width = max;
+            }
+          } else if (height > max) {
+            width *= max / height;
+            height = max;
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          finish(canvas.toDataURL('image/jpeg', quality));
+        } catch {
+          finish(base64Str);
+        } finally {
+          window.clearTimeout(t);
         }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        // Compress to 0.7 quality to significantly reduce size
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
+      img.onerror = () => { window.clearTimeout(t); finish(base64Str); };
+      img.src = base64Str;
     });
   };
 

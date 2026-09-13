@@ -1,5 +1,6 @@
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../../lib/api-errors';
 import { DEEPSEEK_FLASH } from '../../../../lib/models';
+import { textoRespuestaDeepSeek } from '../../../../lib/food-label';
 
 export const maxDuration = 60;
 
@@ -96,8 +97,7 @@ export async function POST(req: Request) {
             model: MODELO,
             messages,
             response_format: { type: 'json_object' },
-            /* Mismo aprendizaje que en el análisis: el default de la API es
-               'high' y aquí no hace falta razonar, solo explicar bien. */
+            thinking: { type: 'disabled' },
             reasoning_effort: 'low',
             /* Cuenta razonamiento + respuesta juntos: generoso a propósito
                para no cortar la explicación a media frase. */
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
 
         if (res.ok) {
           const data = await res.json();
-          return Response.json({ raw: data.choices?.[0]?.message?.content || '' });
+          return Response.json({ raw: textoRespuestaDeepSeek(data) });
         }
 
         lastStatus = res.status;

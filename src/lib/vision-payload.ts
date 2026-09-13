@@ -27,7 +27,7 @@ export const SUPPORTED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/we
 
 export type VisionMessage =
   | { role: 'system' | 'assistant'; content: string }
-  | { role: 'user'; content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> };
+  | { role: 'user'; content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'original' | 'auto' } }> };
 
 /** Tamaño aproximado en bytes de un data URI base64 (4 chars ≈ 3 bytes). */
 export function base64ByteSize(dataUri: string): number {
@@ -65,7 +65,8 @@ export function buildVisionMessages(
   systemPrompt: string,
   history: Array<{ role: string; content: string }>,
   userText: string,
-  images: string[]
+  images: string[],
+  opts?: { detail?: 'low' | 'high' | 'original' | 'auto' },
 ): VisionMessage[] {
   const { usable } = filterUsableImages(images);
 
@@ -73,9 +74,12 @@ export function buildVisionMessages(
     .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
     .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-  const content: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+  const content: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'original' | 'auto' } }> = [
     { type: 'text', text: userText || 'Describe esta imagen.' },
-    ...usable.map(url => ({ type: 'image_url' as const, image_url: { url } })),
+    ...usable.map(url => ({
+      type: 'image_url' as const,
+      image_url: opts?.detail ? { url, detail: opts.detail } : { url },
+    })),
   ];
 
   return [

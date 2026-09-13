@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   parsearAnalisis, parsearQuimicos, esPuntoDeAusencia, extraerJson, categoriaNota,
   cargarHistorial, guardarEnHistorial, alternarFavorito, borrarDelHistorial,
-  HISTORIAL_KEY, type ItemHistorial,
+  textoRespuestaDeepSeek, HISTORIAL_KEY, type ItemHistorial,
 } from '../food-label';
 
 /* Storage falso para no depender del navegador */
@@ -32,6 +32,17 @@ const respuestaModelo = JSON.stringify({
   sellos: ['alto en azúcares'],
 });
 
+describe('textoRespuestaDeepSeek', () => {
+  it('usa content si viene', () => {
+    expect(textoRespuestaDeepSeek({ choices: [{ message: { content: '{"ok":1}' } }] })).toBe('{"ok":1}');
+  });
+  it('cae a reasoning_content si content está vacío (Flash thinking)', () => {
+    expect(textoRespuestaDeepSeek({
+      choices: [{ message: { content: '', reasoning_content: '{"ok":1}' } }],
+    })).toBe('{"ok":1}');
+  });
+});
+
 describe('parsearAnalisis', () => {
   it('convierte la respuesta del modelo en algo renderizable', () => {
     const a = parsearAnalisis(respuestaModelo)!;
@@ -54,6 +65,22 @@ describe('parsearAnalisis', () => {
       { nombre: 'Sal', destacado: null },
       { nombre: 'Agua', destacado: null },
     ]);
+  });
+
+  it('acepta la lista de ingredientes como un string', () => {
+    const raw = JSON.stringify({
+      producto: 'X', analisis: 'y',
+      ingredientes: 'Azúcar, Harina de trigo, Aceite de soya',
+    });
+    expect(parsearAnalisis(raw)!.ingredientes.map(i => i.nombre)).toEqual([
+      'Azúcar', 'Harina de trigo', 'Aceite de soya',
+    ]);
+  });
+
+  it('saca el JSON aunque venga dentro de un think', () => {
+    const inner = JSON.stringify({ producto: 'Yogurt', analisis: 'simple', ingredientes: ['Leche'] });
+    expect(parsearAnalisis(`<think>voy a leer</think>${inner}`)!.producto).toBe('Yogurt');
+    expect(parsearAnalisis(`<think>voy a leer</think>${inner}`)!.ingredientes[0].nombre).toBe('Leche');
   });
 
   it('acota las notas fuera de rango en vez de mostrar basura', () => {

@@ -16,6 +16,12 @@ describe('buildVisionMessages', () => {
     expect(parts[1]).toEqual({ type: 'image_url', image_url: { url: jpeg() } });
   });
 
+  it('puede pedir detalle original para leer letra chica', () => {
+    const msgs = buildVisionMessages('sys', [], 'lee', [jpeg()], { detail: 'original' });
+    const parts = msgs[msgs.length - 1].content as any[];
+    expect(parts[1].image_url.detail).toBe('original');
+  });
+
   it('NUNCA pone imágenes en system o assistant (la API lo rechaza)', () => {
     const history = [
       { role: 'user', content: 'hola' },

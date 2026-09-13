@@ -1,5 +1,6 @@
 import { VISION_MODEL, buildVisionMessages, filterUsableImages } from '../../../lib/vision-payload';
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../lib/api-errors';
+import { textoRespuestaDeepSeek } from '../../../lib/food-label';
 
 export const maxDuration = 60;
 
@@ -75,7 +76,8 @@ export async function POST(req: Request) {
       SYSTEM_PROMPT,
       [],
       'Analiza este producto según tus reglas y responde solo con el JSON.',
-      usable.slice(0, 3)   // etiqueta + tabla nutricional + reverso basta
+      usable.slice(0, 3),   // etiqueta + tabla nutricional + reverso basta
+      { detail: 'original' },
     );
 
     /* Reintento ante saturación: los 503/429 de DeepSeek son transitorios.
@@ -104,12 +106,11 @@ export async function POST(req: Request) {
             model: VISION_MODEL,
             messages,
             response_format: { type: 'json_object' },
-            /* ⚠️ Sin esto la API razona por defecto, y eso costaba ~25s con una
-               etiqueta PLANA, nítida y de alto contraste. Una foto real de
-               celular (fondo, ángulo, brillo, letra chica) se pasaba de los
-               60s de Vercel y el usuario solo veía "tardó demasiado".
-               Leer una etiqueta es OCR + criterio, no razonamiento profundo:
-               'low' alcanza de sobra. Mismo aprendizaje que en /api/chat. */
+            /* V4.1 Flash piensa por defecto. En chat eso se tragaba las
+               etiquetas XML; aquí se traga el JSON (content vacío, el objeto
+               queda en reasoning_content) o se pasa de los 60s de Vercel.
+               Leer una etiqueta es OCR + criterio, no razonamiento profundo. */
+            thinking: { type: 'disabled' },
             reasoning_effort: 'low',
             /* ⚠️ TRAMPA: max_tokens cuenta razonamiento + respuesta JUNTOS.
                Con 1500 el razonamiento se comía el presupuesto y el JSON
@@ -126,7 +127,14 @@ export async function POST(req: Request) {
 
         if (res.ok) {
           const data = await res.json();
-          const contenido = data.choices?.[0]?.message?.content || '';
+          const contenido = textoRespuestaDeepSeek(data);
+          if (!contenido) {
+            lastStatus = 502;
+            lastBody = 'respuesta vacía';
+            if (intento === 2) break;
+            await new Promise(r => setTimeout(r, backoffDelay(intento)));
+            continue;
+          }
           return Response.json({ raw: contenido });
         }
 

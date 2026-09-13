@@ -83,6 +83,27 @@ function nivelValido(v: unknown): NivelPunto {
 
    El prompt ya lo prohíbe, pero un prompt es probabilístico. Esto lo hace
    determinista. */
+function normalizarIngredientes(raw: unknown): IngredienteAnalizado[] {
+  let lista: any[] = [];
+  if (Array.isArray(raw)) {
+    lista = raw;
+  } else if (typeof raw === 'string' && raw.trim()) {
+    lista = raw.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+  }
+  return lista
+    .filter((i: any) => i && (typeof i === 'string' ? i.trim() : i.nombre))
+    .slice(0, 60)
+    .map((i: any) =>
+      typeof i === 'string'
+        ? { nombre: i.trim(), destacado: null }
+        : {
+            nombre: String(i.nombre).trim(),
+            destacado: i.destacado ? nivelValido(i.destacado) : null,
+            nota: i.nota ? String(i.nota).trim() : undefined,
+          },
+    );
+}
+
 const AUSENCIA = /^(ninguno|ninguna|no|no contiene|no aplica|no tiene|no hay|n\/?a|ausente|cero|[-–—]{1,2})$/i;
 
 export function esPuntoDeAusencia(valor: string): boolean {
@@ -96,14 +117,22 @@ export function categoriaNota(nota: number): { nivel: NivelPunto; texto: string 
   return { nivel: 'malo', texto: 'Evitar' };
 }
 
-/**
- * Extrae el JSON de la respuesta del modelo, tolerando que venga envuelto en
- * ```json … ``` o con texto alrededor.
- */
+/** Texto útil de una respuesta DeepSeek (content, o reasoning si content vino vacío). */
+export function textoRespuestaDeepSeek(data: any): string {
+  const msg = data?.choices?.[0]?.message;
+  const raw = String(msg?.content || msg?.reasoning_content || '').trim();
+  return raw.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+}
+
+/** Extrae el JSON de la respuesta, aunque venga en un fence o con texto alrededor. */
 export function extraerJson(raw: string): any | null {
   if (!raw || typeof raw !== 'string') return null;
 
-  const sinFences = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  const sinFences = raw
+    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
+    .replace(/```json\s*/gi, '')
+    .replace(/```/g, '')
+    .trim();
   try {
     return JSON.parse(sinFences);
   } catch { /* seguimos intentando */ }
@@ -153,20 +182,9 @@ export function parsearAnalisis(raw: string): AnalisisEtiqueta | null {
         .slice(0, 8)
     : [];
 
-  const ingredientes: IngredienteAnalizado[] = Array.isArray(data.ingredientes)
-    ? data.ingredientes
-        .filter((i: any) => i && (typeof i === 'string' ? i.trim() : i.nombre))
-        .slice(0, 60)
-        .map((i: any) =>
-          typeof i === 'string'
-            ? { nombre: i.trim(), destacado: null }
-            : {
-                nombre: String(i.nombre).trim(),
-                destacado: i.destacado ? nivelValido(i.destacado) : null,
-                nota: i.nota ? String(i.nota).trim() : undefined,
-              }
-        )
-    : [];
+  const ingredientes: IngredienteAnalizado[] = normalizarIngredientes(
+    data.ingredientes ?? data.ingredients,
+  );
 
   const sellos: string[] = Array.isArray(data.sellos)
     ? data.sellos.map((s: any) => String(s).trim().toUpperCase()).filter(Boolean).slice(0, 6)
