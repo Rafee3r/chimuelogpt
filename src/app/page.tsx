@@ -5738,15 +5738,13 @@ export default function Home() {
                                 {bodyBefore.trim() && (
                                   <MemoizedMarkdown content={bodyBefore} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />
                                 )}
-                                <div className="neon-image-card">
-                                  <div className="neon-image-frame">
-                                    <div className="neon-image-scan" />
-                                    <div className="neon-image-grid" />
+                                <div className="img-loading" role="status" aria-live="polite" aria-label="Generando imagen">
+                                  <div className="img-loading-frame">
+                                    <div className="img-loading-shimmer" />
                                   </div>
-                                  <div className="neon-image-label">
-                                    <span className="neon-image-title">Generando imagen</span>
-                                    <span className="neon-image-sub">La IA está creando tu visión</span>
-                                  </div>
+                                  <span className="img-loading-label">
+                                    Generando imagen<span className="img-loading-dots" aria-hidden="true" />
+                                  </span>
                                 </div>
                                 {bodyAfter?.trim() && (
                                   <MemoizedMarkdown content={bodyAfter} imgRenderer={ImageRenderer} codeRenderer={CodeBlock} onPromptClick={handleSendMessage} />

@@ -450,6 +450,12 @@ html[data-ios28] .markdown-body img {
   border-radius: var(--ios-radius-md);
 }
 
+html[data-ios28] .img-loading-frame {
+  border-radius: var(--ios-radius-md);
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--glass-bg));
+  border: 0.5px solid var(--glass-stroke);
+}
+
 /* ── Pills / chips ── */
 html[data-ios28] .smart-pill,
 html[data-ios28] .uni-v2-pill,
