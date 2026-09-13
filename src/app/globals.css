@@ -1703,6 +1703,21 @@ a {
   font-family: inherit;
   font-size: 1rem;
 }
+.settings-textarea {
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.settings-help {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.settings-action-btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
 
 .danger-btn {
   background-color: #ef4444;
@@ -8020,7 +8035,7 @@ body, .sidebar, .chat-area, .v2-input-container, .message-text,
   opacity: 0.85;
 }
 @media (hover: none) {
-  .message-actions-subtle { opacity: 0.55; }
+  .message-actions-subtle { opacity: 0.8; }
 }
 
 /* ── Action buttons: variant danger (rojo) para acciones destructivas ── */
@@ -8271,8 +8286,8 @@ label.v2-attach-dropdown-item:active {
   opacity: 0.6;
 }
 
-/* Los iconos de acciones del mensaje aparecen aún más quietos */
-.message-actions-subtle { opacity: 0.3; }
+/* Acciones del mensaje: visibles, se marcan más al hover */
+.message-actions-subtle { opacity: 0.7; }
 
 /* Sombra del input principal: difusa, no un aura */
 .v2-input-container {

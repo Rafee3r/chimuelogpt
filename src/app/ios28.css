@@ -532,6 +532,9 @@ html[data-ios28] .settings-select {
   padding: 12px 14px;
   font-size: 16px;
 }
+html[data-ios28] .settings-textarea {
+  min-height: 96px;
+}
 
 html[data-ios28] .settings-toggle-btn {
   border: none;

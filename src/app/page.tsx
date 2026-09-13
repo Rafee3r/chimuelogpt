@@ -1323,6 +1323,10 @@ export default function Home() {
   const [addingSubject, setAddingSubject] = useState(false);
   const [inlineSubjectName, setInlineSubjectName] = useState('');
   const [pwaModalOpen, setPwaModalOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [dislikePrompt, setDislikePrompt] = useState<{ msgId: string; snippet: string } | null>(null);
+  const [dislikeNote, setDislikeNote] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   // Detecta PC (mouse) vs móvil (touch). En PC omitimos el menú y abrimos file picker directo.
@@ -2388,7 +2392,21 @@ export default function Home() {
     setSubjectMenu(null);
   };
 
+  const enviarFeedback = async (payload: { type: 'like' | 'dislike' | 'comment'; comment?: string; contexto?: string }) => {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, nombre: userName }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'No pude enviar el comentario.');
+  };
+
   const handleMessageFeedback = (msgId: string, feedbackType: 'like' | 'dislike') => {
+    const msg = displayMessages.find(m => m.id === msgId);
+    const turningOff = msg?.feedback === feedbackType;
+    const snippet = String(msg?.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+
     setDisplayMessages(prev => prev.map(m => {
       if (m.id === msgId) {
         const currentFeedback = m.feedback;
@@ -2419,6 +2437,17 @@ export default function Home() {
         safeSetChats(updated);
         return updated;
       });
+    }
+
+    if (turningOff) return;
+    try { navigator.vibrate?.(12); } catch {}
+
+    if (feedbackType === 'like') {
+      showToast('Gracias 💛');
+      enviarFeedback({ type: 'like', contexto: snippet }).catch(() => {});
+    } else {
+      setDislikeNote('');
+      setDislikePrompt({ msgId, snippet });
     }
   };
 
@@ -4701,6 +4730,40 @@ export default function Home() {
               </div>
 
               <div className="settings-card">
+                <h3 className="settings-card-title">Comentarios</h3>
+                <p className="settings-help">¿Algo que no anda o que te gustaría? Se lo mandas directo a Rafael.</p>
+                <textarea
+                  className="settings-select settings-textarea"
+                  rows={3}
+                  maxLength={1200}
+                  placeholder="Ej: Ingredientes no me leyó la etiqueta, o quiero que recuerde las recetas…"
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                />
+                <button
+                  className="settings-action-btn"
+                  style={{ marginTop: 10 }}
+                  disabled={feedbackSending || feedbackText.trim().length < 3}
+                  onClick={async () => {
+                    const text = feedbackText.trim();
+                    if (text.length < 3 || feedbackSending) return;
+                    setFeedbackSending(true);
+                    try {
+                      await enviarFeedback({ type: 'comment', comment: text });
+                      setFeedbackText('');
+                      showToast('Listo, se lo mandé a Rafael');
+                    } catch (e: any) {
+                      showToast(e?.message || 'No pude enviarlo');
+                    } finally {
+                      setFeedbackSending(false);
+                    }
+                  }}
+                >
+                  <MessageSquare size={16} /> {feedbackSending ? 'Enviando…' : 'Enviar a Rafael'}
+                </button>
+              </div>
+
+              <div className="settings-card">
                 <h3 className="settings-card-title">Cuenta y Datos</h3>
                 <div className="settings-group" style={{ marginBottom: '1rem' }}>
                   <label className="settings-label" htmlFor="settings-user-name">Tu nombre</label>
@@ -6144,6 +6207,63 @@ export default function Home() {
       </div>
 
       {/* PWA Instructions Modal */}
+      {dislikePrompt && (
+        <div className="modal-overlay" onClick={() => {
+          enviarFeedback({ type: 'dislike', contexto: dislikePrompt.snippet }).catch(() => {});
+          setDislikePrompt(null);
+          showToast('Gracias, lo vi');
+        }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">¿Qué falló?</h2>
+              <button onClick={() => {
+                enviarFeedback({ type: 'dislike', contexto: dislikePrompt.snippet }).catch(() => {});
+                setDislikePrompt(null);
+                showToast('Gracias, lo vi');
+              }} className="modal-close">
+                <X size={24} />
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
+              Opcional, pero le sirve a Rafael para arreglarlo.
+            </p>
+            <textarea
+              className="settings-select settings-textarea"
+              rows={3}
+              maxLength={1200}
+              placeholder="Ej: se inventó datos, no entendió, la imagen salió mal…"
+              value={dislikeNote}
+              onChange={(e) => setDislikeNote(e.target.value)}
+              autoFocus
+            />
+            <button
+              className="settings-action-btn"
+              style={{ marginTop: 12 }}
+              disabled={feedbackSending}
+              onClick={async () => {
+                setFeedbackSending(true);
+                try {
+                  await enviarFeedback({
+                    type: 'dislike',
+                    comment: dislikeNote.trim(),
+                    contexto: dislikePrompt.snippet,
+                  });
+                  setDislikePrompt(null);
+                  setDislikeNote('');
+                  showToast('Listo, se lo mandé a Rafael');
+                } catch (e: any) {
+                  showToast(e?.message || 'No pude enviarlo');
+                } finally {
+                  setFeedbackSending(false);
+                }
+              }}
+            >
+              <MessageSquare size={16} /> {feedbackSending ? 'Enviando…' : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {pwaModalOpen && (
         <div className="modal-overlay" onClick={() => setPwaModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
