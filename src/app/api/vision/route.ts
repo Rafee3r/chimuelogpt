@@ -1,5 +1,5 @@
 import { VISION_MODEL, buildVisionMessages, filterUsableImages } from '../../../lib/vision-payload';
-import { resolveDeepSeekModel } from '../../../lib/models';
+import { isUncensoredModel, resolveDeepSeekModel } from '../../../lib/models';
 
 export const maxDuration = 90;
 
@@ -138,11 +138,16 @@ export async function POST(req: Request) {
     const { messages = [], imageBase64, imagesBase64 = [], persona, customInstructions, model, isAgent } = await req.json();
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const isOpenAi = isUncensoredModel(model);
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY;
 
-    /* ANTHROPIC_API_KEY ya NO es obligatoria: el camino principal es la visión
-       nativa de DeepSeek. Claude solo actúa de respaldo, así que su ausencia
-       se comprueba más abajo, justo antes de usarlo. */
-    if (!deepseekKey) {
+    if (isOpenAi && !openaiKey) {
+      return new Response(JSON.stringify({ error: "OPENAI_API_KEY no configurada. Agrega OPENAI_API_KEY en las variables de entorno." }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!isOpenAi && !deepseekKey) {
       return new Response(JSON.stringify({ error: "DEEPSEEK_API_KEY no configurada." }), {
         status: 500, headers: { 'Content-Type': 'application/json' }
       });
@@ -267,7 +272,44 @@ REGLA PARA VIDEOS: NUNCA generes, simules ni prometas un video. Si el usuario pi
         content: String(m.content).replace(/<think>[\s\S]*?<\/think>/g, '').trim(),
       }));
 
-    const canUseNativeVision = !isAgent && visionImages.usable.length > 0;
+    if (isOpenAi && !isAgent && imagesToProcess.length > 0) {
+      try {
+        const openAiUserContent: any[] = [{ type: 'text', text: lastUserMsg }];
+        for (const img of imagesToProcess) {
+          openAiUserContent.push({
+            type: 'image_url',
+            image_url: { url: img }
+          });
+        }
+        const openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...priorHistory,
+              { role: 'user', content: openAiUserContent }
+            ],
+            stream: true,
+          }),
+          signal: AbortSignal.timeout(45_000),
+        });
+
+        if (openAiRes.ok && openAiRes.body) {
+          return new Response(streamDeepSeekSSE(openAiRes.body), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' },
+          });
+        }
+      } catch (e: any) {
+        console.warn('OpenAI visión falló:', e?.message || e);
+      }
+    }
+
+    const canUseNativeVision = !isAgent && !isOpenAi && visionImages.usable.length > 0;
 
     if (canUseNativeVision) {
       try {
