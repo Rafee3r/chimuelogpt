@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Brain, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
@@ -1032,50 +1032,6 @@ type Subject = {
   name: string;
   baseMemory: string;
 };
-const ProThinkingAnimation = () => {
-  const [phase, setPhase] = useState<'visible' | 'hidden'>('visible');
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const phrases = [
-    "Analizando el contexto...",
-    "Evaluando posibles soluciones...",
-    "Estructurando la respuesta...",
-    "Revisando detalles técnicos...",
-    "Conectando conceptos...",
-    "Optimizando la redacción...",
-    "Finalizando detalles..."
-  ];
-
-  useEffect(() => {
-    let isMounted = true;
-    const cycle = async () => {
-      while (isMounted) {
-        setPhase('visible');
-        await new Promise(r => setTimeout(r, 3000));
-        if (!isMounted) break;
-        setPhase('hidden');
-        await new Promise(r => setTimeout(r, 1000));
-        if (!isMounted) break;
-        setPhraseIndex(prev => (prev + 1) % phrases.length);
-      }
-    };
-    cycle();
-    return () => { isMounted = false; };
-  }, []);
-
-  return (
-    <div className="pro-thinking-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--input-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', alignSelf: 'flex-start', marginBottom: '8px' }}>
-      <div className="thinking-v2-pill" style={{ margin: 0 }} />
-      <span style={{
-        fontSize: '0.85rem',
-        color: 'var(--text-secondary)',
-        transition: 'opacity 0.8s ease',
-        opacity: phase === 'visible' ? 1 : 0
-      }}>
-        {phrases[phraseIndex]}
-      </span>
-    </div>
-  );
-};
 
 const InteractiveFlashcard = ({ q, a }: { q: string, a: string }) => {
   const [flipped, setFlipped] = useState(false);
@@ -1327,7 +1283,6 @@ export default function Home() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [dislikePrompt, setDislikePrompt] = useState<{ msgId: string; snippet: string } | null>(null);
   const [dislikeNote, setDislikeNote] = useState("");
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   // Detecta PC (mouse) vs móvil (touch). En PC omitimos el menú y abrimos file picker directo.
   const [isDesktopPointer, setIsDesktopPointer] = useState<boolean>(false);
@@ -1340,14 +1295,13 @@ export default function Home() {
     return () => mq.removeEventListener?.('change', update);
   }, []);
   const [thinkingLevel, setThinkingLevel] = useState<'standard' | 'extended'>('standard');
-  const [showThinkingMenu, setShowThinkingMenu] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [artifactModal, setArtifactModal] = useState<string | null>(null);
   
   const [theme, setTheme] = useState<"system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow">("system");
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium");
   const [persona, setPersona] = useState<"default" | "serio" | "cursi" | "chistoso" | "directo" | "amable" | "profesional">("default");
-  const [model, setModel] = useState<"deepseek-v4-pro" | "deepseek-v4-flash">("deepseek-v4-flash");
+  const [model, setModel] = useState<"deepseek-v4-flash">("deepseek-v4-flash");
   const [enterToSend, setEnterToSend] = useState<boolean>(true);
   const [bubbleStyle, setBubbleStyle] = useState<"bubbles" | "flat">("bubbles");
   const [messageDensity, setMessageDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
@@ -1683,8 +1637,13 @@ export default function Home() {
     // usuario en cada arranque.
     localStorage.removeItem("chimuelo_customInstructions");
 
-    const savedModel = localStorage.getItem("chimuelo_model") as "deepseek-v4-pro" | "deepseek-v4-flash";
-    if (savedModel) setModel(savedModel);
+    const savedModel = localStorage.getItem("chimuelo_model");
+    if (savedModel === "deepseek-v4-pro") {
+      localStorage.setItem("chimuelo_model", "deepseek-v4-flash");
+      setModel("deepseek-v4-flash");
+    } else if (savedModel === "deepseek-v4-flash") {
+      setModel("deepseek-v4-flash");
+    }
 
     const savedEnterToSend = localStorage.getItem("chimuelo_enterToSend");
     if (savedEnterToSend !== null) setEnterToSend(savedEnterToSend === "true");
@@ -3310,8 +3269,7 @@ export default function Home() {
         }
       }
 
-      // Only keep reasoning if the model that generated this message supports it
-      const finalReasoning = model === 'deepseek-v4-pro' ? reasoning : undefined;
+      const finalReasoning = reasoning;
       // Cierra lo que haya quedado girando para que nada gire indefinidamente
       activities = settlePendingActivities(activities);
       const finalAssistantMsg: BaseMessage = {
@@ -3569,8 +3527,6 @@ export default function Home() {
         ? [{ id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } }]
         : []),
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
-      { id: 'a_model_fast', icon: Zap, label: 'Modelo: ⚡ Rápido', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
-      { id: 'a_model_deep', icon: Brain, label: 'Modelo: 🧠 Pro (opus 4.8)', run: () => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); } },
       { id: 'a_theme_light', icon: Palette, label: 'Tema: Claro', run: () => setTheme('light') },
       { id: 'a_theme_dark', icon: Palette, label: 'Tema: Oscuro', run: () => setTheme('dark') },
       { id: 'a_theme_oled', icon: Palette, label: 'Tema: OLED', run: () => setTheme('oled') },
@@ -3760,7 +3716,7 @@ export default function Home() {
 
 
   return (
-    <div className="app-layout" onClick={() => { setModelDropdownOpen(false); setAttachMenuOpen(false); }}>
+    <div className="app-layout" onClick={() => { setAttachMenuOpen(false); }}>
 
       {/* ── ONBOARDING DE BIENVENIDA (primer uso) ── */}
       {showWelcomeOnboarding && (
@@ -4249,116 +4205,18 @@ export default function Home() {
           </div>
           
           <div style={{ display: viewMode === 'agents' ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <button
+            <div
               className="v2-header-model-btn"
-              onClick={(e) => { e.stopPropagation(); setModelDropdownOpen(!modelDropdownOpen); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600, padding: '4px 8px', borderRadius: '8px' }}
             >
               Chimuelo{' '}
-              {/* key fuerza el remonte -> la animación corre en cada cambio de modelo */}
               <span
-                key={`${model}-${thinkingLevel}`}
                 className="model-label-swap"
                 style={{ color: 'var(--text-secondary)', fontWeight: 400 }}
               >
-                {model === 'deepseek-v4-flash' ? 'Rapido' : 'Pro'}{thinkingLevel === 'extended' ? ' Ex.' : ''}
+                Flash
               </span>
-              <ChevronDown size={16} color="var(--text-secondary)" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-            </button>
-
-            {modelDropdownOpen && (
-              <div
-                className="v2-model-dropdown"
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  marginTop: '10px',
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '16px',
-                  padding: '8px',
-                  width: '260px',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                  zIndex: 100,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px'
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {!showThinkingMenu ? (
-                  <>
-                    <button
-                      className={`v2-model-option ${model === 'deepseek-v4-flash' ? 'active' : ''}`}
-                      onClick={() => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); setModelDropdownOpen(false); }}
-                    >
-                      <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Rapido <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Sonnet 5)</span></span>
-                        <span className="v2-model-opt-desc">Respuestas más rápidas</span>
-                      </div>
-                      {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
-                    </button>
-
-                    <button
-                      className={`v2-model-option ${model === 'deepseek-v4-pro' ? 'active' : ''}`}
-                      onClick={() => { setModel('deepseek-v4-pro'); localStorage.setItem('chimuelo_model', 'deepseek-v4-pro'); setModelDropdownOpen(false); }}
-                    >
-                      <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Pro <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.9em', marginLeft: '6px' }}>(Opus 5)</span></span>
-                        <span className="v2-model-opt-desc">Matemáticas y código avanzado</span>
-                      </div>
-                      {model === 'deepseek-v4-pro' && <Check size={18} color="var(--text-secondary)" />}
-                    </button>
-
-                    <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
-
-                    <button
-                      className="v2-model-option"
-                      onClick={() => setShowThinkingMenu(true)}
-                    >
-                      <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Nivel de pensamiento</span>
-                        <span className="v2-model-opt-desc" style={{ color: 'var(--text-secondary)' }}>{thinkingLevel === 'extended' ? 'Extendido' : 'Estándar'}</span>
-                      </div>
-                      <ChevronRight size={16} color="var(--text-secondary)" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="v2-model-option"
-                      onClick={() => setShowThinkingMenu(false)}
-                      style={{ paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', borderRadius: '16px 16px 0 0', gap: '8px', justifyContent: 'flex-start' }}
-                    >
-                      <ChevronLeft size={16} color="var(--text-secondary)" />
-                      <span className="v2-model-opt-title">Nivel de pensamiento</span>
-                    </button>
-
-                    <button
-                      className={`v2-model-option ${thinkingLevel === 'standard' ? 'active' : ''}`}
-                      onClick={() => { setThinkingLevel('standard'); localStorage.setItem('chimuelo_thinking', 'standard'); setShowThinkingMenu(false); setModelDropdownOpen(false); }}
-                    >
-                      <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Estándar</span>
-                        <span className="v2-model-opt-desc">Mejor para la mayoría de preguntas</span>
-                      </div>
-                      {thinkingLevel === 'standard' && <Check size={18} color="var(--text-secondary)" />}
-                    </button>
-
-                    <button
-                      className={`v2-model-option ${thinkingLevel === 'extended' ? 'active' : ''}`}
-                      onClick={() => { setThinkingLevel('extended'); localStorage.setItem('chimuelo_thinking', 'extended'); setShowThinkingMenu(false); setModelDropdownOpen(false); }}
-                    >
-                      <div className="v2-model-opt-content">
-                        <span className="v2-model-opt-title">Extendido</span>
-                        <span className="v2-model-opt-desc">Resolución de problemas complejos</span>
-                      </div>
-                      {thinkingLevel === 'extended' && <Check size={18} color="var(--text-secondary)" />}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            </div>
           </div>
 
           {displayMessages.length > 0 ? (
@@ -5469,7 +5327,7 @@ export default function Home() {
             displayMessages.map((msg: any, i) => {
               const role = msg.role;
               const contentStr = msg.content || '';
-              const reasoning = msg.model === 'deepseek-v4-pro' ? (msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1]) : undefined;
+              const reasoning = msg.reasoning || contentStr.match(/<think>([\s\S]*?)<\/think>/)?.[1];
               // Resolución defensiva: nunca renderizar una burbuja fantasma
               // (avatar + botones sin texto). Ver src/lib/message-parsers.ts
               const resolved = resolveDisplayContent(contentStr);
@@ -5576,9 +5434,6 @@ export default function Home() {
                     
                     {role === 'assistant' && reasoning && (() => {
                       const isStreaming = !displayContent;
-                      if (model === 'deepseek-v4-pro') {
-                        return isStreaming ? <ProThinkingAnimation /> : null;
-                      }
 
                       return (
                         <div className={`reasoning-v3-card ${isStreaming ? 'streaming' : 'done'}`}>
@@ -5728,11 +5583,9 @@ export default function Home() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div className={`markdown-body font-${fontSize}`}>
                             {isThinking && isLastMsg && !currentBody.trim() && !reasoning ? (
-                              model === 'deepseek-v4-pro' ? <ProThinkingAnimation /> : (
-                                <div className="thinking-v2">
-                                  <div className="thinking-v2-pill" />
-                                </div>
-                              )
+                              <div className="thinking-v2">
+                                <div className="thinking-v2-pill" />
+                              </div>
                             ) : hasImgLoading ? (
                               <>
                                 {bodyBefore.trim() && (

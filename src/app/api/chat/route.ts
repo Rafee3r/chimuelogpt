@@ -1,5 +1,5 @@
 import { friendlyApiError, isRetryableStatus, backoffDelay } from '../../../lib/api-errors';
-import { DEEPSEEK_PRO, resolveDeepSeekModel } from '../../../lib/models';
+import { resolveDeepSeekModel } from '../../../lib/models';
 import { userWantsGeneratedMedia } from '../../../lib/message-parsers';
 
 export const maxDuration = 60;
@@ -98,38 +98,17 @@ export async function POST(req: Request) {
       });
     }
 
-    // UI manda deepseek-v4-flash / deepseek-v4-pro. En la API, el rápido es
-    // deepseek-flash (V4.1 Flash). Pro se usa si el usuario lo elige o pide
-    // razonamiento extendido.
+    // Solo se usa DeepSeek-V4.1-Flash (deepseek-flash). Pro se retiró.
     const actualModel = resolveDeepSeekModel(model, thinkingLevel);
     const apiModel = actualModel;
 
-    /* reasoning_effort — valores válidos: 'low' | 'high' | 'max' (no existe 'medium').
-
-       ⚠️ LÍMITE DURO: las funciones serverless de Vercel cortan a los 60s.
-       Poner 'high' en flash colgaba la app: el modelo razonaba tanto antes
-       de emitir el primer token que la petición moría por timeout y el
-       usuario no veía NADA. flash-high puntúa muy bien en benchmarks, pero
-       no cabe en esta ventana.
-
-       Por eso:
-         - "Rápido" (V4.1 Flash) → 'low'  : su propósito es responder ya.
-         - "Pro"                 → 'high' : es su mínimo posible de todas formas.
-         - Pensamiento extendido → 'max' (solo Pro, el usuario lo pide a sabiendas). */
     const lastUserText = String(
       [...messages].reverse().find((m: any) => m.role === 'user')?.content || '',
     );
     const disableThinking = userWantsGeneratedMedia(lastUserText);
 
-    const reasoningEffort =
-      thinkingLevel === 'extended' ? 'max'
-      : actualModel === DEEPSEEK_PRO ? 'high'
-      : 'low';
-
-    let extendedThinkingPrompt = '';
-    if (thinkingLevel === 'extended') {
-      extendedThinkingPrompt = '\n\n[INSTRUCCIÓN CRÍTICA DE RAZONAMIENTO EXTENDIDO]\nPara esta solicitud, DEBES realizar un razonamiento sumamente exhaustivo, pensar paso a paso en gran profundidad, prever casos límite y explorar múltiples ángulos antes de emitir tu respuesta final. Tómate todo el tiempo necesario en tu bloque de pensamiento.';
-    }
+    // Flash corre con 'low' para responder de inmediato sin exceder el timeout de 60s de Vercel
+    const reasoningEffort = 'low';
 
     const todayStr = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const dateContext = `La fecha de hoy es ${todayStr}. Estamos en el año ${new Date().getFullYear()}.`;
@@ -290,7 +269,7 @@ REGLA PARA DOCUMENTOS Y ARTEFACTOS: Si el usuario pide redactar un ensayo, crear
 INSTRUCCIONES PARA EL HTML: 
 - El código debe ser HTML5. No uses markdown dentro del html.
 - DEBES usar estilos inline (style="...") o la etiqueta <style> interna para hacer un diseño HERMOSO, moderno y colorido (ej. fondos degradados, tarjetas, sombras, bordes redondeados, tipografías elegantes).
-- Usa colores suaves, alineación correcta y márgenes amplios. Haz que parezca hecho por un diseñador profesional.`) + extendedThinkingPrompt;
+- Usa colores suaves, alineación correcta y márgenes amplios. Haz que parezca hecho por un diseñador profesional.`);
 
     const jsonSystemPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
 
@@ -303,7 +282,7 @@ INSTRUCCIONES PARA EL HTML:
     ];
 
     if (isAgent) {
-      const useJsonMode = actualModel !== DEEPSEEK_PRO;
+      const useJsonMode = true;
       const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {

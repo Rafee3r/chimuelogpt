@@ -3,7 +3,6 @@ import {
   CLIENT_MODEL_FLASH,
   CLIENT_MODEL_PRO,
   DEEPSEEK_FLASH,
-  DEEPSEEK_PRO,
   resolveDeepSeekModel,
 } from '../models';
 
@@ -12,8 +11,8 @@ describe('resolveDeepSeekModel', () => {
     expect(resolveDeepSeekModel(CLIENT_MODEL_FLASH)).toBe(DEEPSEEK_FLASH);
   });
 
-  it('mapea el modo Pro de la UI a V4 Pro', () => {
-    expect(resolveDeepSeekModel(CLIENT_MODEL_PRO)).toBe(DEEPSEEK_PRO);
+  it('mapea cualquier modelo anterior (incluido Pro) a Flash', () => {
+    expect(resolveDeepSeekModel(CLIENT_MODEL_PRO)).toBe(DEEPSEEK_FLASH);
   });
 
   it('usa Flash por defecto', () => {
@@ -21,7 +20,7 @@ describe('resolveDeepSeekModel', () => {
     expect(resolveDeepSeekModel('otro')).toBe(DEEPSEEK_FLASH);
   });
 
-  it('usa Pro si el pensamiento es extendido', () => {
-    expect(resolveDeepSeekModel(CLIENT_MODEL_FLASH, 'extended')).toBe(DEEPSEEK_PRO);
+  it('usa Flash incluso si el pensamiento es extendido', () => {
+    expect(resolveDeepSeekModel(CLIENT_MODEL_FLASH, 'extended')).toBe(DEEPSEEK_FLASH);
   });
 });
