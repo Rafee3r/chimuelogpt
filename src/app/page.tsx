@@ -4257,7 +4257,7 @@ export default function Home() {
                 >
                   <div className="v2-model-opt-content">
                     <span className="v2-model-opt-title">Flash</span>
-                    <span className="v2-model-opt-desc">Respuestas rápidas e inteligentes</span>
+                    <span className="v2-model-opt-desc">Opus 5.5 medium</span>
                   </div>
                   {model === 'deepseek-v4-flash' && <Check size={18} color="var(--text-secondary)" />}
                 </button>
