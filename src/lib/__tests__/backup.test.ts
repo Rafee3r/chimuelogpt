@@ -18,6 +18,7 @@ describe('captureAppSnapshot', () => {
     // El bug histórico: la whitelist tenía chimuelo_bubble_style/message_density.
     expect(BACKUP_KEYS_TO_CAPTURE).toContain('chimuelo_bubbleStyle');
     expect(BACKUP_KEYS_TO_CAPTURE).toContain('chimuelo_density');
+    expect(BACKUP_KEYS_TO_CAPTURE).toContain('chimuelo_hide_uncensored_warning');
     const storage = makeStorage({ chimuelo_bubbleStyle: 'flat', chimuelo_density: 'compact' });
     const snap = captureAppSnapshot(storage);
     expect(snap.chimuelo_bubbleStyle).toBe('flat');

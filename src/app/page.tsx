@@ -1285,6 +1285,8 @@ export default function Home() {
   const [dislikeNote, setDislikeNote] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [showUncensoredModal, setShowUncensoredModal] = useState(false);
+  const [dontShowUncensoredModal, setDontShowUncensoredModal] = useState(false);
+  const [dontShowAgainCheck, setDontShowAgainCheck] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   // Detecta PC (mouse) vs móvil (touch). En PC omitimos el menú y abrimos file picker directo.
   const [isDesktopPointer, setIsDesktopPointer] = useState<boolean>(false);
@@ -1648,6 +1650,9 @@ export default function Home() {
     } else if (savedModel === "deepseek-v4-flash") {
       setModel("deepseek-v4-flash");
     }
+
+    const savedHideWarning = localStorage.getItem("chimuelo_hide_uncensored_warning");
+    if (savedHideWarning === "true") setDontShowUncensoredModal(true);
 
     const savedEnterToSend = localStorage.getItem("chimuelo_enterToSend");
     if (savedEnterToSend !== null) setEnterToSend(savedEnterToSend === "true");
@@ -3532,7 +3537,15 @@ export default function Home() {
         : []),
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
       { id: 'a_model_flash', icon: Zap, label: 'Modelo: ⚡ Flash', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
-      { id: 'a_model_uncensored', icon: Sparkles, label: 'Modelo: 🔓 Sin censura (4o-mini)', run: () => { setShowUncensoredModal(true); } },
+      { id: 'a_model_uncensored', icon: Sparkles, label: 'Modelo: 🔓 Sin censura (4o-mini)', run: () => {
+        if (dontShowUncensoredModal) {
+          setModel('chatgpt-4o-mini');
+          localStorage.setItem('chimuelo_model', 'chatgpt-4o-mini');
+        } else {
+          setDontShowAgainCheck(false);
+          setShowUncensoredModal(true);
+        }
+      } },
       { id: 'a_theme_light', icon: Palette, label: 'Tema: Claro', run: () => setTheme('light') },
       { id: 'a_theme_dark', icon: Palette, label: 'Tema: Oscuro', run: () => setTheme('dark') },
       { id: 'a_theme_oled', icon: Palette, label: 'Tema: OLED', run: () => setTheme('oled') },
@@ -4266,7 +4279,13 @@ export default function Home() {
                   className={`v2-model-option ${model === 'chatgpt-4o-mini' ? 'active' : ''}`}
                   onClick={() => {
                     setModelDropdownOpen(false);
-                    setShowUncensoredModal(true);
+                    if (dontShowUncensoredModal) {
+                      setModel('chatgpt-4o-mini');
+                      localStorage.setItem('chimuelo_model', 'chatgpt-4o-mini');
+                    } else {
+                      setDontShowAgainCheck(false);
+                      setShowUncensoredModal(true);
+                    }
                   }}
                 >
                   <div className="v2-model-opt-content">
@@ -6192,15 +6211,29 @@ export default function Home() {
               </button>
             </div>
             
-            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.55', fontSize: '0.95rem', margin: '0 0 1.5rem 0' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.55', fontSize: '0.95rem', margin: '0 0 1rem 0' }}>
               Este modelo no es tan inteligente y puede dar respuestas incorrectas.
             </p>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem', cursor: 'pointer', fontSize: '0.88rem', color: 'var(--text-secondary)', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={dontShowAgainCheck}
+                onChange={(e) => setDontShowAgainCheck(e.target.checked)}
+                style={{ accentColor: 'var(--accent-color, #10a37f)', cursor: 'pointer', width: '16px', height: '16px' }}
+              />
+              No volver a mostrar
+            </label>
             
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 onClick={() => {
                   setModel('deepseek-v4-flash');
                   localStorage.setItem('chimuelo_model', 'deepseek-v4-flash');
+                  if (dontShowAgainCheck) {
+                    setDontShowUncensoredModal(true);
+                    localStorage.setItem('chimuelo_hide_uncensored_warning', 'true');
+                  }
                   setShowUncensoredModal(false);
                 }}
                 style={{
@@ -6215,12 +6248,16 @@ export default function Home() {
                   transition: 'background 0.2s'
                 }}
               >
-                Usar &quot;Rapido&quot;
+                Usar Flash
               </button>
               <button
                 onClick={() => {
                   setModel('chatgpt-4o-mini');
                   localStorage.setItem('chimuelo_model', 'chatgpt-4o-mini');
+                  if (dontShowAgainCheck) {
+                    setDontShowUncensoredModal(true);
+                    localStorage.setItem('chimuelo_hide_uncensored_warning', 'true');
+                  }
                   setShowUncensoredModal(false);
                 }}
                 style={{
