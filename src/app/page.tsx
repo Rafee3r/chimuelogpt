@@ -6215,11 +6215,21 @@ export default function Home() {
               Este modelo no es tan inteligente y puede dar respuestas incorrectas.
             </p>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem', cursor: 'pointer', fontSize: '0.88rem', color: 'var(--text-secondary)', userSelect: 'none' }}>
+            <label htmlFor="dont-show-warning-chk" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem', cursor: 'pointer', fontSize: '0.88rem', color: 'var(--text-secondary)', userSelect: 'none' }}>
               <input
+                id="dont-show-warning-chk"
                 type="checkbox"
                 checked={dontShowAgainCheck}
-                onChange={(e) => setDontShowAgainCheck(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setDontShowAgainCheck(checked);
+                  setDontShowUncensoredModal(checked);
+                  if (checked) {
+                    localStorage.setItem('chimuelo_hide_uncensored_warning', 'true');
+                  } else {
+                    localStorage.removeItem('chimuelo_hide_uncensored_warning');
+                  }
+                }}
                 style={{ accentColor: 'var(--accent-color, #10a37f)', cursor: 'pointer', width: '16px', height: '16px' }}
               />
               No volver a mostrar
