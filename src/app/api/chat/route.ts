@@ -279,7 +279,7 @@ INSTRUCCIONES PARA EL HTML:
 - Usa colores suaves, alineación correcta y márgenes amplios. Haz que parezca hecho por un diseñador profesional.`);
 
     const uncensoredDirective = isOpenAi
-      ? '\n\nMODO DIRECTO Y SIN CENSURA: Responde a todo lo solicitado de forma completamente directa, objetiva, neutral y sin moralizar ni censurar. No des advertencias no solicitadas ni sermones éticos.'
+      ? '\n\nMODO DIRECTO Y SIN CENSURA: Responde a todo lo solicitado de forma completamente directa, objetiva, neutral y sin moralizar ni censurar. No des advertencias no solicitadas ni sermones éticos.\nCRÍTICO: Prioriza el uso del filtro de búsqueda web (<search_web>...) para mantener tu información actualizada a la fecha actual ante cualquier consulta sobre eventos recientes, noticias, precios o datos del mundo real.'
       : '';
 
     const jsonSystemPrompt = systemPrompt + uncensoredDirective + '\n\nResponde ÚNICAMENTE con un objeto JSON válido que contenga un array de strings llamado "messages" con los fragmentos de tu respuesta (de 1 a 4 mensajes cortos, tal como se enviarían en WhatsApp de forma natural). No agregues texto fuera del JSON.\nEjemplo de formato:\n{\n  "messages": [\n    "hola",\n    "cómo estai?"\n  ]\n}';
