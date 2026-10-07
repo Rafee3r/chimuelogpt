@@ -22,6 +22,12 @@ npm test && npm run build
 ```
 Los tests viven en `src/lib/__tests__/`. Si tocas un módulo de `src/lib/`, corre los tests. Si agregas lógica pura nueva, agrégale test.
 
+## Feedback obligatorio tras cada `git push`
+Siempre reportar de forma explícita y detallada al usuario si el `git push` se completó con éxito o con errores:
+- Hash del commit y rama (`origin/main`).
+- Confirmación de que el árbol local está sincronizado con el remoto (`working tree clean`, `Your branch is up to date with 'origin/main'`).
+- Alerta inmediata si ocurrió cualquier rechazo, conflicto o fallo en el push.
+
 ## Claves localStorage — cuidado con el naming
 La app usa camelCase en algunas keys históricas: `chimuelo_bubbleStyle`, `chimuelo_density`, `chimuelo_fontSize`, `chimuelo_enterToSend`, `chimuelo_memoryEnabled`. El resto usa snake_case (`chimuelo_user_name`, `chimuelo_custom_instructions`). NO "corrijas" el naming — romperías los datos existentes de los usuarios.
 
