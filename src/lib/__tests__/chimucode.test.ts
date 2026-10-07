@@ -24,3 +24,26 @@ describe('CHIMUCODE_STARTER_SNIPPETS', () => {
     expect(py).toBeDefined();
   });
 });
+
+describe('detectCodeLanguage', () => {
+  it('detecta documentos HTML y tags', async () => {
+    const { detectCodeLanguage } = await import('../chimucode');
+    expect(detectCodeLanguage('<!DOCTYPE html><html><body><h1>Hola</h1></body></html>')).toBe('html');
+    expect(detectCodeLanguage('<div class="app"><button>Click</button></div>')).toBe('html');
+    expect(detectCodeLanguage('<canvas id="game"></canvas>')).toBe('html');
+  });
+
+  it('detecta scripts Python (lenguaje #1 de Claude)', async () => {
+    const { detectCodeLanguage } = await import('../chimucode');
+    expect(detectCodeLanguage('import math\nprint(math.sqrt(16))')).toBe('python');
+    expect(detectCodeLanguage('def calcular_promedio(lista):\n    return sum(lista) / len(lista)')).toBe('python');
+    expect(detectCodeLanguage('from statistics import mean\nprint(mean([1, 2, 3]))')).toBe('python');
+  });
+
+  it('detecta JavaScript/TypeScript (lenguaje #2 de Claude)', async () => {
+    const { detectCodeLanguage } = await import('../chimucode');
+    expect(detectCodeLanguage('const x = 10;\nconsole.log(x * 2);')).toBe('javascript');
+    expect(detectCodeLanguage('function saludar() { return "hola"; }')).toBe('javascript');
+  });
+});
+

@@ -32,6 +32,7 @@ export const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_enterToSend',
   'chimuelo_reminders',
   'chimuelo_hide_uncensored_warning',
+  'chimuelo_sidebar_minimized',
 ];
 
 export function captureAppSnapshot(storage: StorageLike = localStorage): Record<string, string> {

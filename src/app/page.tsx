@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
@@ -18,6 +18,7 @@ import {
 import { verificarClave, sesionVigente, EPOCA_SESION, AUTH_KEY } from "../lib/auth";
 import "./gallery.css";
 import "./chimucode.css";
+import "./side-panels.css";
 import { ChimuCodeView } from "./ChimuCodeView";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1141,6 +1142,12 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMinimized, setSidebarMinimized] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('chimuelo_sidebar_minimized') === 'true';
+    }
+    return false;
+  });
   const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery" | "food" | "chimucode">("chat");
   const [agentSearch, setAgentSearch] = useState("");
   const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
@@ -4055,14 +4062,24 @@ export default function Home() {
         />
       )}
 
-      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'}`}>
+      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'} ${sidebarMinimized ? 'sidebar-minimized' : ''}`}>
 
-        {/* ── CABECERA (solo móvil) ──
-            El panel ahora entra como un bloque a pantalla completa, así que
-            ya no queda backdrop donde tocar para cerrar: necesita su propio
-            botón, igual que la referencia. */}
+        {/* ── CABECERA ── */}
         <div className="sb-head">
           <span className="sb-head-title">Chimuelo</span>
+          <button
+            type="button"
+            className="sb-minimize-btn"
+            onClick={() => {
+              const next = !sidebarMinimized;
+              setSidebarMinimized(next);
+              localStorage.setItem('chimuelo_sidebar_minimized', String(next));
+            }}
+            title={sidebarMinimized ? "Expandir barra lateral" : "Minimizar barra lateral"}
+            aria-label={sidebarMinimized ? "Expandir barra lateral" : "Minimizar barra lateral"}
+          >
+            {sidebarMinimized ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          </button>
           <button
             className="sb-head-close"
             onClick={() => setSidebarOpen(false)}

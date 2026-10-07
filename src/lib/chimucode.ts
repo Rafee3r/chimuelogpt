@@ -306,6 +306,31 @@ export function extractCodeFromAiResponse(response: string): { code: string; lan
   return { code: response.trim(), language: 'javascript' };
 }
 
+export function detectCodeLanguage(code: string): SandboxLanguage {
+  const trimmed = code.trim();
+  if (!trimmed) return 'html';
+
+  if (
+    trimmed.startsWith('<!DOCTYPE') ||
+    trimmed.startsWith('<html') ||
+    /<\/(div|section|main|head|body|script|style|h1|h2|p|canvas|button|form|input|svg)>/i.test(trimmed) ||
+    /<canvas\b|<svg\b|<iframe\b|<script\b/i.test(trimmed)
+  ) {
+    return 'html';
+  }
+
+  // Patrones Python (Top 1 de Claude: scripts, análisis de datos, automatización)
+  if (
+    /^(import\s+[\w\s,]+|from\s+\w+\s+import|def\s+\w+\s*\(|class\s+\w+\s*[:\(]|print\s*\(|elif\s+|if\s+__name__\s*==)/m.test(trimmed) ||
+    /(#.*coding|import\s+(math|sys|os|json|random|statistics|numpy|pandas|requests|datetime))/m.test(trimmed)
+  ) {
+    return 'python';
+  }
+
+  // Top 2 de Claude: JavaScript / TypeScript (Full-stack, DOM, React)
+  return 'javascript';
+}
+
 export function formatTerminalTimestamp(): string {
   const d = new Date();
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });

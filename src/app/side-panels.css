@@ -1,0 +1,154 @@
+/* ── Estilos para Sidebar Minimizado y Panel Lateral Derecho de Vista Previa ── */
+
+/* ── 1. Sidebar Minimizado (Icon Rail) ── */
+@media (min-width: 768px) {
+  aside.sidebar.sidebar-minimized {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ocultar elementos de texto y búsqueda en modo compacto */
+  aside.sidebar.sidebar-minimized .sb-head-title,
+  aside.sidebar.sidebar-minimized .sb-search,
+  aside.sidebar.sidebar-minimized .sb-row span,
+  aside.sidebar.sidebar-minimized .chat-group-title,
+  aside.sidebar.sidebar-minimized .chat-title,
+  aside.sidebar.sidebar-minimized .chat-actions,
+  aside.sidebar.sidebar-minimized .chat-item-count,
+  aside.sidebar.sidebar-minimized .sb-footer-name,
+  aside.sidebar.sidebar-minimized .sb-footer-plan {
+    display: none !important;
+  }
+
+  /* Centrar íconos en los botones de navegación */
+  aside.sidebar.sidebar-minimized .sb-row {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+    border-radius: 10px !important;
+    position: relative;
+  }
+
+  aside.sidebar.sidebar-minimized .sb-head {
+    justify-content: center !important;
+    padding: 14px 0 !important;
+  }
+
+  aside.sidebar.sidebar-minimized .chat-item {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+  }
+}
+
+/* Botón para Minimizar / Expandir Sidebar */
+.sb-minimize-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--sidebar-text, #94a3b8);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sb-minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── 2. Divisor de Redimensión Horizontal (Draggable Handle) ── */
+.preview-resizer-handle {
+  width: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: col-resize;
+  position: relative;
+  transition: background 0.2s ease;
+  user-select: none;
+  z-index: 20;
+}
+
+.preview-resizer-handle:hover,
+.preview-resizer-handle.resizing {
+  background: #6366f1;
+}
+
+.preview-resizer-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+/* ── 3. Panel Lateral Derecho de Vista Previa (Claude Artifacts Style) ── */
+.preview-side-panel {
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 17, 23, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  z-index: 15;
+}
+
+.preview-side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(20, 24, 33, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+  font-weight: 500;
+  gap: 8px;
+}
+
+.preview-side-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.preview-width-presets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.preview-preset-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-preset-btn:hover,
+.preview-preset-btn.active {
+  background: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+}
