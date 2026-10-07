@@ -181,6 +181,28 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     URL.revokeObjectURL(url);
   };
 
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileScreen(window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  if (isMobileScreen) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', background: '#0E0E0E', padding: 20, textAlign: 'center' }}>
+        <Terminal size={48} style={{ marginBottom: 16, color: '#A0A0A0' }} />
+        <h2 style={{ fontSize: '1.2rem', marginBottom: 8, fontWeight: 600 }}>No disponible en celular</h2>
+        <p style={{ color: '#A0A0A0', fontSize: '0.9rem', marginBottom: 24 }}>El entorno de desarrollo ChimuCode requiere una pantalla grande. Por favor, usa una computadora para acceder a esta función.</p>
+        <button onClick={onBackToChat} className="chimucode-btn chimucode-btn-primary">Volver a Chimuelo</button>
+      </div>
+    );
+  }
+
   return (
     <div className="chimucode-fullscreen-root">
       {/* ── Left Sidebar (Claude Code Style) ── */}

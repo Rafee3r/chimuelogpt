@@ -8365,3 +8365,9 @@ label.v2-attach-dropdown-item:active {
 @media (min-width: 768px) {
   .sb-head { display: none; }
 }
+
+@media (max-width: 768px) {
+  .desktop-only-feature {
+    display: none !important;
+  }
+}

@@ -4184,7 +4184,7 @@ export default function Home() {
               <span>Ingredientes</span>
             </button>
             <button
-              className={`sb-row ${viewMode === 'chimucode' ? 'active' : ''}`}
+              className={`sb-row ${viewMode === 'chimucode' ? 'active' : ''} desktop-only-feature`}
               onClick={() => { prevViewMode.current = 'chat'; setViewMode('chimucode'); setSidebarOpen(false); }}
             >
               <Terminal size={15} />
