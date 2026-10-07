@@ -1,17 +1,50 @@
 /* ── Estilos para Sidebar Minimizado y Panel Lateral Derecho de Vista Previa ── */
 
-/* ── 1. Sidebar Minimizado (Icon Rail) ── */
+/* ── 1. Cabecera de Escritorio para el Sidebar ── */
+.sb-desktop-header {
+  display: none;
+}
+
 @media (min-width: 768px) {
-  aside.sidebar.sidebar-minimized {
-    width: 68px !important;
-    min-width: 68px !important;
-    max-width: 68px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  .sb-desktop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
   }
 
-  /* Ocultar elementos de texto y búsqueda en modo compacto */
+  .sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #f1f5f9;
+    letter-spacing: -0.01em;
+  }
+
+  .sb-brand-icon {
+    color: #818cf8;
+  }
+
+  /* ── Sidebar Minimizado (Icon Rail 60px) ── */
+  aside.sidebar.sidebar-minimized {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    transition: width 0.25s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
+
+  aside.sidebar.sidebar-minimized .sb-desktop-header {
+    justify-content: center !important;
+    padding: 14px 0 10px !important;
+  }
+
+  aside.sidebar.sidebar-minimized .sb-brand-name,
   aside.sidebar.sidebar-minimized .sb-head-title,
   aside.sidebar.sidebar-minimized .sb-search,
   aside.sidebar.sidebar-minimized .sb-row span,
@@ -24,33 +57,149 @@
     display: none !important;
   }
 
-  /* Centrar íconos en los botones de navegación */
   aside.sidebar.sidebar-minimized .sb-row {
     justify-content: center !important;
     padding: 10px 0 !important;
     border-radius: 10px !important;
-    position: relative;
-  }
-
-  aside.sidebar.sidebar-minimized .sb-head {
-    justify-content: center !important;
-    padding: 14px 0 !important;
+    margin: 2px 0 !important;
   }
 
   aside.sidebar.sidebar-minimized .chat-item {
     justify-content: center !important;
-    padding: 10px 0 !important;
+    padding: 9px 0 !important;
+    border-radius: 8px !important;
+  }
+
+  aside.sidebar.sidebar-minimized .sb-footer {
+    padding: 12px 0 !important;
+    justify-content: center !important;
   }
 }
 
-/* Botón para Minimizar / Expandir Sidebar */
+/* Botón Minimizar / Expandir */
 .sb-minimize-btn {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--sidebar-text, #94a3b8);
+  color: #94a3b8;
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sb-minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── 2. ChimuCode Full View & Resizable Right Panel ── */
+.chimucode-fullscreen-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  background: #090a0f;
+  color: #f1f5f9;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Barra superior ultra-limpia (estilo Claude Artifacts) */
+.chimucode-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  height: 48px;
+  background: #11131a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.chimucode-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chimucode-back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.chimucode-back-link:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chimucode-lang-pill {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chimucode-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chimucode-btn-run {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chimucode-btn-run:hover {
+  background: #4338ca;
+}
+
+.chimucode-btn-run:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chimucode-icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border-radius: 7px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,97 +207,201 @@
   transition: all 0.15s ease;
 }
 
-.sb-minimize-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.chimucode-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* ── 2. Divisor de Redimensión Horizontal (Draggable Handle) ── */
-.preview-resizer-handle {
-  width: 6px;
-  background: rgba(255, 255, 255, 0.05);
+/* Área de trabajo con split horizontal */
+.chimucode-main-split {
+  display: flex;
+  flex: 1;
+  height: calc(100% - 48px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Editor a la izquierda */
+.chimucode-editor-side {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background: #0b0d13;
+  overflow: hidden;
+}
+
+.chimucode-code-textarea {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  padding: 16px;
+  border: none;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Barra flotante inferior de Vibe Coding */
+.chimucode-floating-prompt {
+  padding: 10px 14px;
+  background: #11141e;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chimucode-prompt-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.84rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.chimucode-prompt-input:focus {
+  border-color: #818cf8;
+}
+
+.chimucode-prompt-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  white-space: nowrap;
+}
+
+.chimucode-prompt-btn:hover {
+  filter: brightness(1.1);
+}
+
+.chimucode-prompt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Divisor Arrastrable (Handle) */
+.chimucode-resizer-bar {
+  width: 8px;
+  background: #161922;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   cursor: col-resize;
   position: relative;
-  transition: background 0.2s ease;
+  transition: background 0.15s ease;
   user-select: none;
-  z-index: 20;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
-.preview-resizer-handle:hover,
-.preview-resizer-handle.resizing {
+.chimucode-resizer-bar:hover,
+.chimucode-resizer-bar.active {
   background: #6366f1;
 }
 
-.preview-resizer-handle::after {
+.chimucode-resizer-bar::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 2px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.3);
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
 }
 
-/* ── 3. Panel Lateral Derecho de Vista Previa (Claude Artifacts Style) ── */
-.preview-side-panel {
+/* Panel Derecho de Vista Previa */
+.chimucode-preview-side {
   display: flex;
   flex-direction: column;
-  background: rgba(15, 17, 23, 0.95);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
   height: 100%;
+  background: #0f1118;
   position: relative;
   overflow: hidden;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  z-index: 15;
 }
 
-.preview-side-header {
+.chimucode-preview-toolbar {
+  height: 38px;
+  background: #131620;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: rgba(20, 24, 33, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.82rem;
-  font-weight: 500;
-  gap: 8px;
+  padding: 0 12px;
+  flex-shrink: 0;
 }
 
-.preview-side-title {
+.chimucode-tab-pill-group {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #f1f5f9;
-}
-
-.preview-width-presets {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 2px;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2px;
+  gap: 2px;
 }
 
-.preview-preset-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 0.72rem;
-  padding: 2px 6px;
+.chimucode-tab-pill {
+  padding: 3px 8px;
+  font-size: 0.74rem;
   border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.preview-preset-btn:hover,
-.preview-preset-btn.active {
-  background: rgba(99, 102, 241, 0.3);
-  color: #c7d2fe;
+.chimucode-tab-pill.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 500;
+}
+
+.chimucode-live-iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+  transition: max-width 0.25s ease;
+}
+
+.chimucode-live-iframe.mobile-view {
+  max-width: 375px;
+  margin: 16px auto;
+  border-radius: 20px;
+  box-shadow: 0 0 0 10px #1e2230, 0 20px 40px rgba(0, 0, 0, 0.5);
+  height: calc(100% - 32px);
+}
+
+.chimucode-console-view {
+  flex: 1;
+  padding: 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  background: #090a0f;
+  color: #38bdf8;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
