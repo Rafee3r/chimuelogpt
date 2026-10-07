@@ -4402,7 +4402,7 @@ export default function Home() {
       <div className={`main-content ${sidebarOpen ? 'con-panel-abierto' : ''}`}>
         {/* Sin position inline: el CSS lo fija como sticky para que el header
             no se vaya de la pantalla al abrirse el teclado en iOS. */}
-        <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
+        <div className="mobile-header" style={{ display: (viewMode === 'settings' || viewMode === 'chimucode' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>
@@ -5024,7 +5024,17 @@ export default function Home() {
               }
             }
           }}
-          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
+          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''} ${viewMode === 'chimucode' ? 'chimucode-view-full' : ''}`}
+          style={{
+            display: viewMode === 'settings' ? 'none' : undefined,
+            padding: viewMode === 'chimucode' ? 0 : undefined,
+            height: viewMode === 'chimucode' ? '100%' : undefined,
+            maxHeight: viewMode === 'chimucode' ? '100%' : undefined,
+            overflow: viewMode === 'chimucode' ? 'hidden' : undefined,
+            paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined),
+            paddingTop: displayMessages.length === 0 ? '0' : undefined
+          }}
+        >
           {viewMode === "chimucode" ? (
             <ChimuCodeView onBackToChat={() => setViewMode("chat")} />
           ) : viewMode === "food" ? (
