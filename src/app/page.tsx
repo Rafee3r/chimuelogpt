@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal, Briefcase } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
@@ -4089,6 +4089,22 @@ export default function Home() {
           </button>
         </div>
 
+        {/* ── CHAT / CODE TOGGLE ── */}
+        <div className="desktop-only-feature" style={{ display: 'flex', gap: '4px', padding: '0 12px', marginBottom: '16px' }}>
+          <button 
+            onClick={() => { if (viewMode === 'chimucode') { setViewMode(prevViewMode.current === 'chimucode' ? 'chat' : prevViewMode.current as any); } }} 
+            style={{ flex: 1, padding: '6px', borderRadius: '8px', background: viewMode !== 'chimucode' ? 'var(--sidebar-hover)' : 'transparent', border: '1px solid ' + (viewMode !== 'chimucode' ? 'var(--border-color)' : 'transparent'), color: viewMode !== 'chimucode' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: viewMode !== 'chimucode' ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <MessageSquare size={14} /> Chat
+          </button>
+          <button 
+            onClick={() => { if (viewMode !== 'chimucode') { prevViewMode.current = viewMode as any; setViewMode('chimucode'); } }} 
+            style={{ flex: 1, padding: '6px', borderRadius: '8px', background: viewMode === 'chimucode' ? 'var(--sidebar-hover)' : 'transparent', border: '1px solid ' + (viewMode === 'chimucode' ? 'var(--border-color)' : 'transparent'), color: viewMode === 'chimucode' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: viewMode === 'chimucode' ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <Terminal size={14} /> Code
+          </button>
+        </div>
+
         {/* ── SEARCH ── */}
         <div className="sb-search">
           <Search size={14} className="sb-search-icon" />
@@ -4107,18 +4123,51 @@ export default function Home() {
         </div>
 
         {/* ── PRIMARY ACTION ── */}
-        <button
-          className="sb-row sb-row-primary"
-          onClick={() => { createNewChat(); setSidebarOpen(false); }}
-        >
-          <SquarePen size={16} />
-          <span>Nuevo chat</span>
-        </button>
+        {viewMode !== 'chimucode' ? (
+          <button
+            className="sb-row sb-row-primary"
+            onClick={() => { createNewChat(); setSidebarOpen(false); }}
+          >
+            <SquarePen size={16} />
+            <span>Nuevo chat</span>
+          </button>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
+            <button className="sb-row" style={{ paddingLeft: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>
+              <Plus size={15} /> <span>New session</span>
+            </button>
+            <button className="sb-row" style={{ paddingLeft: '8px' }}>
+              <Clock size={15} /> <span>Scheduled</span>
+            </button>
+            <button className="sb-row" style={{ paddingLeft: '8px' }}>
+              <Briefcase size={15} /> <span>Customize</span>
+            </button>
+          </div>
+        )}
 
         {/* ── SCROLL: Materias + Chats ── */}
         <div className="sb-scroll">
-
-          {/* MATERIAS (Subjects = Notebooks) — ocultas junto al Modo Universitario */}
+          {viewMode === 'chimucode' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Pinned</div>
+              <button className="sb-row active" style={{ paddingLeft: '8px' }}>
+                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span style={{ color: 'var(--text-primary)' }}>Nueva sesión de código</span>
+              </button>
+              
+              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Recents</div>
+              <button className="sb-row" style={{ paddingLeft: '8px' }}>
+                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Migrate API client to fetch with retries</span>
+              </button>
+              <button className="sb-row" style={{ paddingLeft: '8px' }}>
+                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Fix race condition in upload queue</span>
+              </button>
+              <button className="sb-row" style={{ paddingLeft: '8px' }}>
+                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Add keyboard shortcuts to command ...</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* MATERIAS (Subjects = Notebooks) — ocultas junto al Modo Universitario */}
           {(() => {
             if (!MOSTRAR_MODO_UNIVERSITARIO) return null;
             const q = sidebarSearch.trim().toLowerCase();
@@ -4182,13 +4231,6 @@ export default function Home() {
             >
               <Search size={15} />
               <span>Ingredientes</span>
-            </button>
-            <button
-              className={`sb-row ${viewMode === 'chimucode' ? 'active' : ''} desktop-only-feature`}
-              onClick={() => { prevViewMode.current = 'chat'; setViewMode('chimucode'); setSidebarOpen(false); }}
-            >
-              <Terminal size={15} />
-              <span>ChimuCode</span>
             </button>
           </div>
 
@@ -4281,6 +4323,8 @@ export default function Home() {
               );
             })()}
           </div>
+            </>
+          )}
         </div>
 
         {/* ── FOOTER ── */}

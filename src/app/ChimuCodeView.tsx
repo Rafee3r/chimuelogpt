@@ -205,64 +205,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
 
   return (
     <div className="chimucode-fullscreen-root">
-      {/* ── Left Sidebar (Claude Code Style) ── */}
-      <div className="chimucode-sidebar">
-        <div className="chimucode-sidebar-top">
-          <div className="chimucode-window-controls">
-            <div className="mac-dot red" onClick={onBackToChat}></div>
-            <div className="mac-dot yellow"></div>
-            <div className="mac-dot green"></div>
-          </div>
-          <div className="chimucode-sidebar-actions">
-            <button className="c-icon-btn"><Bell size={14} /></button>
-            <button className="c-icon-btn"><List size={14} /></button>
-            <button className="c-pill-btn active"><Code size={14} /> <span>Code</span></button>
-          </div>
-          
-          <div className="chimucode-menu-list mt-4">
-            <button className="c-menu-item" onClick={() => {
-              setMessages([]);
-              setSessionTitle('Nueva sesión de código');
-              setShowRightPanel(false);
-            }}>
-              <Plus size={15} /> <span>New session</span>
-            </button>
-            <button className="c-menu-item"><Clock size={15} /> <span>Scheduled</span></button>
-            <button className="c-menu-item"><Briefcase size={15} /> <span>Customize</span></button>
-          </div>
 
-          <div className="chimucode-menu-section">
-            <div className="c-section-title">Pinned</div>
-            <button className="c-menu-item active">
-              <span className="c-item-dots">•••</span>
-              <span className="c-item-text truncate">{sessionTitle}</span>
-            </button>
-          </div>
-
-          <div className="chimucode-menu-section">
-            <div className="c-section-title">Recents</div>
-            <button className="c-menu-item">
-              <span className="c-item-dots">•••</span>
-              <span className="c-item-text truncate">Migrate API client to fetch with retries</span>
-            </button>
-            <button className="c-menu-item">
-              <span className="c-item-dots">•••</span>
-              <span className="c-item-text truncate">Fix race condition in upload queue</span>
-            </button>
-            <button className="c-menu-item">
-              <span className="c-item-dots">•••</span>
-              <span className="c-item-text truncate">Add keyboard shortcuts to command ...</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="chimucode-sidebar-bottom">
-          <button className="c-menu-item">
-            <Building size={15} /> <span>Acme Co.</span>
-          </button>
-          <button className="c-icon-btn"><Sun size={15} /></button>
-        </div>
-      </div>
 
       {/* ── Main Area ── */}
       <div className="chimucode-main-area">
