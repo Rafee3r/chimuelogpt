@@ -4064,12 +4064,9 @@ export default function Home() {
 
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'} ${sidebarMinimized ? 'sidebar-minimized' : ''}`}>
 
-        {/* ── CABECERA ESCRITORIO (visible en PC/Mac con botón para minimizar a 60px) ── */}
-        <div className="sb-desktop-header">
-          <div className="sb-brand">
-            <Cat size={18} className="sb-brand-icon" />
-            <span className="sb-brand-name">Chimuelo</span>
-          </div>
+        {/* ── CABECERA ── */}
+        <div className="sb-head">
+          <span className="sb-head-title">Chimuelo</span>
           <button
             type="button"
             className="sb-minimize-btn"
@@ -4081,13 +4078,8 @@ export default function Home() {
             title={sidebarMinimized ? "Expandir barra lateral" : "Minimizar barra lateral"}
             aria-label={sidebarMinimized ? "Expandir barra lateral" : "Minimizar barra lateral"}
           >
-            {sidebarMinimized ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {sidebarMinimized ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
           </button>
-        </div>
-
-        {/* ── CABECERA (solo móvil) ── */}
-        <div className="sb-head">
-          <span className="sb-head-title">Chimuelo</span>
           <button
             className="sb-head-close"
             onClick={() => setSidebarOpen(false)}
@@ -4410,7 +4402,7 @@ export default function Home() {
       <div className={`main-content ${sidebarOpen ? 'con-panel-abierto' : ''}`}>
         {/* Sin position inline: el CSS lo fija como sticky para que el header
             no se vaya de la pantalla al abrirse el teclado en iOS. */}
-        <div className="mobile-header" style={{ display: (viewMode === 'settings' || viewMode === 'chimucode' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
+        <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>
@@ -5032,16 +5024,7 @@ export default function Home() {
               }
             }
           }}
-          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''} ${viewMode === 'chimucode' ? 'chimucode-view-full' : ''}`}
-          style={{
-            display: viewMode === 'settings' ? 'none' : undefined,
-            padding: viewMode === 'chimucode' ? 0 : undefined,
-            height: viewMode === 'chimucode' ? '100%' : undefined,
-            maxHeight: viewMode === 'chimucode' ? '100%' : undefined,
-            overflow: viewMode === 'chimucode' ? 'hidden' : undefined,
-            paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined),
-            paddingTop: displayMessages.length === 0 ? '0' : undefined
-          }}>
+          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
           {viewMode === "chimucode" ? (
             <ChimuCodeView onBackToChat={() => setViewMode("chat")} />
           ) : viewMode === "food" ? (

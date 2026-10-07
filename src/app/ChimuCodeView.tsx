@@ -4,9 +4,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Play, RotateCw, Trash2, Copy, Check, Terminal,
   ChevronLeft, Eye, Smartphone, Monitor, ExternalLink,
-  Download, Wand2, Sparkles, Code, ChevronDown
+  Download, Wand2, Sparkles, Layers, Code, ShieldCheck,
+  Maximize2, Minimize2
 } from 'lucide-react';
-import type { SandboxResult, MultiAgentStage } from '../lib/sandbox-types';
+import type { SandboxEngine, SandboxLanguage, SandboxResult, MultiAgentStage } from '../lib/sandbox-types';
 import { executeBrowserJS } from '../lib/sandbox-worker';
 import { CHIMUCODE_STARTER_SNIPPETS, detectCodeLanguage } from '../lib/chimucode';
 
@@ -19,24 +20,24 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [result, setResult] = useState<SandboxResult | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
-  const [showSnippetsMenu, setShowSnippetsMenu] = useState<boolean>(false);
-
-  // Detección automática en caliente del lenguaje
+  
+  // Detección automática del lenguaje
   const detectedLang = detectCodeLanguage(code);
-  const isHtml = detectedLang === 'html';
+  const isHtmlApp = detectedLang === 'html';
 
-  // Vibe Coding AI Prompt
+  // Vibe Coding & Multiagente state
   const [vibePrompt, setVibePrompt] = useState<string>('');
   const [agentStage, setAgentStage] = useState<MultiAgentStage>('idle');
-  const [activeTab, setActiveTab] = useState<'preview' | 'console'>('preview');
+  const [activeRightTab, setActiveRightTab] = useState<'preview' | 'console'>('preview');
   const [isMobileMode, setIsMobileMode] = useState<boolean>(false);
-
-  // Redimensión horizontal del panel lateral derecho (porcentaje)
+  
+  // Panel lateral derecho controlable horizontalmente (% del ancho)
   const [splitPercent, setSplitPercent] = useState<number>(50);
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Arrastre horizontal del divisor
+  // Manejador del arrastre horizontal
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -46,6 +47,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     if (!isResizing || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const newWidthPercent = ((rect.right - e.clientX) / rect.width) * 100;
+    // Límites de seguridad entre 20% y 80%
     setSplitPercent(Math.min(80, Math.max(20, newWidthPercent)));
   }, [isResizing]);
 
@@ -73,21 +75,22 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     setResult(null);
 
     try {
-      if (isHtml) {
-        setActiveTab('preview');
+      if (isHtmlApp) {
+        setActiveRightTab('preview');
         setResult({
           ok: true,
-          output: 'Vista previa actualizada en el sandbox.',
-          durationMs: 5,
+          output: 'App web renderizada en vivo en el sandbox.',
+          durationMs: 8,
           engine: 'preview',
           language: 'html',
         });
       } else if (detectedLang === 'javascript') {
-        setActiveTab('console');
+        setActiveRightTab('console');
         const res = await executeBrowserJS(code);
         setResult(res);
       } else {
-        setActiveTab('console');
+        // Python 3 u otros lenguajes en Cloud Sandbox
+        setActiveRightTab('console');
         const response = await fetch('/api/sandbox', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -113,9 +116,12 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
   const handleVibeGenerate = async () => {
     if (!vibePrompt.trim() || isRunning) return;
     setIsRunning(true);
-    setAgentStage('developer');
+    setAgentStage('architect');
 
     try {
+      const stageTimer1 = setTimeout(() => setAgentStage('developer'), 1200);
+      const stageTimer2 = setTimeout(() => setAgentStage('qa'), 3500);
+
       const res = await fetch('/api/chimucode/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,6 +131,9 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
           language: detectedLang,
         }),
       });
+
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
 
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -136,13 +145,34 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
       setVibePrompt('');
 
       const newLang = detectCodeLanguage(data.code);
-      setActiveTab(newLang === 'html' ? 'preview' : 'console');
+      if (newLang === 'html') {
+        setActiveRightTab('preview');
+      } else {
+        setActiveRightTab('console');
+      }
+
+      setResult({
+        ok: true,
+        output: data.rawExplanation || 'Aplicación generada con éxito por el equipo multiagente.',
+        durationMs: 0,
+        engine: newLang === 'html' ? 'preview' : 'worker',
+        language: newLang,
+      });
     } catch (err: any) {
       setAgentStage('error');
-      alert(`Error al generar código: ${err.message}`);
+      setResult({
+        ok: false,
+        output: '',
+        error: err.message || 'Error al generar con ChimuCode',
+        durationMs: 0,
+        engine: 'preview',
+        language: detectedLang,
+      });
     } finally {
       setIsRunning(false);
-      setTimeout(() => setAgentStage('idle'), 4000);
+      setTimeout(() => {
+        setAgentStage(prev => (prev === 'ready' || prev === 'error' ? 'idle' : prev));
+      }, 5000);
     }
   };
 
@@ -153,218 +183,341 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
+  const handleCopyOutput = () => {
+    const textToCopy = isHtmlApp && activeRightTab === 'preview' ? code : (result?.output || result?.error || code);
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
-    const ext = isHtml ? 'html' : detectedLang === 'python' ? 'py' : 'js';
-    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+  const handleDownloadHtml = () => {
+    const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chimucode-app.${ext}`;
+    a.download = 'chimucode-app.html';
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const handleOpenInNewTab = () => {
+    const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
+  const handleSelectSnippet = (snippetId: string) => {
+    const s = CHIMUCODE_STARTER_SNIPPETS.find((item) => item.id === snippetId);
+    if (s) {
+      setCode(s.code);
+      setActiveRightTab(s.language === 'html' ? 'preview' : 'console');
+    }
+  };
+
   return (
-    <div className="chimucode-fullscreen-root">
-      {/* ── Barra Superior Ultra-Limpia (Estilo Claude) ── */}
-      <div className="chimucode-top-bar">
-        <div className="chimucode-top-left">
-          <button className="chimucode-back-link" onClick={onBackToChat}>
+    <div className="chimucode-container">
+      {/* Header Simplificado (Estilo Claude) */}
+      <div className="chimucode-header">
+        <div className="chimucode-title-group">
+          <button
+            className="chimucode-btn chimucode-btn-secondary"
+            onClick={onBackToChat}
+            title="Volver al Chat"
+            style={{ padding: '6px 10px' }}
+          >
             <ChevronLeft size={16} />
             <span>Chat</span>
           </button>
-          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>ChimuCode</span>
-          <span className="chimucode-lang-pill">
-            {isHtml && '🌐 HTML / App Web'}
-            {detectedLang === 'python' && '🐍 Python 3'}
-            {detectedLang === 'javascript' && '⚡ JavaScript'}
+          <h2>
+            <Terminal size={18} style={{ color: '#818cf8' }} />
+            ChimuCode
+          </h2>
+          {/* Badge de detección automática sin selectores innecesarios */}
+          <span className="chimucode-badge" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            {detectedLang === 'html' && '🌐 HTML / Web App (Live)'}
+            {detectedLang === 'python' && '🐍 Python 3 (Cloud)'}
+            {detectedLang === 'javascript' && '⚡ JS / TypeScript (Web Worker)'}
           </span>
         </div>
 
-        <div className="chimucode-top-right">
-          {/* Menú de Plantillas compacto */}
-          <div style={{ position: 'relative' }}>
+        <div className="chimucode-controls">
+          {/* Presets rápidos de ancho para el panel lateral */}
+          <div className="preview-width-presets">
             <button
-              className="chimucode-icon-btn"
-              style={{ width: 'auto', padding: '0 10px', fontSize: '0.78rem', gap: 4 }}
-              onClick={() => setShowSnippetsMenu(!showSnippetsMenu)}
+              className={`preview-preset-btn ${splitPercent === 33 ? 'active' : ''}`}
+              onClick={() => setSplitPercent(33)}
+              title="Panel lateral 33%"
             >
-              <span>Ejemplos</span>
-              <ChevronDown size={12} />
+              1/3
             </button>
-            {showSnippetsMenu && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: 6,
-                  background: '#1a1d28',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: 8,
-                  padding: 4,
-                  minWidth: 200,
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                  zIndex: 50,
-                }}
-              >
-                {CHIMUCODE_STARTER_SNIPPETS.map((snip) => (
-                  <button
-                    key={snip.id}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#cbd5e1',
-                      padding: '8px 12px',
-                      fontSize: '0.78rem',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    onClick={() => {
-                      setCode(snip.code);
-                      setShowSnippetsMenu(false);
-                      setActiveTab(snip.language === 'html' ? 'preview' : 'console');
-                    }}
-                  >
-                    {snip.title}
-                  </button>
-                ))}
-              </div>
-            )}
+            <button
+              className={`preview-preset-btn ${splitPercent === 50 ? 'active' : ''}`}
+              onClick={() => setSplitPercent(50)}
+              title="Mitad y mitad (50%)"
+            >
+              1/2
+            </button>
+            <button
+              className={`preview-preset-btn ${splitPercent === 70 ? 'active' : ''}`}
+              onClick={() => setSplitPercent(70)}
+              title="Panel lateral 70%"
+            >
+              2/3
+            </button>
           </div>
 
-          <button className="chimucode-icon-btn" onClick={handleCopy} title="Copiar código">
-            {copied ? <Check size={14} style={{ color: '#4ade80' }} /> : <Copy size={14} />}
-          </button>
-          <button className="chimucode-icon-btn" onClick={handleDownload} title="Descargar archivo">
-            <Download size={14} />
-          </button>
-          <button className="chimucode-btn-run" onClick={handleRun} disabled={isRunning}>
-            {isRunning ? <RotateCw size={14} className="animate-spin" /> : <Play size={14} />}
-            <span>Ejecutar</span>
+          {/* Botón Ejecutar */}
+          <button
+            className="chimucode-btn chimucode-btn-primary"
+            onClick={handleRun}
+            disabled={isRunning || !code.trim()}
+          >
+            {isRunning ? (
+              <>
+                <RotateCw size={14} className="animate-spin" />
+                <span>Ejecutando...</span>
+              </>
+            ) : (
+              <>
+                <Play size={14} />
+                <span>Ejecutar (⌘↵)</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* ── Área de Trabajo con Resizer Horizontal ── */}
-      <div className="chimucode-main-split" ref={containerRef}>
-        {/* Editor Izquierdo */}
-        <div className="chimucode-editor-side" style={{ width: `${100 - splitPercent}%` }}>
+      {/* Barra de Vibe Coding: Prompt directo de IA */}
+      <div className="chimucode-vibe-bar">
+        <Wand2 size={18} style={{ color: '#ec4899', alignSelf: 'center', flexShrink: 0 }} />
+        <input
+          type="text"
+          className="chimucode-vibe-input"
+          placeholder="Vibe Coding: Describe qué app, juego, visualización o función quieres crear..."
+          value={vibePrompt}
+          onChange={(e) => setVibePrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleVibeGenerate();
+          }}
+          disabled={isRunning}
+        />
+        <button
+          className="chimucode-btn chimucode-btn-vibe"
+          onClick={handleVibeGenerate}
+          disabled={isRunning || !vibePrompt.trim()}
+        >
+          {isRunning ? (
+            <>
+              <RotateCw size={14} className="animate-spin" />
+              <span>Generando...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} />
+              <span>Vibe Code</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Stepper de agentes si están activos */}
+      {agentStage !== 'idle' && (
+        <div className="chimucode-agent-stepper">
+          <div className={`chimucode-agent-step ${agentStage === 'architect' ? 'active' : ['developer', 'qa', 'ready'].includes(agentStage) ? 'done' : ''}`}>
+            <Layers size={14} />
+            <span>1. Arquitecto</span>
+          </div>
+          <span>→</span>
+          <div className={`chimucode-agent-step ${agentStage === 'developer' ? 'active' : ['qa', 'ready'].includes(agentStage) ? 'done' : ''}`}>
+            <Code size={14} />
+            <span>2. Codex</span>
+          </div>
+          <span>→</span>
+          <div className={`chimucode-agent-step ${agentStage === 'qa' ? 'active' : agentStage === 'ready' ? 'done' : ''}`}>
+            <ShieldCheck size={14} />
+            <span>3. QA Auditor</span>
+          </div>
+        </div>
+      )}
+
+      {/* Plantillas Rápidas */}
+      <div className="chimucode-snippets-bar">
+        <span style={{ fontSize: '0.75rem', color: '#64748b', alignSelf: 'center', marginRight: '4px' }}>
+          Plantillas:
+        </span>
+        {CHIMUCODE_STARTER_SNIPPETS.map((snip) => (
+          <button
+            key={snip.id}
+            className="chimucode-snippet-chip"
+            onClick={() => handleSelectSnippet(snip.id)}
+            title={snip.description}
+          >
+            {snip.title}
+          </button>
+        ))}
+      </div>
+
+      {/* Espacio de trabajo con Panel Lateral Derecho Controlable Horizontalmente */}
+      <div
+        ref={containerRef}
+        style={{
+          display: 'flex',
+          flex: 1,
+          minHeight: '480px',
+          gap: 0,
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 12,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
+        {/* Panel Izquierdo: Editor de Código */}
+        <div
+          className="chimucode-pane"
+          style={{
+            flex: 1,
+            width: `${100 - splitPercent}%`,
+            borderRadius: 0,
+            border: 'none',
+          }}
+        >
+          <div className="chimucode-pane-header">
+            <span>Editor de Código</span>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Atajo: ⌘+Enter</span>
+          </div>
           <textarea
-            className="chimucode-code-textarea"
+            className="chimucode-editor"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="// Escribe aquí tu código..."
+            placeholder="// Escribe o genera aquí tu código..."
             spellCheck={false}
           />
-
-          {/* Barra Flotante de Vibe Coding al pie del editor */}
-          <div className="chimucode-floating-prompt">
-            <Wand2 size={16} style={{ color: '#ec4899', flexShrink: 0 }} />
-            <input
-              type="text"
-              className="chimucode-prompt-input"
-              placeholder="Vibe Coding: 'Crea una calculadora...', 'Agrega un botón de pausa...', etc."
-              value={vibePrompt}
-              onChange={(e) => setVibePrompt(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleVibeGenerate()}
-              disabled={isRunning}
-            />
-            <button
-              className="chimucode-prompt-btn"
-              onClick={handleVibeGenerate}
-              disabled={isRunning || !vibePrompt.trim()}
-            >
-              {isRunning ? <RotateCw size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              <span>Generar</span>
-            </button>
-          </div>
         </div>
 
-        {/* Divisor Arrastrable (Handle) */}
+        {/* Divisor de redimensión horizontal (Draggable Handle) */}
         <div
-          className={`chimucode-resizer-bar ${isResizing ? 'active' : ''}`}
+          className={`preview-resizer-handle ${isResizing ? 'resizing' : ''}`}
           onMouseDown={handleMouseDown}
-          title="Arrastra para cambiar el tamaño del panel lateral"
+          title="Arrastra horizontalmente para ajustar el tamaño del panel"
         />
 
         {/* Panel Lateral Derecho: Vista Previa y Consola */}
-        <div className="chimucode-preview-side" style={{ width: `${splitPercent}%` }}>
-          <div className="chimucode-preview-toolbar">
-            <div className="chimucode-tab-pill-group">
+        <div
+          className="chimucode-pane preview-side-panel"
+          style={{
+            width: `${splitPercent}%`,
+            borderRadius: 0,
+            border: 'none',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          <div className="preview-side-header">
+            <div className="chimucode-tab-switch">
               <button
-                className={`chimucode-tab-pill ${activeTab === 'preview' ? 'active' : ''}`}
-                onClick={() => setActiveTab('preview')}
+                className={`chimucode-tab-btn ${activeRightTab === 'preview' ? 'active' : ''}`}
+                onClick={() => setActiveRightTab('preview')}
               >
                 <Eye size={12} style={{ display: 'inline', marginRight: 4 }} />
                 Vista Previa
               </button>
               <button
-                className={`chimucode-tab-pill ${activeTab === 'console' ? 'active' : ''}`}
-                onClick={() => setActiveTab('console')}
+                className={`chimucode-tab-btn ${activeRightTab === 'console' ? 'active' : ''}`}
+                onClick={() => setActiveRightTab('console')}
               >
                 <Terminal size={12} style={{ display: 'inline', marginRight: 4 }} />
                 Consola
               </button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {isHtml && activeTab === 'preview' && (
+            {/* Controles del panel lateral derecho */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {activeRightTab === 'preview' && isHtmlApp && (
                 <>
                   <button
-                    className="chimucode-icon-btn"
-                    style={{ width: 28, height: 28 }}
+                    className="chimucode-btn chimucode-btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                     onClick={() => setIsMobileMode(!isMobileMode)}
-                    title={isMobileMode ? 'Vista PC' : 'Vista Móvil'}
+                    title={isMobileMode ? 'Vista Escritorio' : 'Vista Móvil'}
                   >
                     {isMobileMode ? <Monitor size={12} /> : <Smartphone size={12} />}
                   </button>
                   <button
-                    className="chimucode-icon-btn"
-                    style={{ width: 28, height: 28 }}
-                    onClick={() => {
-                      const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
-                      window.open(URL.createObjectURL(blob), '_blank');
-                    }}
+                    className="chimucode-btn chimucode-btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                    onClick={handleOpenInNewTab}
                     title="Abrir en pestaña nueva"
                   >
                     <ExternalLink size={12} />
                   </button>
+                  <button
+                    className="chimucode-btn chimucode-btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                    onClick={handleDownloadHtml}
+                    title="Descargar index.html"
+                  >
+                    <Download size={12} />
+                  </button>
                 </>
               )}
+              <button
+                className="chimucode-btn chimucode-btn-secondary"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                onClick={handleCopyOutput}
+                title="Copiar código o salida"
+              >
+                {copied ? <Check size={12} style={{ color: '#4ade80' }} /> : <Copy size={12} />}
+              </button>
+              <button
+                className="chimucode-btn chimucode-btn-secondary"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                onClick={() => setResult(null)}
+                title="Limpiar"
+              >
+                <Trash2 size={12} />
+              </button>
             </div>
           </div>
 
-          {/* Contenido: Iframe Sandbox o Consola */}
-          {activeTab === 'preview' && isHtml ? (
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: '#0a0b10' }}>
+          {/* Renderizado en Vivo (Iframe) o Consola */}
+          {activeRightTab === 'preview' && isHtmlApp ? (
+            <div className={`chimucode-preview-container ${isMobileMode ? 'mobile-mode' : ''}`}>
               <iframe
+                ref={iframeRef}
                 srcDoc={code}
-                title="ChimuCode Preview Sandbox"
+                title="ChimuCode Live Sandbox"
                 sandbox="allow-scripts allow-modals allow-forms allow-popups"
-                className={`chimucode-live-iframe ${isMobileMode ? 'mobile-view' : ''}`}
+                className="chimucode-preview-iframe"
               />
             </div>
           ) : (
-            <div className="chimucode-console-view">
-              {result?.output || result?.error || (
-                <span style={{ color: '#64748b', fontStyle: 'italic' }}>
-                  {isHtml
-                    ? 'La app web se está renderizando en la pestaña Vista Previa.'
-                    : 'Presiona "Ejecutar" o ⌘+Enter para ver la salida de la consola.'}
-                </span>
+            <div className="chimucode-console">
+              {!result && !isRunning && (
+                <div className="chimucode-console-empty">
+                  Presiona "Ejecutar" o ⌘+Enter para correr el código en el sandbox.
+                </div>
+              )}
+
+              {isRunning && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#818cf8', margin: 'auto' }}>
+                  <RotateCw size={16} className="animate-spin" />
+                  <span>Ejecutando en sandbox...</span>
+                </div>
+              )}
+
+              {result && (
+                <>
+                  {result.output && (
+                    <div className="chimucode-output-entry">
+                      {result.output}
+                    </div>
+                  )}
+                  {result.error && (
+                    <div className="chimucode-output-error">
+                      {result.error}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
