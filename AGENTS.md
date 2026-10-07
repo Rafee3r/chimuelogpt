@@ -12,6 +12,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `src/lib/backup.ts` — `BACKUP_KEYS_TO_CAPTURE` + snapshot/backup/import. **Si agregas una key `chimuelo_*` nueva a localStorage, agrégala también a esta whitelist** o no se respaldará.
 - `src/lib/message-parsers.ts` — regexes canónicas de tags (`<think>`, `<sticker>`, `__MUSIC_PLAYER__`, `<set_reminder>`, imágenes markdown)
 - `src/lib/gallery.ts` — extracción de creaciones para la vista Galería
+- `src/lib/sandbox-worker.ts` — ejecución aislada client-side en Web Worker (JS sin servidor)
+- `src/lib/sandbox-cloud.ts` — ejecución backend aislada (Node.js VM y Python con límites de timeout)
+- `src/lib/chimucode.ts` — presets y lógica de ejecución para el entorno ChimuCode Dev
 
 ## Tests obligatorios antes de commitear
 ```
@@ -26,3 +29,31 @@ La app usa camelCase en algunas keys históricas: `chimuelo_bubbleStyle`, `chimu
 
 ## Estilos
 - `globals.css` es enorme (~8k líneas). Para features nuevas con muchas clases propias, prefiere un archivo CSS aparte (ej. `src/app/gallery.css`) importado desde `page.tsx`.
+
+## Herramientas y Subagentes Favorecidos
+
+**Navegación e Información:**
+- `search_web` y `read_url_content`: Buscar en internet y extraer información de sitios web.
+
+**Interacción y Utilidades:**
+- `ask_question`: Desplegarte un menú de opciones múltiples en la interfaz para pedirte feedback sobre decisiones de diseño o aclarar requerimientos.
+- `schedule`: Programar recordatorios (temporizadores) o "cron jobs" para revisar tareas más tarde.
+
+**Habilidades (Skills) Favorecidas:**
+- `tdd`: Protocolo estricto de Test-Driven Development (Red-Green-Refactor).
+- `diagnose`: Bucle disciplinado para cazar bugs difíciles o regresiones de rendimiento.
+- `caveman`: Modo de comunicación ultracorta para ahorrar tokens (ej. "habla como cavernícola").
+
+**Desarrollo Web:**
+- `modern-web-guidance`: Reglas obligatorias para usar CSS moderno, Container Queries, animaciones fluidas y buenas prácticas frontend.
+- `chrome-devtools`: Integración directa para hacer debugging de red, inspeccionar elementos y cazar memory leaks en Chrome.
+- `webapp-testing`: Herramientas para hacer pruebas end-to-end usando Playwright.
+
+**Manejo de Documentos:**
+- `pdf`, `docx`, `xlsx`, `pptx`: Capacidades avanzadas para leer, modificar, mezclar o crear documentos ofimáticos.
+
+**Delegación a Subagentes:**
+Puedo invocar "clones" o agentes especialistas para que trabajen en paralelo sin saturar nuestra conversación principal:
+- `research`: Un agente con permisos solo de lectura que puedo enviar a investigar la web o leer docenas de archivos en tu base de código para buscar respuestas.
+- `firestore-rules-author`: Un agente dedicado única y exclusivamente a escribir, refactorizar y endurecer reglas de seguridad de Firestore.
+- `self`: Puedo clonarme para realizar tareas independientes mientras yo sigo hablando contigo.

@@ -1,0 +1,240 @@
+/* ── ChimuCode Dev Environment CSS ── */
+
+.chimucode-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  gap: 16px;
+  box-sizing: border-box;
+  color: var(--fg, #f0f0f0);
+}
+
+.chimucode-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: rgba(25, 27, 34, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+}
+
+.chimucode-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chimucode-title-group h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chimucode-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chimucode-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chimucode-select {
+  background: rgba(15, 17, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chimucode-select:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.chimucode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chimucode-btn-primary {
+  background: #4f46e5;
+  color: white;
+}
+
+.chimucode-btn-primary:hover {
+  background: #4338ca;
+}
+
+.chimucode-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chimucode-btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.chimucode-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+/* ── Área de Trabajo (Editor + Consola) ── */
+.chimucode-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 480px;
+}
+
+@media (max-width: 860px) {
+  .chimucode-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chimucode-pane {
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 20, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.chimucode-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(25, 27, 34, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.chimucode-editor {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  color: #f1f5f9;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  padding: 14px;
+  border: none;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.chimucode-console {
+  flex: 1;
+  padding: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  background: #0d0f14;
+  color: #38bdf8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chimucode-console-empty {
+  color: #64748b;
+  font-style: italic;
+  margin: auto;
+  text-align: center;
+}
+
+.chimucode-output-entry {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chimucode-output-error {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #ef4444;
+}
+
+.chimucode-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.chimucode-snippets-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.chimucode-snippet-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.chimucode-snippet-chip:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+}

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
-import { parseSetReminderTag, resolveDisplayContent, liftToolTagsFromThink, userWantsImage, userWantsDocument, wrapTextAsArtifact } from "../lib/message-parsers";
+import { parseSetReminderTag, resolveDisplayContent, liftToolTagsFromThink, userWantsImage, userWantsDocument, wrapTextAsArtifact, stripRedundantToolTags } from "../lib/message-parsers";
 import { buildApiHistory, trimHistory } from "../lib/chat-context";
 import { startActivity, finishActivity, settlePendingActivities, activityLabel, type ToolActivity } from "../lib/activities";
 import {
@@ -17,6 +17,8 @@ import {
 } from "../lib/food-label";
 import { verificarClave, sesionVigente, EPOCA_SESION, AUTH_KEY } from "../lib/auth";
 import "./gallery.css";
+import "./chimucode.css";
+import { ChimuCodeView } from "./ChimuCodeView";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -1139,7 +1141,7 @@ export default function Home() {
   const [pendingImagePrompt, setPendingImagePrompt] = useState<string | null>(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery" | "food">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery" | "food" | "chimucode">("chat");
   const [agentSearch, setAgentSearch] = useState("");
   const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
 
@@ -1366,7 +1368,7 @@ export default function Home() {
   const prevMaxScrollTop = useRef<number>(0);
   const forceScrollNext = useRef<boolean>(true);
   const skipAutoScrollRef = useRef<boolean>(false);
-  const prevViewMode = useRef<"chat" | "university" | "agents" | "gallery" | "food">("chat");
+  const prevViewMode = useRef<"chat" | "university" | "agents" | "gallery" | "food" | "chimucode">("chat");
   const abortControllerRef = useRef<AbortController | null>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
   const localStorageQueueRef = useRef<{ chats?: Chat[]; timer?: any }>({});
@@ -2847,10 +2849,10 @@ export default function Home() {
                   if (searchApiRes.ok) {
                     const searchData = await searchApiRes.json();
                     if (searchData.messages && Array.isArray(searchData.messages)) {
-                      fragments.splice(fIdx, 1, ...searchData.messages);
+                      fragments.splice(fIdx, 1, ...searchData.messages.map((m: any) => typeof m === 'string' ? stripRedundantToolTags(m) : m));
                       fragment = fragments[fIdx];
                     } else if (searchData.content) {
-                      fragment = searchData.content;
+                      fragment = stripRedundantToolTags(searchData.content);
                     } else {
                       fragment = '*(El agente de búsqueda no pudo responder)*';
                     }
@@ -2877,6 +2879,73 @@ export default function Home() {
             }
           }
 
+          if (fragment.includes('<read_url>')) {
+            const readMatch = fragment.match(/<read_url>([\s\S]*?)(?:<\/read_url>|$)/i);
+            if (readMatch?.[1]) {
+              const readUrl = readMatch[1].trim();
+              setAgentTyping(true);
+              const readController = new AbortController();
+              const onMainAbortAgentRead = () => readController.abort();
+              controller.signal.addEventListener('abort', onMainAbortAgentRead);
+              const readTimeoutId = setTimeout(() => readController.abort(), 25000);
+              try {
+                const readRes = await fetch('/api/parse-url', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: readUrl }),
+                  signal: readController.signal,
+                });
+                clearTimeout(readTimeoutId);
+                controller.signal.removeEventListener('abort', onMainAbortAgentRead);
+                if (readRes.ok) {
+                  const parseData = await readRes.json();
+                  const readMessages = [
+                    ...historyMsgs,
+                    { role: 'assistant' as const, content: `[Extracción de URL solicitada: "${readUrl}"]` },
+                    { role: 'user' as const, content: `CONTENIDO DE LA PÁGINA (${readUrl}):\n\nTítulo: ${parseData.title}\n\n${parseData.text || 'La página parece no tener texto legible.'}\n\nINSTRUCCIONES: Responde la pregunta inicial del usuario basándote en este contenido. No uses la etiqueta <read_url> de nuevo.` }
+                  ];
+                  const readChatController = new AbortController();
+                  const onMainAbortAgentChat = () => readChatController.abort();
+                  controller.signal.addEventListener('abort', onMainAbortAgentChat);
+                  const readChatTimeoutId = setTimeout(() => readChatController.abort(), 25000);
+                  const readApiRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: readMessages, model, persona, customInstructions: finalSystemPrompt, isAgent: true }),
+                    signal: readChatController.signal,
+                  });
+                  clearTimeout(readChatTimeoutId);
+                  controller.signal.removeEventListener('abort', onMainAbortAgentChat);
+                  if (readApiRes.ok) {
+                    const readData = await readApiRes.json();
+                    if (readData.messages && Array.isArray(readData.messages)) {
+                      fragments.splice(fIdx, 1, ...readData.messages.map((m: any) => typeof m === 'string' ? stripRedundantToolTags(m) : m));
+                      fragment = fragments[fIdx];
+                    } else if (readData.content) {
+                      fragment = stripRedundantToolTags(readData.content);
+                    } else {
+                      fragment = '*(El agente no pudo procesar la web)*';
+                    }
+                  } else {
+                    const errText = await readApiRes.text().catch(() => '');
+                    fragment = `*(Error al generar respuesta del agente: ${readApiRes.status} ${errText.slice(0, 100)})*`;
+                  }
+                } else {
+                  const errText = await readRes.text().catch(() => '');
+                  fragment = `*(Error al leer el enlace: ${readRes.status} ${errText.slice(0, 100)})*`;
+                }
+              } catch (readErr: any) {
+                clearTimeout(readTimeoutId);
+                controller.signal.removeEventListener('abort', onMainAbortAgentRead);
+                if (controller.signal.aborted) throw readErr;
+                if (readErr?.name === 'AbortError') {
+                  fragment = '*(Tiempo de espera agotado al leer la web)*';
+                } else {
+                  fragment = `*(Error de lectura web del agente: ${readErr.message || readErr})*`;
+                }
+              }
+            }
+          }
           if (fragment.includes('<generate_image')) {
             const promptMatch = fragment.match(/<generate_image(?:[^>]*)>([\s\S]*?)(?:<\/generate_image>|$)/i);
             if (promptMatch?.[1]) {
@@ -2990,6 +3059,9 @@ export default function Home() {
         // Hide search_web tags during streaming
         if (streamContent.includes('<search_web')) {
           streamContent = streamContent.replace(/<search_web(?:[^>]*)>[\s\S]*?(?:<\/search_web>|$)/i, '__WEB_SEARCHING__').trim();
+        }
+        if (streamContent.includes('<read_url')) {
+          streamContent = streamContent.replace(/<read_url(?:[^>]*)>[\s\S]*?(?:<\/read_url>|$)/i, '__WEB_SEARCHING__').trim();
         }
         const streamingMsg: BaseMessage = { id: assistantId, role: 'assistant', content: streamContent || (streamReasoning ? '' : ''), reasoning: streamReasoning || undefined, model };
         if (currentChatIdRef.current === targetChatId) {
@@ -3161,10 +3233,11 @@ export default function Home() {
               controller.signal.addEventListener('abort', onMainAbortChat);
               const searchChatTimeoutId = setTimeout(() => searchChatController.abort(), 25000);
               
+              const searchSystemPrompt = finalSystemPrompt + '\\n\\nCRÍTICO: ESTÁS RESPONDIENDO A LOS RESULTADOS DE UNA BÚSQUEDA. NO USES NUNCA las etiquetas <search_web> o <read_url> de nuevo. Contesta la pregunta directamente con la información obtenida o indica que no lo encontraste.';
               const searchApiRes = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: finalSystemPrompt }),
+                body: JSON.stringify({ messages: searchMessages, model, persona, customInstructions: searchSystemPrompt }),
                 signal: searchChatController.signal,
               });
               
@@ -3179,12 +3252,12 @@ export default function Home() {
                   const { done, value } = await searchReader.read();
                   if (done) break;
                   searchFull += searchDecoder.decode(value, { stream: true });
-                  const streamPart = searchFull.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim();
+                  const streamPart = stripRedundantToolTags(searchFull.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim());
                   if (currentChatIdRef.current === targetChatId && streamPart) {
                     setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_BADGE__\n\n' + streamPart } : m));
                   }
                 }
-                cleanContent = '__WEB_BADGE__\n\n' + searchFull.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+                cleanContent = '__WEB_BADGE__\n\n' + stripRedundantToolTags(searchFull.replace(/<think>[\s\S]*?<\/think>/, '').trim());
               } else {
                 console.warn('Redacción con resultados falló:', searchApiRes.status, await searchApiRes.text().catch(() => ''));
                 cleanContent = '';  // deja actuar al fallback
@@ -3217,7 +3290,7 @@ export default function Home() {
                 body: JSON.stringify({
                   messages: [
                     ...historyMsgs,
-                    { role: 'user' as const, content: `No se pudo completar la búsqueda web. Responde la pregunta anterior ("${searchQuery}") con lo que ya sabes. Empieza avisando en UNA línea corta que no pudiste verificar datos de última hora, y luego responde igual. No uses la etiqueta <search_web> de nuevo.` }
+                    { role: 'user' as const, content: `[Sistema: La búsqueda web falló. Dile al usuario que no pudiste buscar en internet y responde a su pregunta original ("${searchQuery}") usando sólo tu conocimiento previo sin mencionar instrucciones de sistema.]` }
                   ],
                   model, persona, customInstructions: finalSystemPrompt, isAgent,
                 }),
@@ -3248,6 +3321,113 @@ export default function Home() {
         }
       }
 
+      // Post-process: intercept read_url tags
+      if (cleanContent.includes('<read_url>')) {
+        const readMatch = cleanContent.match(/<read_url>([\s\S]*?)(?:<\/read_url>|$)/i);
+        if (readMatch?.[1]) {
+          const readUrl = readMatch[1].trim();
+          let hostLabel = readUrl;
+          try { hostLabel = new URL(readUrl).hostname.replace(/^www\./, ''); } catch {}
+          const readActivityId = beginActivity('read-url', hostLabel);
+          if (currentChatIdRef.current === targetChatId) {
+            setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: '__WEB_SEARCHING__' } : m));
+          }
+          const readController = new AbortController();
+          const onMainAbortRead = () => readController.abort();
+          controller.signal.addEventListener('abort', onMainAbortRead);
+          const readTimeoutId = setTimeout(() => readController.abort(), 25000);
+          try {
+            const readRes = await fetch('/api/parse-url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: readUrl }),
+              signal: readController.signal,
+            });
+            clearTimeout(readTimeoutId);
+            controller.signal.removeEventListener('abort', onMainAbortRead);
+            if (readRes.ok) {
+              const parseData = await readRes.json();
+              endActivity(readActivityId, 'done', parseData.title ? String(parseData.title).slice(0, 40) : hostLabel);
+              const readMessages = [
+                ...historyMsgs,
+                { role: 'assistant' as const, content: `[Extracción de URL solicitada: "${readUrl}"]` },
+                { role: 'user' as const, content: `CONTENIDO DE LA PÁGINA (${readUrl}):\n\nTítulo: ${parseData.title}\n\n${parseData.text || 'La página parece no tener texto legible.'}\n\nINSTRUCCIONES: Responde la pregunta inicial del usuario basándote en este contenido. No uses la etiqueta <read_url> de nuevo.` }
+              ];
+              const readChatController = new AbortController();
+              const onMainAbortChat = () => readChatController.abort();
+              controller.signal.addEventListener('abort', onMainAbortChat);
+              const readChatTimeoutId = setTimeout(() => readChatController.abort(), 35000);
+              const readSystemPrompt = finalSystemPrompt + '\\n\\nCRÍTICO: ESTÁS RESPONDIENDO AL CONTENIDO DE UNA URL EXTRAÍDA. NO USES NUNCA las etiquetas <search_web> o <read_url> de nuevo. Contesta la pregunta directamente o indica que no encontraste la información.';
+              const readApiRes = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: readMessages, model, persona, customInstructions: readSystemPrompt, isAgent }),
+                signal: readChatController.signal,
+              });
+              clearTimeout(readChatTimeoutId);
+              controller.signal.removeEventListener('abort', onMainAbortChat);
+              if (readApiRes.ok) {
+                const readReader = readApiRes.body!.getReader();
+                const readDecoder = new TextDecoder();
+                let readFull = '';
+                while (true) {
+                  const { done, value } = await readReader.read();
+                  if (done) break;
+                  readFull += readDecoder.decode(value, { stream: true });
+                  const streamPart = stripRedundantToolTags(readFull.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim());
+                  if (currentChatIdRef.current === targetChatId && streamPart) {
+                    setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: streamPart } : m));
+                  }
+                }
+                cleanContent = stripRedundantToolTags(readFull.replace(/<think>[\s\S]*?<\/think>/, '').trim());
+              } else {
+                cleanContent = '';
+              }
+            } else {
+              endActivity(readActivityId, 'error');
+              cleanContent = '';
+            }
+          } catch (readErr: any) {
+            clearTimeout(readTimeoutId);
+            controller.signal.removeEventListener('abort', onMainAbortRead);
+            endActivity(readActivityId, 'error');
+            try {
+              const fallbackRes = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  messages: [
+                    ...historyMsgs,
+                    { role: 'user' as const, content: `[Sistema: No se pudo acceder a la página ${readUrl}. Dile al usuario que el link está caído o no permite acceso, y responde a su pregunta original usando sólo tu conocimiento previo sin mencionar instrucciones de sistema.]` }
+                  ],
+                  model, persona, customInstructions: finalSystemPrompt, isAgent,
+                }),
+                signal: controller.signal,
+              });
+              if (fallbackRes.ok) {
+                const fbReader = fallbackRes.body!.getReader();
+                const fbDecoder = new TextDecoder();
+                let fbText = '';
+                while (true) {
+                  const { done, value } = await fbReader.read();
+                  if (done) break;
+                  fbText += fbDecoder.decode(value, { stream: true });
+                  const partial = resolveDisplayContent(fbText).content;
+                  if (partial && currentChatIdRef.current === targetChatId) {
+                    setDisplayMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: partial } : m));
+                  }
+                }
+                cleanContent = resolveDisplayContent(fbText).content;
+              }
+            } catch (fbErr: any) {
+              if (controller.signal.aborted) throw fbErr;
+            }
+            if (!cleanContent.trim()) {
+              cleanContent = `No pude leer la página ${readUrl}. ¿Revisas si está bien escrita o si pide iniciar sesión?`;
+            }
+          }
+        }
+      }
       // Post-process: cálculo exacto (<calc>). El modelo pide el cómputo y
       // nosotros lo resolvemos de verdad; después le pedimos que lo explique.
       if (cleanContent.includes('<calc>')) {
@@ -3535,7 +3715,8 @@ export default function Home() {
       ...(MOSTRAR_MODO_UNIVERSITARIO
         ? [{ id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } }]
         : []),
-      { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as 'chat' | 'university'); setViewMode('settings'); } },
+      { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as any); setViewMode('settings'); } },
+      { id: 'a_chimucode', icon: Terminal, label: 'ChimuCode (Dev Sandbox)', hint: 'Dev', run: () => { prevViewMode.current = 'chat'; setViewMode('chimucode'); } },
       { id: 'a_model_flash', icon: Zap, label: 'Modelo: ⚡ Flash', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
       { id: 'a_model_uncensored', icon: Sparkles, label: 'Modelo: 🔓 Sin censura (4o-mini)', run: () => {
         if (dontShowUncensoredModal) {
@@ -3984,6 +4165,13 @@ export default function Home() {
             >
               <Search size={15} />
               <span>Ingredientes</span>
+            </button>
+            <button
+              className={`sb-row ${viewMode === 'chimucode' ? 'active' : ''}`}
+              onClick={() => { prevViewMode.current = 'chat'; setViewMode('chimucode'); setSidebarOpen(false); }}
+            >
+              <Terminal size={15} />
+              <span>ChimuCode</span>
             </button>
           </div>
 
@@ -4820,7 +5008,9 @@ export default function Home() {
             }
           }}
           className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`} style={{ display: viewMode === 'settings' ? 'none' : undefined, paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined), paddingTop: displayMessages.length === 0 ? '0' : undefined }}>
-          {viewMode === "food" ? (
+          {viewMode === "chimucode" ? (
+            <ChimuCodeView onBackToChat={() => setViewMode("chat")} />
+          ) : viewMode === "food" ? (
             <div className="food-page">
               <div className="food-header">
                 <h1 className="food-title">Ingredientes</h1>

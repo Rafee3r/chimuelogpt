@@ -136,7 +136,7 @@ export function parseSetReminderTag(content: string): {
    de ahí; si el modelo no las emite, page.tsx hace un fallback. */
 
 export const TOOL_TAG_RE =
-  /<(generate_image|generate_music|artifact|search_web|calc)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
+  /<(generate_image|generate_music|artifact|search_web|calc|read_url)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
 
 function toolTagRe(): RegExp {
   return new RegExp(TOOL_TAG_RE.source, 'gi');
@@ -190,11 +190,11 @@ export function userWantsGeneratedMedia(text: string): boolean {
 export function unwrapFencedToolTags(content: string): string {
   return content
     .replace(
-      /```(?:xml|html|text)?\s*(<(?:generate_image|generate_music|artifact|search_web|calc)[\s\S]*?<\/(?:generate_image|generate_music|artifact|search_web|calc)>)\s*```/gi,
+      /```(?:xml|html|text)?\s*(<(?:generate_image|generate_music|artifact|search_web|calc|read_url)[\s\S]*?<\/(?:generate_image|generate_music|artifact|search_web|calc|read_url)>)\s*```/gi,
       '$1',
     )
     .replace(
-      /&lt;(\/??(?:generate_image|generate_music|artifact|artifact_title|artifact_desc|artifact_html|search_web|calc)[^&]*)&gt;/gi,
+      /&lt;(\/??(?:generate_image|generate_music|artifact|artifact_title|artifact_desc|artifact_html|search_web|calc|read_url)[^&]*)&gt;/gi,
       '<$1>',
     );
 }
@@ -233,4 +233,10 @@ export function wrapTextAsArtifact(title: string, body: string): string {
     </body></html>
   </artifact_html>
 </artifact>`;
+}
+
+
+export function stripRedundantToolTags(content: string): string {
+  // Manejar tanto <tag>, &lt;tag&gt; como \\<tag\\> y permitir atributos
+  return content.replace(/(?:<|&lt;|\\<)(search_web|read_url|calc)(?:[^>&]*?)(?:>|&gt;|\\>)[\s\S]*?(?:(?:<|&lt;|\\<)\/(?:\1)(?:>|&gt;|\\>)|$)/gi, '').trim();
 }
