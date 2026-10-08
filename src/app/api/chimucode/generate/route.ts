@@ -1,21 +1,26 @@
 import { extractCodeFromAiResponse } from '../../../../lib/chimucode';
+import { isUncensoredModel } from '../../../../lib/models';
 
 export const maxDuration = 45;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, currentCode, language = 'html' } = await req.json().catch(() => ({}));
+    const { prompt, currentCode, language = 'html', model = 'deepseek-v4-flash' } = await req.json().catch(() => ({}));
 
     if (!prompt || typeof prompt !== 'string') {
       return Response.json({ ok: false, error: 'Debes proporcionar una instrucción para ChimuCode.' }, { status: 400 });
     }
 
-    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
+    const useUncensored = isUncensoredModel(model);
+    const apiKey = useUncensored 
+      ? (process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY)
+      : (process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY);
+
     if (!apiKey) {
       return Response.json({ ok: false, error: 'API key no configurada en el servidor.' }, { status: 500 });
     }
 
-    const isOpenAi = !process.env.DEEPSEEK_API_KEY && !!process.env.OPENAI_API_KEY;
+    const isOpenAi = useUncensored || (!process.env.DEEPSEEK_API_KEY && !!process.env.OPENAI_API_KEY);
     const apiEndpoint = isOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
     const apiModel = isOpenAi ? 'gpt-4o-mini' : 'deepseek-chat';
 

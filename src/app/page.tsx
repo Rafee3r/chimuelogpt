@@ -4159,7 +4159,7 @@ export default function Home() {
         <div className="sb-scroll">
           {viewMode === 'chimucode' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Sesiones de código</div>
+              <div style={{ fontSize: '0.75rem', color: '#8a8a93', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>SESIONES DE CÓDIGO</div>
               {chimuCodeSessions.length === 0 ? (
                 <div style={{ padding: '8px 16px', color: '#666', fontSize: '0.85rem' }}>No hay sesiones previas</div>
               ) : (
@@ -4468,9 +4468,31 @@ export default function Home() {
       })()}
 
       <div className={`main-content ${sidebarOpen ? 'con-panel-abierto' : ''}`}>
-        {/* Sin position inline: el CSS lo fija como sticky para que el header
-            no se vaya de la pantalla al abrirse el teclado en iOS. */}
-        <div className="mobile-header" style={{ display: (viewMode === 'settings' || viewMode === 'chimucode' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
+        {viewMode === "chimucode" ? (
+          <ChimuCodeView 
+            onBackToChat={() => setViewMode("chat")} 
+            activeSessionId={activeChimuSessionId}
+            onSaveSession={(session: any) => {
+              setChimuCodeSessions((prev: any[]) => {
+                const idx = prev.findIndex(s => s.id === session.id);
+                const next = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
+                localStorage.setItem("chimuelo_code_sessions", JSON.stringify(next));
+                return next;
+              });
+              if (session.id !== activeChimuSessionId) setActiveChimuSessionId(session.id);
+            }}
+            initialSessionData={chimuCodeSessions.find(s => s.id === activeChimuSessionId)}
+            model={model}
+            setModel={(newModel) => {
+              setModel(newModel as any);
+              localStorage.setItem('chimuelo_model', newModel);
+            }}
+          />
+        ) : (
+          <>
+            {/* Sin position inline: el CSS lo fija como sticky para que el header
+                no se vaya de la pantalla al abrirse el teclado en iOS. */}
+            <div className="mobile-header" style={{ display: (viewMode === 'settings' || (activeAgent && viewMode === 'chat')) ? 'none' : undefined, justifyContent: 'center' }}>
           <button onClick={() => setSidebarOpen(true)} className="icon-btn" style={{ position: 'absolute', left: '16px' }}>
             <Menu size={24} />
           </button>
@@ -5092,38 +5114,14 @@ export default function Home() {
               }
             }
           }}
-          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''} ${viewMode === 'chimucode' ? 'chimucode-view-full' : ''}`}
+          className={`chat-area style-${bubbleStyle} density-${messageDensity} ${activeAgent ? 'whatsapp-mode' : ''}`}
           style={{
             display: viewMode === 'settings' ? 'none' : undefined,
-            padding: viewMode === 'chimucode' ? 0 : undefined,
-            height: viewMode === 'chimucode' ? '100%' : undefined,
-            maxHeight: viewMode === 'chimucode' ? '100%' : undefined,
-            overflow: viewMode === 'chimucode' ? 'hidden' : undefined,
             paddingBottom: viewMode === 'university' ? '20px' : (displayMessages.length === 0 ? '0' : undefined),
             paddingTop: displayMessages.length === 0 ? '0' : undefined
           }}
         >
-          {viewMode === "chimucode" ? (
-            <ChimuCodeView 
-              onBackToChat={() => setViewMode("chat")} 
-              activeSessionId={activeChimuSessionId}
-              onSaveSession={(session: any) => {
-                setChimuCodeSessions((prev: any[]) => {
-                  const idx = prev.findIndex(s => s.id === session.id);
-                  const next = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
-                  localStorage.setItem("chimuelo_code_sessions", JSON.stringify(next));
-                  return next;
-                });
-                if (session.id !== activeChimuSessionId) setActiveChimuSessionId(session.id);
-              }}
-              initialSessionData={chimuCodeSessions.find(s => s.id === activeChimuSessionId)}
-              model={model}
-              setModel={(newModel) => {
-                setModel(newModel as any);
-                localStorage.setItem('chimuelo_model', newModel);
-              }}
-            />
-          ) : viewMode === "food" ? (
+          {viewMode === "food" ? (
             <div className="food-page">
               <div className="food-header">
                 <h1 className="food-title">Ingredientes</h1>
@@ -6436,6 +6434,8 @@ export default function Home() {
             </div>
             
           </div>
+        )}
+          </>
         )}
       </div>
 
