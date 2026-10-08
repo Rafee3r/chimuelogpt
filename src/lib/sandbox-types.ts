@@ -27,3 +27,13 @@ export interface AgentStageInfo {
   label: string;
   details?: string;
 }
+
+export interface ChimuCodeSession {
+  id: string;
+  title: string;
+  messages: ChimuCodeMessage[];
+  activeCode: string;
+  language: string;
+  consoleOutput: string | null;
+  updatedAt: number;
+}

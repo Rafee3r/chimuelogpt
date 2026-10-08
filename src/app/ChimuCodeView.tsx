@@ -2,30 +2,32 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Play, RotateCw, Trash2, Copy, Check, Terminal,
-  ChevronLeft, Eye, Smartphone, Monitor, ExternalLink,
-  Download, Wand2, Sparkles, Code, ChevronRight, X,
-  Folder, GitBranch, CheckSquare, CornerDownLeft, SplitSquareVertical,
-  Bell, List, Plus, Clock, Briefcase, MessageSquare, Building, Sun, Mic
+  Play, RotateCw, Copy, Check, Terminal,
+  Eye, Smartphone, Monitor, ExternalLink,
+  Download, Code, X, CornerDownLeft, ChevronDown, Check as CheckIcon
 } from 'lucide-react';
-import type { SandboxResult, MultiAgentStage } from '../lib/sandbox-types';
+import ReactMarkdown from 'react-markdown';
 import { executeBrowserJS } from '../lib/sandbox-worker';
-import { CHIMUCODE_STARTER_SNIPPETS, detectCodeLanguage, extractCodeFromAiResponse } from '../lib/chimucode';
+import { CHIMUCODE_STARTER_SNIPPETS, detectCodeLanguage } from '../lib/chimucode';
+import type { ChimuCodeSession, ChimuCodeMessage } from '../lib/sandbox-types';
+import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED } from '../lib/models';
 
-interface ChimuCodeMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  code?: string;
-  language?: string;
-  timestamp: string;
-}
+const ALL_MODELS = [
+  { id: CLIENT_MODEL_FLASH, shortName: 'Flash' },
+  { id: CLIENT_MODEL_UNCENSORED, shortName: 'Sin censura' }
+];
+const CHIMUCODE_DEFAULT_MODEL = CLIENT_MODEL_FLASH;
 
 interface ChimuCodeViewProps {
   onBackToChat: () => void;
+  activeSessionId: string | null;
+  onSaveSession: (session: ChimuCodeSession) => void;
+  initialSessionData?: ChimuCodeSession;
+  model: string;
+  setModel: (m: string) => void;
 }
 
-export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
+export function ChimuCodeView({ onBackToChat, activeSessionId, onSaveSession, initialSessionData, model, setModel }: ChimuCodeViewProps) {
   const [messages, setMessages] = useState<ChimuCodeMessage[]>([]);
   const [input, setInput] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -40,11 +42,33 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
 
   const [panelWidthPercent, setPanelWidthPercent] = useState<number>(50);
   const [isResizing, setIsResizing] = useState<boolean>(false);
+  
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const detectedLang = detectCodeLanguage(activeCode);
   const isHtml = detectedLang === 'html';
+
+  // Sincronizar estado inicial al cambiar sesión
+  useEffect(() => {
+    if (activeSessionId && initialSessionData) {
+      setMessages(initialSessionData.messages || []);
+      setSessionTitle(initialSessionData.title || 'Sesión de código');
+      setActiveCode(initialSessionData.activeCode || '');
+      setConsoleOutput(initialSessionData.consoleOutput || null);
+      if (initialSessionData.activeCode) setShowRightPanel(true);
+    } else {
+      // Reset
+      setMessages([]);
+      setSessionTitle('Nueva sesión de código');
+      setActiveCode(CHIMUCODE_STARTER_SNIPPETS[0].code);
+      setConsoleOutput(null);
+      setShowRightPanel(false);
+    }
+  }, [activeSessionId, initialSessionData]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -55,7 +79,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     if (!isResizing || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const newWidthPercent = ((rect.right - e.clientX) / rect.width) * 100;
-    setPanelWidthPercent(Math.min(80, Math.max(25, newWidthPercent)));
+    setPanelWidthPercent(Math.min(90, Math.max(10, newWidthPercent)));
   }, [isResizing]);
 
   const handleMouseUp = useCallback(() => {
@@ -80,6 +104,28 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
+  const saveCurrentState = (msgs: ChimuCodeMessage[], title: string, code: string, out: string | null) => {
+    const sId = activeSessionId || `code-${Date.now()}`;
+    const newSession: ChimuCodeSession = {
+      id: sId,
+      title: title,
+      messages: msgs,
+      activeCode: code,
+      language: detectCodeLanguage(code),
+      consoleOutput: out,
+      updatedAt: Date.now()
+    };
+    onSaveSession(newSession);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const promptText = (textToSend || input).trim();
     if (!promptText || isGenerating) return;
@@ -91,13 +137,18 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs);
     setInput('');
     setIsGenerating(true);
 
-    if (sessionTitle === 'Nueva sesión de código') {
-      setSessionTitle(promptText.slice(0, 36));
+    let newTitle = sessionTitle;
+    if (activeSessionId == null && sessionTitle === 'Nueva sesión de código') {
+      newTitle = promptText.slice(0, 36);
+      setSessionTitle(newTitle);
     }
+    
+    saveCurrentState(newMsgs, newTitle, activeCode, consoleOutput);
 
     try {
       const res = await fetch('/api/chimucode/generate', {
@@ -107,6 +158,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
           prompt: promptText,
           currentCode: activeCode,
           language: detectedLang,
+          model: model || CHIMUCODE_DEFAULT_MODEL
         }),
       });
 
@@ -118,18 +170,24 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
       const assistantMsg: ChimuCodeMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.rawExplanation || 'Aquí tienes la aplicación construida:',
-        code: data.code,
-        language: data.language || 'html',
+        content: data.rawExplanation || 'Aquí tienes el código:',
+        codeSnippet: data.code,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
-      setMessages(prev => [...prev, assistantMsg]);
+      const finalMsgs = [...newMsgs, assistantMsg];
+      setMessages(finalMsgs);
+      
+      let finalCode = activeCode;
       if (data.code) {
-        setActiveCode(data.code);
+        finalCode = data.code;
+        setActiveCode(finalCode);
         setShowRightPanel(true);
         setActiveRightTab(data.language === 'html' ? 'preview' : 'console');
       }
+      
+      saveCurrentState(finalMsgs, newTitle, finalCode, consoleOutput);
+      
     } catch (err: any) {
       const errorMsg: ChimuCodeMessage = {
         id: `err-${Date.now()}`,
@@ -137,7 +195,9 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
         content: `⚠️ Error al ejecutar con ChimuCode: ${err.message}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      setMessages(prev => [...prev, errorMsg]);
+      const errMsgs = [...newMsgs, errorMsg];
+      setMessages(errMsgs);
+      saveCurrentState(errMsgs, newTitle, activeCode, consoleOutput);
     } finally {
       setIsGenerating(false);
     }
@@ -145,13 +205,16 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
 
   const handleRunCode = async () => {
     setConsoleOutput(null);
+    let newOut = null;
     if (isHtml) {
       setActiveRightTab('preview');
-      setConsoleOutput('Aplicación HTML actualizada en el sandbox.');
+      newOut = 'Aplicación HTML actualizada en el sandbox.';
+      setConsoleOutput(newOut);
     } else if (detectedLang === 'javascript') {
       setActiveRightTab('console');
       const res = await executeBrowserJS(activeCode);
-      setConsoleOutput(res.output || res.error || 'Ejecutado sin salida.');
+      newOut = res.output || res.error || 'Ejecutado sin salida.';
+      setConsoleOutput(newOut);
     } else {
       setActiveRightTab('console');
       const res = await fetch('/api/sandbox', {
@@ -160,8 +223,10 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
         body: JSON.stringify({ code: activeCode, language: detectedLang }),
       });
       const data = await res.json();
-      setConsoleOutput(data.output || data.error || 'Ejecutado sin salida.');
+      newOut = data.output || data.error || 'Ejecutado sin salida.';
+      setConsoleOutput(newOut);
     }
+    saveCurrentState(messages, sessionTitle, activeCode, newOut);
   };
 
   const handleCopyCode = () => {
@@ -181,92 +246,95 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
     URL.revokeObjectURL(url);
   };
 
-  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobileScreen(window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  if (isMobileScreen) {
-    return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', background: '#0E0E0E', padding: 20, textAlign: 'center' }}>
-        <Terminal size={48} style={{ marginBottom: 16, color: '#A0A0A0' }} />
-        <h2 style={{ fontSize: '1.2rem', marginBottom: 8, fontWeight: 600 }}>No disponible en celular</h2>
-        <p style={{ color: '#A0A0A0', fontSize: '0.9rem', marginBottom: 24 }}>El entorno de desarrollo ChimuCode requiere una pantalla grande. Por favor, usa una computadora para acceder a esta función.</p>
-        <button onClick={onBackToChat} className="chimucode-btn chimucode-btn-primary">Volver a Chimuelo</button>
-      </div>
-    );
-  }
+  const currentModelData = ALL_MODELS.find(m => m.id === model) || ALL_MODELS.find(m => m.id === CHIMUCODE_DEFAULT_MODEL);
 
   return (
     <div className="chimucode-fullscreen-root">
-
-
       {/* ── Main Area ── */}
       <div className="chimucode-main-area">
         {/* Top Bar */}
         <div className="chimucode-top-bar">
-          <div className="chimucode-breadcrumb">
-            <Folder size={14} className="text-gray-400" />
-            <span className="text-gray-400">acme-web</span>
-            <span className="text-gray-600">/</span>
-            <span className="text-white font-medium">{sessionTitle}</span>
+          <div className="chimucode-top-left">
+            <button className="c-btn-secondary" onClick={onBackToChat}>
+              Volver al Chat
+            </button>
+            <div className="c-session-title">
+              {sessionTitle}
+            </div>
           </div>
           
+          <div className="chimucode-top-center">
+            <div className="c-model-selector" onClick={() => setShowModelDropdown(!showModelDropdown)}>
+              Chimuelo <span className="c-model-highlight">{currentModelData?.shortName || 'Flash'}</span> <ChevronDown size={14} />
+            </div>
+            {showModelDropdown && (
+              <div className="c-model-dropdown">
+                {ALL_MODELS.map(m => (
+                  <button 
+                    key={m.id} 
+                    className={`c-model-option ${model === m.id ? 'active' : ''}`}
+                    onClick={() => {
+                      setModel(m.id);
+                      setShowModelDropdown(false);
+                    }}
+                  >
+                    <span>Chimuelo {m.shortName}</span>
+                    {model === m.id && <CheckIcon size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="chimucode-top-actions">
-            <button className="c-icon-btn" onClick={handleDownload} title="Download"><Download size={15} /></button>
-            <button className="c-icon-btn" onClick={handleRunCode} title="Run"><Play size={15} /></button>
-            <button className="c-icon-btn" onClick={() => setShowRightPanel(!showRightPanel)} title="Toggle Preview Panel"><SplitSquareVertical size={15} /></button>
+            <button className="c-icon-btn" onClick={handleDownload} title="Descargar"><Download size={15} /></button>
+            <button className="c-icon-btn" onClick={handleRunCode} title="Ejecutar"><Play size={15} /></button>
+            <button className="c-icon-btn" onClick={() => setShowRightPanel(!showRightPanel)} title="Alternar panel"><Code size={15} /></button>
           </div>
         </div>
 
         <div className="chimucode-content-split" ref={containerRef}>
-          {/* Chat / Canvas Area */}
-          <div className="chimucode-chat-canvas" style={{ width: showRightPanel ? `${100 - panelWidthPercent}%` : '100%' }}>
+          {/* Chat Column */}
+          <div className="chimucode-chat-column" style={{ width: showRightPanel ? `${100 - panelWidthPercent}%` : '100%' }}>
             
             <div className="chimucode-messages-area">
               {messages.length === 0 ? (
                 <div className="chimucode-empty-state">
-                  <div className="chimucode-crab">
-                    {[
-                      0,0,0,1,1,1,1,1,0,0,0,
-                      0,1,1,1,1,1,1,1,1,1,0,
-                      1,1,1,1,1,1,1,1,1,1,1,
-                      1,1,0,1,1,1,1,1,0,1,1,
-                      1,1,1,1,1,1,1,1,1,1,1,
-                      0,1,0,1,0,0,0,1,0,1,0,
-                      0,1,0,1,0,0,0,1,0,1,0
-                    ].map((pixel, i) => (
-                      <div
-                        key={i}
-                        className={pixel ? 'crab-pixel' : 'crab-empty'}
-                      />
-                    ))}
-                  </div>
+                  <Terminal size={48} style={{ color: '#444', marginBottom: '16px' }} />
+                  <h3>ChimuCode Dev</h3>
+                  <p>Describe la aplicación o script que deseas construir.</p>
                 </div>
               ) : (
                 <div className="chimucode-messages-list">
                   {messages.map((m) => (
                     <div key={m.id} className={`c-message ${m.role}`}>
                       <div className="c-message-bubble">
-                        <div className="c-message-content">{m.content}</div>
-                        {m.code && (
+                        <div className="c-message-content">
+                          <ReactMarkdown>{m.content}</ReactMarkdown>
+                        </div>
+                        {m.codeSnippet && (
                           <div className="c-message-code-card">
                             <div className="c-code-info">
-                              <Code size={14} /> <span>Código {m.language?.toUpperCase() || 'APP'} generado</span>
+                              <Code size={14} /> <span>Código generado</span>
                             </div>
-                            <button className="c-btn-secondary" onClick={() => {
-                              setActiveCode(m.code!);
-                              setShowRightPanel(true);
-                              setActiveRightTab(m.language === 'html' ? 'preview' : 'console');
-                            }}>
-                              <Eye size={13} /> Vista Previa
-                            </button>
+                            <div className="c-code-actions">
+                              <button className="c-btn-secondary" onClick={() => {
+                                setActiveCode(m.codeSnippet!);
+                                setShowRightPanel(true);
+                                setActiveRightTab('code');
+                              }}>
+                                <Code size={13} /> Ver
+                              </button>
+                              <button className="c-btn-secondary primary" onClick={() => {
+                                setActiveCode(m.codeSnippet!);
+                                setShowRightPanel(true);
+                                setActiveRightTab(detectCodeLanguage(m.codeSnippet!) === 'html' ? 'preview' : 'console');
+                                // Give it a tick to set the state before running
+                                setTimeout(() => handleRunCode(), 50);
+                              }}>
+                                <Play size={13} /> Ejecutar
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -274,7 +342,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                   ))}
                   {isGenerating && (
                     <div className="c-typing-indicator">
-                      <RotateCw size={14} className="animate-spin" /> ChimuCode escribiendo...
+                      <RotateCw size={14} className="animate-spin" /> Escribiendo...
                     </div>
                   )}
                   <div ref={chatEndRef} />
@@ -284,45 +352,30 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
 
             {/* Input Area */}
             <div className="chimucode-input-area">
-              <div className="c-context-chips">
-                <button className="c-chip"><Monitor size={12} /> Local</button>
-                <button className="c-chip"><Folder size={12} /> app</button>
-                <button className="c-chip"><GitBranch size={12} /> main</button>
-                <button className="c-chip active"><CheckSquare size={12} /> worktree</button>
-              </div>
-
-              <div className="c-input-box">
-                <input 
-                  type="text" 
+              <div className="c-input-box-modern">
+                <textarea 
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="build the alignment grid demo"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Ej. haz un contador en HTML..."
                   disabled={isGenerating}
+                  rows={1}
                 />
                 <button 
-                  className="c-send-btn" 
+                  className="c-send-btn-modern" 
                   onClick={() => handleSendMessage()}
                   disabled={!input.trim() || isGenerating}
                 >
                   <CornerDownLeft size={16} />
                 </button>
               </div>
-
-              <div className="c-input-footer">
-                <div className="c-auto-accept">
-                  <span>Auto accept edits</span>
-                  <button className="c-footer-icon"><List size={13} /></button>
-                  <button className="c-footer-icon"><Plus size={13} /></button>
-                  <button className="c-footer-icon"><Mic size={13} /></button>
-                </div>
-                <div className="c-model-info">
-                  <span>Opus 4.6</span>
-                  <div className="c-model-spinner"></div>
-                </div>
-              </div>
             </div>
-
           </div>
 
           {/* Resizer */}
@@ -368,6 +421,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                         className="chimucode-icon-btn"
                         style={{ width: 28, height: 28 }}
                         onClick={() => setIsMobileMode(!isMobileMode)}
+                        title="Modo móvil"
                       >
                         {isMobileMode ? <Monitor size={12} /> : <Smartphone size={12} />}
                       </button>
@@ -378,6 +432,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                           const blob = new Blob([activeCode], { type: 'text/html;charset=utf-8' });
                           window.open(URL.createObjectURL(blob), '_blank');
                         }}
+                        title="Abrir en nueva pestaña"
                       >
                         <ExternalLink size={12} />
                       </button>
@@ -387,6 +442,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                     className="chimucode-icon-btn"
                     style={{ width: 28, height: 28 }}
                     onClick={handleCopyCode}
+                    title="Copiar código"
                   >
                     {copied ? <Check size={12} style={{ color: '#4ade80' }} /> : <Copy size={12} />}
                   </button>
@@ -394,6 +450,7 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                     className="chimucode-icon-btn"
                     style={{ width: 28, height: 28 }}
                     onClick={() => setShowRightPanel(false)}
+                    title="Cerrar panel"
                   >
                     <X size={12} />
                   </button>
@@ -402,16 +459,17 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
 
               {/* Content */}
               {activeRightTab === 'preview' && isHtml ? (
-                <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: '#ffffff' }}>
+                <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: '#ffffff', justifyContent: isMobileMode ? 'center' : 'flex-start' }}>
                   <iframe
                     srcDoc={activeCode}
                     title="ChimuCode Live Preview"
                     sandbox="allow-scripts allow-modals allow-forms allow-popups"
                     className={`chimucode-live-iframe ${isMobileMode ? 'mobile-view' : ''}`}
+                    style={isMobileMode ? { width: '375px', height: '667px', border: '1px solid #ddd', marginTop: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' } : {}}
                   />
                 </div>
               ) : activeRightTab === 'code' ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#090a0f' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0e0e10' }}>
                   <textarea
                     className="chimucode-code-textarea"
                     value={activeCode}
@@ -421,11 +479,11 @@ export function ChimuCodeView({ onBackToChat }: ChimuCodeViewProps) {
                 </div>
               ) : (
                 <div className="chimucode-console-view">
-                  {consoleOutput || (
+                  {consoleOutput ? (
+                    <span style={{ color: '#e2e8f0' }}>{consoleOutput}</span>
+                  ) : (
                     <span style={{ color: '#64748b', fontStyle: 'italic' }}>
-                      {isHtml
-                        ? 'La app web se está ejecutando en vivo en la pestaña Vista Previa.'
-                        : 'Presiona "Ejecutar" en la parte superior para ver la salida de la consola.'}
+                      Sin salida. Presiona Ejecutar para correr el código activo.
                     </span>
                   )}
                 </div>

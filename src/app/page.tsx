@@ -1131,6 +1131,8 @@ export default function Home() {
   const [authError, setAuthError] = useState<"wrong" | "old" | null>(null);
   
   const [chats, setChats] = useState<Chat[]>([]);
+  const [chimuCodeSessions, setChimuCodeSessions] = useState<any[]>([]);
+  const [activeChimuSessionId, setActiveChimuSessionId] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   const [inputMessage, setInputMessage] = useState("");
@@ -1633,6 +1635,16 @@ export default function Home() {
         : [];
       setChats(kept);
       if (Array.isArray(parsed) && kept.length !== parsed.length) safeSetChats(kept);
+    }
+
+    const savedChimuCode = localStorage.getItem("chimuelo_code_sessions");
+    if (savedChimuCode) {
+      try {
+        const parsed = JSON.parse(savedChimuCode);
+        if (Array.isArray(parsed)) {
+          setChimuCodeSessions(parsed);
+        }
+      } catch (e) {}
     }
 
     const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
@@ -4133,14 +4145,12 @@ export default function Home() {
           </button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
-            <button className="sb-row" style={{ paddingLeft: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>
-              <Plus size={15} /> <span>New session</span>
-            </button>
-            <button className="sb-row" style={{ paddingLeft: '8px' }}>
-              <Clock size={15} /> <span>Scheduled</span>
-            </button>
-            <button className="sb-row" style={{ paddingLeft: '8px' }}>
-              <Briefcase size={15} /> <span>Customize</span>
+            <button 
+              className="sb-row sb-row-primary" 
+              onClick={() => { setActiveChimuSessionId(null); setSidebarOpen(false); }}
+              style={{ color: 'var(--text-primary)', fontWeight: 500 }}
+            >
+              <Plus size={16} /> <span>Nueva sesión</span>
             </button>
           </div>
         )}
@@ -4149,21 +4159,35 @@ export default function Home() {
         <div className="sb-scroll">
           {viewMode === 'chimucode' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Pinned</div>
-              <button className="sb-row active" style={{ paddingLeft: '8px' }}>
-                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span style={{ color: 'var(--text-primary)' }}>Nueva sesión de código</span>
-              </button>
-              
-              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Recents</div>
-              <button className="sb-row" style={{ paddingLeft: '8px' }}>
-                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Migrate API client to fetch with retries</span>
-              </button>
-              <button className="sb-row" style={{ paddingLeft: '8px' }}>
-                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Fix race condition in upload queue</span>
-              </button>
-              <button className="sb-row" style={{ paddingLeft: '8px' }}>
-                 <span style={{ color: '#666', letterSpacing: '1px', marginRight: '6px' }}>•••</span> <span>Add keyboard shortcuts to command ...</span>
-              </button>
+              <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>Sesiones de código</div>
+              {chimuCodeSessions.length === 0 ? (
+                <div style={{ padding: '8px 16px', color: '#666', fontSize: '0.85rem' }}>No hay sesiones previas</div>
+              ) : (
+                chimuCodeSessions
+                  .filter(s => !sidebarSearch || (s.title || '').toLowerCase().includes(sidebarSearch.toLowerCase()))
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .map(s => (
+                  <button 
+                    key={s.id}
+                    className={`sb-row ${activeChimuSessionId === s.id ? 'active' : ''}`} 
+                    onClick={() => { setActiveChimuSessionId(s.id); setSidebarOpen(false); }}
+                    style={{ paddingLeft: '8px' }}
+                  >
+                     <Terminal size={14} style={{ color: '#666', marginRight: '6px' }} /> <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{s.title || 'Sesión de código'}</span>
+                     <Trash2 
+                       size={12} 
+                       style={{ color: '#666' }} 
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         const next = chimuCodeSessions.filter(cs => cs.id !== s.id);
+                         setChimuCodeSessions(next);
+                         localStorage.setItem('chimuelo_code_sessions', JSON.stringify(next));
+                         if (activeChimuSessionId === s.id) setActiveChimuSessionId(null);
+                       }}
+                     />
+                  </button>
+                ))
+              )}
             </div>
           ) : (
             <>
@@ -5080,7 +5104,25 @@ export default function Home() {
           }}
         >
           {viewMode === "chimucode" ? (
-            <ChimuCodeView onBackToChat={() => setViewMode("chat")} />
+            <ChimuCodeView 
+              onBackToChat={() => setViewMode("chat")} 
+              activeSessionId={activeChimuSessionId}
+              onSaveSession={(session: any) => {
+                setChimuCodeSessions((prev: any[]) => {
+                  const idx = prev.findIndex(s => s.id === session.id);
+                  const next = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
+                  localStorage.setItem("chimuelo_code_sessions", JSON.stringify(next));
+                  return next;
+                });
+                if (session.id !== activeChimuSessionId) setActiveChimuSessionId(session.id);
+              }}
+              initialSessionData={chimuCodeSessions.find(s => s.id === activeChimuSessionId)}
+              model={model}
+              setModel={(newModel) => {
+                setModel(newModel as any);
+                localStorage.setItem('chimuelo_model', newModel);
+              }}
+            />
           ) : viewMode === "food" ? (
             <div className="food-page">
               <div className="food-header">

@@ -1,0 +1,413 @@
+/* ── ChimuCode Dev Environment (Funcional, sin fakes) ── */
+
+.chimucode-fullscreen-root {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background-color: #0e0e10;
+  color: #ECECEC;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* ── MAIN AREA ── */
+.chimucode-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #0e0e10;
+  min-width: 0;
+}
+
+.chimucode-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background-color: #17171a;
+}
+
+.chimucode-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.c-btn-secondary {
+  background: transparent;
+  color: #A0A0A0;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.c-btn-secondary:hover { background: rgba(255,255,255,0.05); color: #FFF; }
+.c-btn-secondary.primary { background: rgba(43, 93, 219, 0.2); border-color: rgba(43, 93, 219, 0.5); color: #71A5FF; }
+.c-btn-secondary.primary:hover { background: rgba(43, 93, 219, 0.3); }
+
+.c-session-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #E2E8F0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chimucode-top-center {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.c-model-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #A0A0A0;
+  background: rgba(255,255,255,0.03);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.2s;
+}
+.c-model-selector:hover { background: rgba(255,255,255,0.06); }
+.c-model-highlight { color: #FFF; font-weight: 500; }
+
+.c-model-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  background: #17171a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  min-width: 160px;
+}
+
+.c-model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: #A0A0A0;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.c-model-option:hover { background: rgba(255,255,255,0.05); color: #FFF; }
+.c-model-option.active { color: #71A5FF; }
+
+.chimucode-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-icon-btn {
+  background: transparent;
+  border: none;
+  color: #A0A0A0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 6px;
+}
+.c-icon-btn:hover { background: rgba(255,255,255,0.05); color: #FFF; }
+
+/* Split */
+.chimucode-content-split {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Chat Canvas */
+.chimucode-chat-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #0e0e10;
+  min-width: 300px;
+}
+
+.chimucode-messages-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+}
+
+.chimucode-empty-state {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.chimucode-empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; color: #E2E8F0; }
+.chimucode-empty-state p { font-size: 0.9rem; color: #64748b; }
+
+/* Input Area */
+.chimucode-input-area {
+  padding: 0 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.c-input-box-modern {
+  display: flex;
+  align-items: flex-end;
+  background-color: #17171a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 8px;
+  transition: border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.c-input-box-modern:focus-within {
+  border-color: rgba(255,255,255,0.2);
+}
+
+.c-input-box-modern textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #FFF;
+  font-size: 0.95rem;
+  outline: none;
+  padding: 8px 12px;
+  resize: none;
+  min-height: 24px;
+  max-height: 200px;
+  line-height: 1.4;
+  font-family: inherit;
+}
+.c-input-box-modern textarea::placeholder { color: #64748b; }
+
+.c-send-btn-modern {
+  background: rgba(255,255,255,0.05);
+  color: #A0A0A0;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  margin-right: 4px;
+  transition: all 0.2s;
+}
+.c-send-btn-modern:not(:disabled) {
+  background: #FFF;
+  color: #0e0e10;
+}
+.c-send-btn-modern:not(:disabled):hover {
+  background: #E2E8F0;
+}
+
+/* Resizer and Preview side */
+.chimucode-resizer-bar {
+  width: 4px;
+  background: rgba(255,255,255,0.02);
+  cursor: col-resize;
+  transition: background 0.2s;
+  z-index: 10;
+}
+.chimucode-resizer-bar:hover, .chimucode-resizer-bar.active {
+  background: rgba(255,255,255,0.1);
+}
+
+.chimucode-preview-side {
+  display: flex;
+  flex-direction: column;
+  background: #17171a;
+  border-left: 1px solid rgba(255,255,255,0.08);
+  height: 100%;
+}
+
+.chimucode-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: #17171a;
+}
+
+.chimucode-tab-pill-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.chimucode-tab-pill {
+  background: transparent;
+  border: none;
+  color: #A0A0A0;
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.chimucode-tab-pill.active {
+  background: rgba(255,255,255,0.1);
+  color: #FFF;
+}
+
+.chimucode-live-iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.chimucode-code-textarea {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  color: #E2E8F0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  padding: 16px;
+  border: none;
+  resize: none;
+  outline: none;
+}
+
+.chimucode-console-view {
+  flex: 1;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: #E2E8F0;
+  background: #0e0e10;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.chimucode-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 24px;
+}
+
+.c-message {
+  display: flex;
+  width: 100%;
+}
+.c-message.user { justify-content: flex-end; }
+.c-message.assistant { justify-content: flex-start; }
+
+.c-message-bubble {
+  max-width: 85%;
+  background: #17171a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #ECECEC;
+  overflow-wrap: break-word;
+}
+
+.c-message.user .c-message-bubble {
+  background: rgba(43, 93, 219, 0.15);
+  border-color: rgba(43, 93, 219, 0.3);
+}
+
+.c-message-content p { margin-bottom: 0.5em; }
+.c-message-content p:last-child { margin-bottom: 0; }
+.c-message-content pre { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; overflow-x: auto; margin-top: 8px; }
+.c-message-content code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; }
+.c-message-content pre code { background: transparent; padding: 0; }
+
+.c-message-code-card {
+  margin-top: 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.c-code-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #A0A0A0;
+}
+
+.c-code-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #A0A0A0;
+  font-size: 0.85rem;
+}
+
+/* Responsividad para pantallas menores a 900px */
+@media (max-width: 900px) {
+  .chimucode-content-split {
+    flex-direction: column;
+  }
+  
+  .chimucode-chat-column {
+    width: 100% !important;
+  }
+  
+  .chimucode-resizer-bar {
+    display: none;
+  }
+  
+  .chimucode-preview-side {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100%;
+    z-index: 50;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    border-left: none;
+  }
+}
