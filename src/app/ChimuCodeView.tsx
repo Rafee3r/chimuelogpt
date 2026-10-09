@@ -19,12 +19,14 @@ import {
   RotateCw,
   CornerDownLeft,
   FileCode,
+  Globe,
+  AlertCircle,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
 import { detectCodeLanguage } from '../lib/chimucode';
-import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile } from '../lib/sandbox-types';
+import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall } from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
 
 const REAL_MODELS = [
@@ -54,6 +56,12 @@ export function ChimuCodeView({
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionTitle, setSessionTitle] = useState<string>('Nueva sesión');
+
+  // Estados de streaming en vivo estilo Claude Code
+  const [liveTools, setLiveTools] = useState<ChimuCodeToolCall[]>([]);
+  const [liveStatusText, setLiveStatusText] = useState<string>('');
+  const [liveExplanation, setLiveExplanation] = useState<string>('');
+  const [liveFiles, setLiveFiles] = useState<ChimuCodeFile[]>([]);
 
   // Proyecto multi-archivo
   const [files, setFiles] = useState<ChimuCodeFile[]>([]);
@@ -139,10 +147,10 @@ export function ChimuCodeView({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Auto-scroll al final del chat cuando llegan mensajes
+  // Auto-scroll al final del chat cuando llegan mensajes o eventos en vivo
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isGenerating]);
+  }, [messages, isGenerating, liveExplanation, liveFiles, liveStatusText]);
 
   // Manejador del divisor arrastrable
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -294,7 +302,7 @@ export function ChimuCodeView({
     return html + interceptorScript;
   }, [isHtml, activeFile, files]);
 
-  // Enviar mensaje al backend y procesar archivos virtuales
+  // Enviar mensaje al backend y procesar streaming SSE en vivo
   const handleSendMessage = async () => {
     const promptText = input.trim();
     if (!promptText || isGenerating) return;
@@ -313,6 +321,12 @@ export function ChimuCodeView({
     const nextMsgs = [...messages, userMsg];
     setMessages(nextMsgs);
     setInput('');
+
+    // Resetear estados de streaming en vivo
+    setLiveTools([]);
+    setLiveStatusText('');
+    setLiveExplanation('');
+    setLiveFiles([]);
     setIsGenerating(true);
 
     let nextTitle = sessionTitle;
@@ -336,49 +350,154 @@ export function ChimuCodeView({
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Error al generar código');
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Error ${res.status}: ${errText || 'Fallo de conexión'}`);
       }
 
-      // Merge de archivos por ruta (path)
-      const newFiles: ChimuCodeFile[] = Array.isArray(data.files) ? data.files : [];
-      let updatedFiles = [...files];
+      if (!res.body) {
+        throw new Error('No se recibió stream de respuesta.');
+      }
 
-      if (newFiles.length > 0) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let streamBuffer = '';
+      let accumulatedExplanation = '';
+      let accumulatedFiles: ChimuCodeFile[] = [];
+      let accumulatedTools: ChimuCodeToolCall[] = [];
+      let finalActivePath = activePath;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        streamBuffer += decoder.decode(value, { stream: true });
+        const parts = streamBuffer.split('\n\n');
+        streamBuffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const lines = part.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.slice(5).trim();
+            if (!dataStr) continue;
+
+            let event: any = null;
+            try {
+              event = JSON.parse(dataStr);
+            } catch {
+              continue;
+            }
+
+            if (event.type === 'tool') {
+              if (event.status === 'start') {
+                const newTool: ChimuCodeToolCall = {
+                  name: event.name,
+                  status: 'start',
+                  input: event.input,
+                };
+                accumulatedTools = [...accumulatedTools, newTool];
+                setLiveTools([...accumulatedTools]);
+              } else if (event.status === 'done') {
+                accumulatedTools = accumulatedTools.map((t) =>
+                  t.name === event.name
+                    ? { ...t, status: 'done', preview: event.preview }
+                    : t
+                );
+                setLiveTools([...accumulatedTools]);
+              } else if (event.status === 'error') {
+                accumulatedTools = accumulatedTools.map((t) =>
+                  t.name === event.name
+                    ? { ...t, status: 'error', error: event.error, preview: event.preview }
+                    : t
+                );
+                setLiveTools([...accumulatedTools]);
+              }
+            } else if (event.type === 'status') {
+              setLiveStatusText(event.text || '');
+            } else if (event.type === 'delta') {
+              accumulatedExplanation += event.text;
+              setLiveExplanation(accumulatedExplanation);
+            } else if (event.type === 'file') {
+              const fileObj: ChimuCodeFile = {
+                path: event.path,
+                language: event.language,
+                content: event.content || '',
+              };
+              if (!accumulatedFiles.some((f) => f.path === fileObj.path)) {
+                accumulatedFiles = [...accumulatedFiles, fileObj];
+              } else {
+                accumulatedFiles = accumulatedFiles.map((f) => (f.path === fileObj.path ? fileObj : f));
+              }
+              setLiveFiles([...accumulatedFiles]);
+
+              // Actualizar el espacio de trabajo en vivo
+              setFiles((prev) => {
+                const map = new Map<string, ChimuCodeFile>(prev.map((f) => [f.path, f]));
+                map.set(fileObj.path, fileObj);
+                return Array.from(map.values());
+              });
+
+              if (fileObj.language === 'html' || fileObj.path.endsWith('.html')) {
+                finalActivePath = fileObj.path;
+                setActivePath(fileObj.path);
+                setShowRightPanel(true);
+                setActiveRightTab('preview');
+              } else if (accumulatedFiles.length === 1) {
+                finalActivePath = fileObj.path;
+                setActivePath(fileObj.path);
+                setShowRightPanel(true);
+                setActiveRightTab('code');
+              }
+            } else if (event.type === 'done') {
+              if (Array.isArray(event.files) && event.files.length > 0) {
+                accumulatedFiles = event.files;
+              }
+              if (event.activePath) {
+                finalActivePath = event.activePath;
+              }
+            } else if (event.type === 'error') {
+              throw new Error(event.error || 'Error reportado por el servidor');
+            }
+          }
+        }
+      }
+
+      // Merge final de archivos
+      let updatedFiles = [...files];
+      if (accumulatedFiles.length > 0) {
         const map = new Map<string, ChimuCodeFile>();
         for (const f of updatedFiles) map.set(f.path, f);
-        for (const f of newFiles) map.set(f.path, f);
+        for (const f of accumulatedFiles) map.set(f.path, f);
         updatedFiles = Array.from(map.values());
         setFiles(updatedFiles);
 
-        // Elegir el archivo activo prioritario
-        const changedHtml = newFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
-        const nextActive = changedHtml ? changedHtml.path : newFiles[0].path;
+        const changedHtml = accumulatedFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
+        const nextActive = finalActivePath || (changedHtml ? changedHtml.path : accumulatedFiles[0].path);
         setActivePath(nextActive);
         setShowRightPanel(true);
-
-        const isNextHtml = nextActive.endsWith('.html') || (changedHtml?.language === 'html');
-        if (isNextHtml) {
+        if (nextActive.endsWith('.html') || changedHtml?.language === 'html') {
           setActiveRightTab('preview');
-        } else {
-          setActiveRightTab('code');
         }
       }
 
       const assistantMsg: ChimuCodeMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.rawExplanation || (newFiles.length > 0 ? 'Archivos del proyecto actualizados:' : '¿Qué aplicación o script te gustaría programar?'),
-        changedFiles: newFiles.length > 0 ? newFiles : undefined,
-        codeSnippet: newFiles[0]?.content || undefined,
+        content:
+          accumulatedExplanation.trim() ||
+          (accumulatedFiles.length > 0
+            ? 'Archivos del proyecto actualizados:'
+            : '¿Qué aplicación o script te gustaría programar?'),
+        changedFiles: accumulatedFiles.length > 0 ? accumulatedFiles : undefined,
+        tools: accumulatedTools.length > 0 ? accumulatedTools : undefined,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       const finalMsgs = [...nextMsgs, assistantMsg];
       setMessages(finalMsgs);
-
-      persistSession(finalMsgs, nextTitle, updatedFiles, activePath, consoleOutput);
+      persistSession(finalMsgs, nextTitle, updatedFiles, finalActivePath || activePath, consoleOutput);
     } catch (err: any) {
       const errorMsg: ChimuCodeMessage = {
         id: `err-${Date.now()}`,
@@ -391,6 +510,10 @@ export function ChimuCodeView({
       persistSession(finalMsgs, nextTitle, files, activePath, consoleOutput);
     } finally {
       setIsGenerating(false);
+      setLiveTools([]);
+      setLiveStatusText('');
+      setLiveExplanation('');
+      setLiveFiles([]);
     }
   };
 
@@ -642,6 +765,25 @@ export function ChimuCodeView({
                 {messages.map((m) => (
                   <div key={m.id} className={`chimucode-msg chimucode-msg-${m.role}`}>
                     <div className="chimucode-msg-bubble">
+                      {/* Herramientas ejecutadas en este mensaje estilo Claude Code */}
+                      {m.tools && m.tools.length > 0 && (
+                        <div className="chimucode-tools-log">
+                          {m.tools.map((t, idx) => (
+                            <div key={idx} className="chimucode-tool-row">
+                              <span className="chimucode-tool-icon">
+                                <Globe size={13} />
+                              </span>
+                              <span className="chimucode-tool-name">{t.name}</span>
+                              {t.input && <span className="chimucode-tool-input">{t.input}</span>}
+                              <div className={`chimucode-tool-status ${t.status}`}>
+                                {t.status === 'done' && <Check size={12} color="#4ade80" />}
+                                {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="chimucode-markdown-body">
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
@@ -708,9 +850,74 @@ export function ChimuCodeView({
 
                 {isGenerating && (
                   <div className="chimucode-msg chimucode-msg-assistant">
-                    <div className="chimucode-msg-bubble chimucode-generating-bubble">
-                      <RotateCw size={14} className="chimucode-spin" />
-                      <span>ChimuCode generando código...</span>
+                    <div className="chimucode-msg-bubble">
+                      {/* Log vivo de herramientas estilo Claude Code */}
+                      {liveTools.length > 0 && (
+                        <div className="chimucode-tools-log">
+                          {liveTools.map((t, idx) => (
+                            <div key={idx} className="chimucode-tool-row">
+                              <span className="chimucode-tool-icon">
+                                <Globe size={13} />
+                              </span>
+                              <span className="chimucode-tool-name">{t.name}</span>
+                              {t.input && <span className="chimucode-tool-input">{t.input}</span>}
+                              <div className={`chimucode-tool-status ${t.status}`}>
+                                {t.status === 'start' && <RotateCw size={12} className="chimucode-spin" />}
+                                {t.status === 'done' && <Check size={12} color="#4ade80" />}
+                                {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Fila de status en vivo (ej. escribiendo index.html) */}
+                      {liveStatusText && (
+                        <div className="chimucode-live-status-row">
+                          <RotateCw size={12} className="chimucode-spin" />
+                          <span>{liveStatusText}…</span>
+                        </div>
+                      )}
+
+                      {/* Texto del asistente que crece con cada delta */}
+                      {liveExplanation && (
+                        <div className="chimucode-markdown-body">
+                          <ReactMarkdown>{liveExplanation}</ReactMarkdown>
+                        </div>
+                      )}
+
+                      {/* Estado inicial mientras conecta */}
+                      {!liveExplanation && !liveStatusText && liveTools.length === 0 && (
+                        <div className="chimucode-generating-bubble">
+                          <RotateCw size={14} className="chimucode-spin" />
+                          <span>Conectando con ChimuCode…</span>
+                        </div>
+                      )}
+
+                      {/* Tarjetas de archivos a medida que van cerrando los fences */}
+                      {liveFiles.length > 0 && (
+                        <div className="chimucode-code-card">
+                          <div className="chimucode-code-card-files">
+                            {liveFiles.map((f) => (
+                              <div
+                                key={f.path}
+                                className="chimucode-card-file-item"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  setActivePath(f.path);
+                                  setShowRightPanel(true);
+                                  setActiveRightTab(
+                                    f.language === 'html' || f.path.endsWith('.html') ? 'preview' : 'code'
+                                  );
+                                }}
+                              >
+                                <span className="chimucode-file-badge">{f.language.toUpperCase()}</span>
+                                <span className="chimucode-file-name">{f.path}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

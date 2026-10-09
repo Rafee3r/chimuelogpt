@@ -19,12 +19,21 @@ export interface ChimuCodeFile {
   content: string;
 }
 
+export interface ChimuCodeToolCall {
+  name: string;
+  status: 'start' | 'done' | 'error';
+  input?: string;
+  preview?: string;
+  error?: string;
+}
+
 export interface ChimuCodeMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   codeSnippet?: string;
   changedFiles?: ChimuCodeFile[];
+  tools?: ChimuCodeToolCall[];
   executionResult?: SandboxResult;
   timestamp: string;
 }
