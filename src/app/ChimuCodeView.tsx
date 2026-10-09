@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   ChevronDown,
@@ -18,11 +18,13 @@ import {
   Monitor,
   RotateCw,
   CornerDownLeft,
+  FileCode,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
-import { detectCodeLanguage, extractCodeFromAiResponse } from '../lib/chimucode';
-import type { ChimuCodeSession, ChimuCodeMessage } from '../lib/sandbox-types';
+import { detectCodeLanguage } from '../lib/chimucode';
+import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile } from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
 
 const REAL_MODELS = [
@@ -53,7 +55,10 @@ export function ChimuCodeView({
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionTitle, setSessionTitle] = useState<string>('Nueva sesión');
 
-  const [activeCode, setActiveCode] = useState<string>('');
+  // Proyecto multi-archivo
+  const [files, setFiles] = useState<ChimuCodeFile[]>([]);
+  const [activePath, setActivePath] = useState<string>('index.html');
+
   const [showRightPanel, setShowRightPanel] = useState<boolean>(false);
   const [activeRightTab, setActiveRightTab] = useState<'preview' | 'code' | 'console'>('preview');
   const [isMobileMode, setIsMobileMode] = useState<boolean>(false);
@@ -70,32 +75,53 @@ export function ChimuCodeView({
   const [showModelDropdown, setShowModelDropdown] = useState<boolean>(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
-  // ID persistente de la sesión actual para evitar duplicar entradas
+  // ID persistente de la sesión actual
   const currentSessionIdRef = useRef<string | null>(activeSessionId);
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
-  const detectedLang = detectCodeLanguage(activeCode);
-  const isHtml = detectedLang === 'html';
+  // Archivo actualmente activo
+  const activeFile = useMemo(() => {
+    return files.find((f) => f.path === activePath) || files[0] || null;
+  }, [files, activePath]);
 
-  // Sincronizar estado al cambiar de sesión en el sidebar
+  const activeContent = activeFile ? activeFile.content : '';
+  const detectedLang = activeFile ? activeFile.language : 'html';
+  const isHtml = detectedLang === 'html' || activePath.endsWith('.html') || activePath.endsWith('.htm');
+
+  // Sincronizar estado al montar o cambiar de sesión
   useEffect(() => {
     if (activeSessionId !== currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId;
       if (activeSessionId && initialSessionData) {
         setMessages(initialSessionData.messages || []);
         setSessionTitle(initialSessionData.title || 'Sesión de código');
-        const code = initialSessionData.activeCode || '';
-        setActiveCode(code);
+
+        let sessionFiles: ChimuCodeFile[] = Array.isArray(initialSessionData.files) && initialSessionData.files.length > 0
+          ? initialSessionData.files
+          : [];
+
+        if (sessionFiles.length === 0 && initialSessionData.activeCode) {
+          sessionFiles = [{
+            path: 'index.html',
+            language: initialSessionData.language || 'html',
+            content: initialSessionData.activeCode,
+          }];
+        }
+
+        setFiles(sessionFiles);
+        const resolvedPath = initialSessionData.activePath || (sessionFiles[0]?.path ?? 'index.html');
+        setActivePath(resolvedPath);
         setConsoleOutput(initialSessionData.consoleOutput || null);
-        setShowRightPanel(!!code.trim());
+        setShowRightPanel(sessionFiles.length > 0);
       } else if (!activeSessionId) {
-        // Nueva sesión limpia solicitada
+        // Nueva sesión limpia
         setMessages([]);
         setSessionTitle('Nueva sesión');
-        setActiveCode('');
+        setFiles([]);
+        setActivePath('index.html');
         setConsoleOutput(null);
         setShowRightPanel(false);
       }
@@ -153,31 +179,126 @@ export function ChimuCodeView({
   const persistSession = (
     msgs: ChimuCodeMessage[],
     title: string,
-    code: string,
+    currentFiles: ChimuCodeFile[],
+    currActivePath: string,
     output: string | null
   ) => {
     if (!currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
     }
     const sId = currentSessionIdRef.current;
+    const currentActiveFile = currentFiles.find((f) => f.path === currActivePath) || currentFiles[0];
     const sessionObj: ChimuCodeSession = {
       id: sId,
       title: title || 'Sesión de código',
       messages: msgs,
-      activeCode: code,
-      language: detectCodeLanguage(code),
+      files: currentFiles,
+      activePath: currActivePath,
+      activeCode: currentActiveFile?.content || '',
+      language: currentActiveFile?.language || 'html',
       consoleOutput: output,
       updatedAt: Date.now(),
     };
     onSaveSession(sessionObj);
   };
 
-  // Enviar mensaje al backend
+  // Interceptar navegación interna del iframe (<a href="catalogo.html"> cambia el archivo activo)
+  const handleNavigateRelative = useCallback((href: string) => {
+    if (!href) return;
+    const cleanHref = href.replace(/^\.\//, '').replace(/^\//, '');
+
+    // 1. Coincidencia exacta
+    let target = files.find((f) => f.path === cleanHref);
+
+    // 2. Coincidencia relativa a la carpeta del archivo activo
+    if (!target && activePath.includes('/')) {
+      const dir = activePath.slice(0, activePath.lastIndexOf('/') + 1);
+      target = files.find((f) => f.path === dir + cleanHref);
+    }
+
+    // 3. Coincidencia por nombre de archivo base (ej: catalogo.html)
+    if (!target) {
+      const baseName = cleanHref.split('/').pop()?.split('?')[0];
+      target = files.find((f) => f.path.split('/').pop() === baseName);
+    }
+
+    if (target) {
+      setActivePath(target.path);
+      if (target.language === 'html' || target.path.endsWith('.html')) {
+        setActiveRightTab('preview');
+      } else {
+        setActiveRightTab('code');
+      }
+    }
+  }, [files, activePath]);
+
+  // Listener para mensajes de navegación desde el iframe sandbox
+  useEffect(() => {
+    function handleIframeMessage(e: MessageEvent) {
+      if (e.data && e.data.type === 'CHIMUCODE_NAVIGATE' && typeof e.data.href === 'string') {
+        handleNavigateRelative(e.data.href);
+      }
+    }
+    window.addEventListener('message', handleIframeMessage);
+    return () => window.removeEventListener('message', handleIframeMessage);
+  }, [handleNavigateRelative]);
+
+  // Construir HTML autocontenido para la previsualización del archivo activo
+  const previewHtml = useMemo(() => {
+    if (!isHtml || !activeFile) return '';
+    let html = activeFile.content;
+
+    // Inyectar archivos CSS locales referenciados por <link rel="stylesheet" href="...">
+    html = html.replace(/<link\b[^>]*\bhref=["']([^"']+\.css)["'][^>]*>/gi, (tag, href) => {
+      const cssFileName = href.split('/').pop()?.split('?')[0];
+      const match = files.find((f) => f.path.split('/').pop() === cssFileName || f.path === href);
+      if (match) {
+        return `<style data-chimucode-file="${match.path}">\n${match.content}\n</style>`;
+      }
+      return tag;
+    });
+
+    // Inyectar scripts locales referenciados por <script src="...">
+    html = html.replace(/<script\b[^>]*\bsrc=["']([^"']+\.js)["'][^>]*><\/script>/gi, (tag, src) => {
+      if (src.startsWith('http://') || src.startsWith('https://')) return tag;
+      const jsFileName = src.split('/').pop()?.split('?')[0];
+      const match = files.find((f) => f.path.split('/').pop() === jsFileName || f.path === src);
+      if (match) {
+        return `<script data-chimucode-file="${match.path}">\n${match.content}\n</script>`;
+      }
+      return tag;
+    });
+
+    // Inyectar interceptor de clics en enlaces relativos
+    const interceptorScript = `
+<script id="__chimucode_nav_interceptor__">
+(function() {
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (!href || href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent.postMessage({ type: 'CHIMUCODE_NAVIGATE', href: href }, '*');
+  }, true);
+})();
+</script>
+`;
+
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${interceptorScript}</body>`);
+    }
+    return html + interceptorScript;
+  }, [isHtml, activeFile, files]);
+
+  // Enviar mensaje al backend y procesar archivos virtuales
   const handleSendMessage = async () => {
     const promptText = input.trim();
     if (!promptText || isGenerating) return;
 
-    // Asegurar ID único y estable para la sesión antes del primer envío
     if (!currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
     }
@@ -200,7 +321,7 @@ export function ChimuCodeView({
       setSessionTitle(nextTitle);
     }
 
-    persistSession(nextMsgs, nextTitle, activeCode, consoleOutput);
+    persistSession(nextMsgs, nextTitle, files, activePath, consoleOutput);
 
     try {
       const res = await fetch('/api/chimucode/generate', {
@@ -208,7 +329,8 @@ export function ChimuCodeView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: promptText,
-          currentCode: activeCode,
+          files: files,
+          currentCode: activeContent,
           language: detectedLang,
           model: model || CLIENT_MODEL_FLASH,
         }),
@@ -219,42 +341,44 @@ export function ChimuCodeView({
         throw new Error(data.error || 'Error al generar código');
       }
 
-      // Validar si la respuesta contiene código real extraído de fences
-      let generatedCode: string | null = null;
-      if (data.code && typeof data.code === 'string' && data.code.trim().length > 0) {
-        generatedCode = data.code.trim();
-      } else if (data.rawExplanation) {
-        const extracted = extractCodeFromAiResponse(data.rawExplanation);
-        if (extracted.code && extracted.code.trim().length > 0) {
-          generatedCode = extracted.code.trim();
-        }
-      }
+      // Merge de archivos por ruta (path)
+      const newFiles: ChimuCodeFile[] = Array.isArray(data.files) ? data.files : [];
+      let updatedFiles = [...files];
 
-      const assistantMsg: ChimuCodeMessage = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: data.rawExplanation || (generatedCode ? 'Aquí tienes el código solicitado:' : '¿Qué aplicación o script te gustaría programar?'),
-        codeSnippet: generatedCode || undefined,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+      if (newFiles.length > 0) {
+        const map = new Map<string, ChimuCodeFile>();
+        for (const f of updatedFiles) map.set(f.path, f);
+        for (const f of newFiles) map.set(f.path, f);
+        updatedFiles = Array.from(map.values());
+        setFiles(updatedFiles);
 
-      const finalMsgs = [...nextMsgs, assistantMsg];
-      setMessages(finalMsgs);
-
-      let finalCode = activeCode;
-      if (generatedCode) {
-        finalCode = generatedCode;
-        setActiveCode(finalCode);
+        // Elegir el archivo activo prioritario
+        const changedHtml = newFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
+        const nextActive = changedHtml ? changedHtml.path : newFiles[0].path;
+        setActivePath(nextActive);
         setShowRightPanel(true);
-        const codeLang = data.language || detectCodeLanguage(finalCode);
-        if (codeLang === 'html') {
+
+        const isNextHtml = nextActive.endsWith('.html') || (changedHtml?.language === 'html');
+        if (isNextHtml) {
           setActiveRightTab('preview');
         } else {
           setActiveRightTab('code');
         }
       }
 
-      persistSession(finalMsgs, nextTitle, finalCode, consoleOutput);
+      const assistantMsg: ChimuCodeMessage = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: data.rawExplanation || (newFiles.length > 0 ? 'Archivos del proyecto actualizados:' : '¿Qué aplicación o script te gustaría programar?'),
+        changedFiles: newFiles.length > 0 ? newFiles : undefined,
+        codeSnippet: newFiles[0]?.content || undefined,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const finalMsgs = [...nextMsgs, assistantMsg];
+      setMessages(finalMsgs);
+
+      persistSession(finalMsgs, nextTitle, updatedFiles, activePath, consoleOutput);
     } catch (err: any) {
       const errorMsg: ChimuCodeMessage = {
         id: `err-${Date.now()}`,
@@ -264,7 +388,7 @@ export function ChimuCodeView({
       };
       const finalMsgs = [...nextMsgs, errorMsg];
       setMessages(finalMsgs);
-      persistSession(finalMsgs, nextTitle, activeCode, consoleOutput);
+      persistSession(finalMsgs, nextTitle, files, activePath, consoleOutput);
     } finally {
       setIsGenerating(false);
     }
@@ -272,18 +396,18 @@ export function ChimuCodeView({
 
   // Ejecutar código según lenguaje
   const handleRunCode = async (overrideCode?: string) => {
-    const codeToRun = overrideCode || activeCode;
+    const codeToRun = overrideCode || activeContent;
     if (!codeToRun || isRunning) return;
 
     setIsRunning(true);
-    const lang = detectCodeLanguage(codeToRun);
+    const lang = detectedLang;
 
-    if (lang === 'html') {
+    if (lang === 'html' || activePath.endsWith('.html')) {
       setActiveRightTab('preview');
       setShowRightPanel(true);
-      const out = 'Aplicación HTML renderizada en vivo en el sandbox.';
+      const out = `Archivo HTML "${activePath}" renderizado en vivo en el sandbox.`;
       setConsoleOutput(out);
-      persistSession(messages, sessionTitle, codeToRun, out);
+      persistSession(messages, sessionTitle, files, activePath, out);
       setIsRunning(false);
       return;
     }
@@ -291,25 +415,25 @@ export function ChimuCodeView({
     setShowRightPanel(true);
     setActiveRightTab('console');
 
-    if (lang === 'javascript') {
+    if (lang === 'javascript' || activePath.endsWith('.js')) {
       try {
         const res = await executeBrowserJS(codeToRun);
         const out = res.ok
           ? (res.output || 'Ejecutado con éxito (sin salida por consola).')
           : `Error de ejecución: ${res.error || 'Fallo desconocido'}`;
         setConsoleOutput(out);
-        persistSession(messages, sessionTitle, codeToRun, out);
+        persistSession(messages, sessionTitle, files, activePath, out);
       } catch (e: any) {
         const out = `Error en worker: ${e.message || String(e)}`;
         setConsoleOutput(out);
-        persistSession(messages, sessionTitle, codeToRun, out);
+        persistSession(messages, sessionTitle, files, activePath, out);
       } finally {
         setIsRunning(false);
       }
       return;
     }
 
-    // Python u otros van a /api/sandbox
+    // Python u otros a /api/sandbox
     try {
       const res = await fetch('/api/sandbox', {
         method: 'POST',
@@ -321,47 +445,68 @@ export function ChimuCodeView({
         ? (data.output || 'Ejecutado con éxito (sin salida).')
         : `Error de sandbox: ${data.error || 'Fallo de ejecución'}`;
       setConsoleOutput(out);
-      persistSession(messages, sessionTitle, codeToRun, out);
+      persistSession(messages, sessionTitle, files, activePath, out);
     } catch (e: any) {
       const out = `Error de conexión con sandbox: ${e.message || String(e)}`;
       setConsoleOutput(out);
-      persistSession(messages, sessionTitle, codeToRun, out);
+      persistSession(messages, sessionTitle, files, activePath, out);
     } finally {
       setIsRunning(false);
     }
   };
 
-  // Copiar snippet desde la card del mensaje
+  // Copiar contenido
   const handleCopySnippet = (snippet: string) => {
     navigator.clipboard.writeText(snippet);
     setCopiedSnippet(snippet);
     setTimeout(() => setCopiedSnippet(null), 1500);
   };
 
-  // Copiar código activo
+  // Copiar código del archivo activo
   const handleCopyActiveCode = () => {
-    if (!activeCode) return;
-    navigator.clipboard.writeText(activeCode);
+    if (!activeContent) return;
+    navigator.clipboard.writeText(activeContent);
     setCopiedActiveCode(true);
     setTimeout(() => setCopiedActiveCode(false), 1500);
   };
 
-  // Descargar código activo
-  const handleDownload = () => {
-    if (!activeCode) return;
-    const ext = isHtml ? 'html' : detectedLang === 'python' ? 'py' : 'js';
-    const mime = isHtml ? 'text/html' : 'text/plain';
-    const blob = new Blob([activeCode], { type: `${mime};charset=utf-8` });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const cleanTitle = (sessionTitle || 'codigo')
+  // Descargar: 1 archivo = ese archivo. 2 o más = zip con las carpetas
+  const handleDownload = async () => {
+    if (files.length === 0) return;
+
+    const cleanTitle = (sessionTitle || 'proyecto')
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '_')
       .slice(0, 30);
-    a.download = `chimucode_${cleanTitle}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+
+    if (files.length === 1) {
+      const singleFile = files[0];
+      const blob = new Blob([singleFile.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = singleFile.path.split('/').pop() || `${cleanTitle}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // 2 o más archivos: crear ZIP preservando rutas de carpetas (ej. petra/index.html)
+    try {
+      const zip = new JSZip();
+      for (const file of files) {
+        zip.file(file.path, file.content);
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${cleanTitle}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`Error al generar ZIP: ${err.message || String(err)}`);
+    }
   };
 
   const currentModelData =
@@ -390,7 +535,7 @@ export function ChimuCodeView({
               value={sessionTitle}
               onChange={(e) => {
                 setSessionTitle(e.target.value);
-                persistSession(messages, e.target.value, activeCode, consoleOutput);
+                persistSession(messages, e.target.value, files, activePath, consoleOutput);
               }}
               placeholder="Título de la sesión..."
               title="Haz clic para editar el título"
@@ -438,11 +583,13 @@ export function ChimuCodeView({
             type="button"
             className="chimucode-btn-action"
             onClick={handleDownload}
-            disabled={!activeCode}
-            title="Descargar código como archivo"
+            disabled={files.length === 0}
+            title={files.length > 1 ? `Descargar proyecto completo en ZIP (${files.length} archivos)` : 'Descargar archivo'}
           >
             <Download size={14} />
-            <span className="chimucode-btn-text">Descargar</span>
+            <span className="chimucode-btn-text">
+              {files.length > 1 ? 'Descargar .zip' : 'Descargar'}
+            </span>
           </button>
 
           {/* Ejecutar */}
@@ -450,8 +597,8 @@ export function ChimuCodeView({
             type="button"
             className="chimucode-btn-action chimucode-btn-run"
             onClick={() => handleRunCode()}
-            disabled={!activeCode || isRunning}
-            title="Ejecutar código activo"
+            disabled={!activeContent || isRunning}
+            title="Ejecutar archivo activo"
           >
             {isRunning ? (
               <RotateCw size={14} className="chimucode-spin" />
@@ -465,13 +612,7 @@ export function ChimuCodeView({
           <button
             type="button"
             className={`chimucode-btn-action ${showRightPanel ? 'active' : ''}`}
-            onClick={() => {
-              if (!showRightPanel && !activeCode && messages.length > 0) {
-                const lastSnippet = [...messages].reverse().find((m) => m.codeSnippet)?.codeSnippet;
-                if (lastSnippet) setActiveCode(lastSnippet);
-              }
-              setShowRightPanel(!showRightPanel);
-            }}
+            onClick={() => setShowRightPanel(!showRightPanel)}
             title="Alternar panel de código y vista previa"
           >
             <PanelRight size={14} />
@@ -486,8 +627,8 @@ export function ChimuCodeView({
         <div
           className="chimucode-chat-panel"
           style={{
-            flex: showRightPanel && activeCode ? `0 0 ${100 - panelWidthPercent}%` : '1 1 100%',
-            maxWidth: showRightPanel && activeCode ? `${100 - panelWidthPercent}%` : '100%',
+            flex: showRightPanel && files.length > 0 ? `0 0 ${100 - panelWidthPercent}%` : '1 1 100%',
+            maxWidth: showRightPanel && files.length > 0 ? `${100 - panelWidthPercent}%` : '100%',
           }}
         >
           {/* Mensajes (min 0, overflow auto, alto restante) */}
@@ -505,13 +646,25 @@ export function ChimuCodeView({
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
 
-                      {m.codeSnippet && m.codeSnippet.trim().length > 0 && (
+                      {/* Card de archivos generados en este turno */}
+                      {m.changedFiles && m.changedFiles.length > 0 && (
                         <div className="chimucode-code-card">
-                          <div className="chimucode-code-card-header">
-                            <Code size={14} />
-                            <span className="chimucode-code-card-lang">
-                              {detectCodeLanguage(m.codeSnippet).toUpperCase()}
-                            </span>
+                          <div className="chimucode-code-card-files">
+                            {m.changedFiles.map((f) => (
+                              <div
+                                key={f.path}
+                                className="chimucode-card-file-item"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  setActivePath(f.path);
+                                  setShowRightPanel(true);
+                                  setActiveRightTab(f.language === 'html' || f.path.endsWith('.html') ? 'preview' : 'code');
+                                }}
+                              >
+                                <span className="chimucode-file-badge">{f.language.toUpperCase()}</span>
+                                <span className="chimucode-file-name">{f.path}</span>
+                              </div>
+                            ))}
                           </div>
 
                           <div className="chimucode-code-card-actions">
@@ -519,10 +672,12 @@ export function ChimuCodeView({
                               type="button"
                               className="chimucode-card-btn"
                               onClick={() => {
-                                setActiveCode(m.codeSnippet!);
-                                setShowRightPanel(true);
-                                const snippetLang = detectCodeLanguage(m.codeSnippet!);
-                                setActiveRightTab(snippetLang === 'html' ? 'preview' : 'code');
+                                const target = m.changedFiles?.find((f) => f.language === 'html' || f.path.endsWith('.html')) || m.changedFiles?.[0];
+                                if (target) {
+                                  setActivePath(target.path);
+                                  setShowRightPanel(true);
+                                  setActiveRightTab(target.language === 'html' || target.path.endsWith('.html') ? 'preview' : 'code');
+                                }
                               }}
                             >
                               <Eye size={12} />
@@ -532,16 +687,17 @@ export function ChimuCodeView({
                             <button
                               type="button"
                               className="chimucode-card-btn"
-                              onClick={() => handleCopySnippet(m.codeSnippet!)}
+                              onClick={() => {
+                                const fullCode = m.changedFiles?.map((f) => `/* --- ${f.path} --- */\n` + f.content).join('\n\n') || '';
+                                handleCopySnippet(fullCode);
+                              }}
                             >
-                              {copiedSnippet === m.codeSnippet ? (
+                              {copiedSnippet ? (
                                 <Check size={12} color="#4ade80" />
                               ) : (
                                 <Copy size={12} />
                               )}
-                              <span>
-                                {copiedSnippet === m.codeSnippet ? 'Copiado' : 'Copiar'}
-                              </span>
+                              <span>{copiedSnippet ? 'Copiado' : 'Copiar'}</span>
                             </button>
                           </div>
                         </div>
@@ -595,7 +751,7 @@ export function ChimuCodeView({
         </div>
 
         {/* DIVISOR ARRASTRABLE (6px) */}
-        {showRightPanel && activeCode && (
+        {showRightPanel && files.length > 0 && (
           <div
             className={`chimucode-resizer-handle ${isResizing ? 'dragging' : ''}`}
             onMouseDown={handleMouseDown}
@@ -603,8 +759,8 @@ export function ChimuCodeView({
           />
         )}
 
-        {/* PANEL DERECHO (42% default, oculto hasta que haya código) */}
-        {showRightPanel && activeCode && (
+        {/* PANEL DERECHO (Multi-archivo con lista arriba) */}
+        {showRightPanel && files.length > 0 && (
           <div
             className="chimucode-right-panel"
             style={{
@@ -612,7 +768,7 @@ export function ChimuCodeView({
               maxWidth: `${panelWidthPercent}%`,
             }}
           >
-            {/* Header del panel derecho */}
+            {/* Header del panel derecho con pestañas de modo */}
             <div className="chimucode-panel-header">
               <div className="chimucode-panel-tabs">
                 <button
@@ -656,7 +812,7 @@ export function ChimuCodeView({
                       type="button"
                       className="chimucode-panel-icon-btn"
                       onClick={() => {
-                        const blob = new Blob([activeCode], { type: 'text/html;charset=utf-8' });
+                        const blob = new Blob([previewHtml || activeContent], { type: 'text/html;charset=utf-8' });
                         window.open(URL.createObjectURL(blob), '_blank');
                       }}
                       title="Abrir en pestaña nueva"
@@ -669,7 +825,7 @@ export function ChimuCodeView({
                   type="button"
                   className="chimucode-panel-icon-btn"
                   onClick={handleCopyActiveCode}
-                  title="Copiar código activo"
+                  title="Copiar código del archivo activo"
                 >
                   {copiedActiveCode ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
                 </button>
@@ -684,13 +840,34 @@ export function ChimuCodeView({
               </div>
             </div>
 
+            {/* Lista de archivos arriba (click cambia el archivo activo) */}
+            <div className="chimucode-file-tabs-strip">
+              {files.map((f) => (
+                <button
+                  key={f.path}
+                  type="button"
+                  className={`chimucode-file-tab ${f.path === activePath ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePath(f.path);
+                    if (f.language !== 'html' && !f.path.endsWith('.html') && activeRightTab === 'preview') {
+                      setActiveRightTab('code');
+                    }
+                  }}
+                  title={f.path}
+                >
+                  <FileCode size={13} style={{ opacity: f.path === activePath ? 1 : 0.6 }} />
+                  <span>{f.path}</span>
+                </button>
+              ))}
+            </div>
+
             {/* Cuerpo del panel derecho según pestaña activa */}
             <div className="chimucode-panel-body">
               {activeRightTab === 'preview' && (
                 isHtml ? (
                   <div className={`chimucode-iframe-container ${isMobileMode ? 'mobile-frame' : ''}`}>
                     <iframe
-                      srcDoc={activeCode}
+                      srcDoc={previewHtml}
                       title="ChimuCode Live Preview"
                       sandbox="allow-scripts allow-modals allow-forms allow-popups"
                       className="chimucode-preview-iframe"
@@ -698,14 +875,14 @@ export function ChimuCodeView({
                   </div>
                 ) : (
                   <div className="chimucode-preview-non-html">
-                    <p>Este código es {detectedLang.toUpperCase()}.</p>
+                    <p>El archivo activo es {activePath} ({detectedLang.toUpperCase()}).</p>
                     <button
                       type="button"
                       className="chimucode-btn-secondary"
-                      onClick={() => handleRunCode()}
+                      onClick={() => setActiveRightTab('code')}
                     >
-                      <Play size={14} />
-                      <span>Ejecutar en consola</span>
+                      <Code size={14} />
+                      <span>Ver y editar código</span>
                     </button>
                   </div>
                 )
@@ -714,11 +891,15 @@ export function ChimuCodeView({
               {activeRightTab === 'code' && (
                 <textarea
                   className="chimucode-code-editor"
-                  value={activeCode}
+                  value={activeContent}
                   wrap="off"
                   onChange={(e) => {
-                    setActiveCode(e.target.value);
-                    persistSession(messages, sessionTitle, e.target.value, consoleOutput);
+                    const newContent = e.target.value;
+                    const updatedFiles = files.map((f) =>
+                      f.path === activePath ? { ...f, content: newContent } : f
+                    );
+                    setFiles(updatedFiles);
+                    persistSession(messages, sessionTitle, updatedFiles, activePath, consoleOutput);
                   }}
                   spellCheck={false}
                   autoCapitalize="off"

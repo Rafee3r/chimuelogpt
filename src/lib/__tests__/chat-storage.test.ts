@@ -85,3 +85,76 @@ describe('groupChatsByDate', () => {
     expect(g.hoy).toEqual([]);
   });
 });
+
+describe('ChimuCode sessions storage & migration', () => {
+  it('guarda y carga sesiones en chimucode-sessions-v1 preservando files y activePath', async () => {
+    const { loadChimuCodeSessions, saveChimuCodeSessions, CHIMUCODE_STORAGE_KEY } = await import('../chat-storage');
+    const storage = makeStorage();
+
+    const sampleSessions = [
+      {
+        id: 'sess-1',
+        title: 'Proyecto Petra',
+        messages: [{ id: 'm1', role: 'user' as const, content: 'hola' }],
+        files: [{ path: 'petra/index.html', language: 'html' as const, content: '<h1>Petra</h1>' }],
+        activePath: 'petra/index.html',
+        updatedAt: Date.now(),
+      },
+    ];
+
+    saveChimuCodeSessions(sampleSessions, storage);
+    expect(storage.getItem(CHIMUCODE_STORAGE_KEY)).toBeDefined();
+
+    const loaded = loadChimuCodeSessions(storage);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].id).toBe('sess-1');
+    expect(loaded[0].title).toBe('Proyecto Petra');
+    expect(loaded[0].files).toHaveLength(1);
+    expect(loaded[0].files[0].path).toBe('petra/index.html');
+  });
+
+  it('migra sesiones de claves legacy sin borrarlas', async () => {
+    const { loadChimuCodeSessions, CHIMUCODE_STORAGE_KEY } = await import('../chat-storage');
+    const storage = makeStorage();
+
+    const legacyData = [
+      {
+        id: 'legacy-1',
+        title: 'Sesión Antigua',
+        messages: [{ id: 'm0', role: 'user' as const, content: 'crea app' }],
+        activeCode: 'console.log(1)',
+        language: 'javascript' as const,
+        updatedAt: 12345,
+      },
+    ];
+    storage.setItem('chimucode-sessions', JSON.stringify(legacyData));
+
+    const loaded = loadChimuCodeSessions(storage);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].id).toBe('legacy-1');
+    expect(loaded[0].files[0].path).toBe('app.js');
+    expect(loaded[0].files[0].content).toBe('console.log(1)');
+
+    // Clave legacy NO debe ser borrada
+    expect(storage.getItem('chimucode-sessions')).toBe(JSON.stringify(legacyData));
+    // Clave nueva chimucode-sessions-v1 debe haber sido poblada
+    expect(storage.getItem(CHIMUCODE_STORAGE_KEY)).toBeDefined();
+  });
+
+  it('elimina solo la sesión especificada en deleteChimuCodeSession', async () => {
+    const { loadChimuCodeSessions, saveChimuCodeSessions, deleteChimuCodeSession } = await import('../chat-storage');
+    const storage = makeStorage();
+
+    const sessions = [
+      { id: 's1', title: 'Uno', messages: [], files: [], activePath: 'index.html', updatedAt: 1 },
+      { id: 's2', title: 'Dos', messages: [], files: [], activePath: 'index.html', updatedAt: 2 },
+    ];
+    saveChimuCodeSessions(sessions, storage);
+
+    deleteChimuCodeSession('s1', storage);
+    const remaining = loadChimuCodeSessions(storage);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe('s2');
+  });
+});
+

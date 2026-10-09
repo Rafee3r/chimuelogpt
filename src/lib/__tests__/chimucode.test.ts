@@ -88,4 +88,49 @@ describe('extractCodeFromAiResponse', () => {
   });
 });
 
+describe('extractProjectFilesFromAiResponse', () => {
+  it('extrae múltiples archivos nombrados con rutas y carpetas', async () => {
+    const { extractProjectFilesFromAiResponse } = await import('../chimucode');
+    const response = `
+Listo, aquí están los archivos:
+\`\`\`html petra/index.html
+<!DOCTYPE html><html><body><h1>Petra Inicio</h1><a href="catalogo.html">Ir al catálogo</a></body></html>
+\`\`\`
+
+\`\`\`html petra/catalogo.html
+<!DOCTYPE html><html><body><h1>Catálogo</h1><a href="index.html">Volver</a></body></html>
+\`\`\`
+
+\`\`\`css petra/styles.css
+body { background: #000; color: #fff; }
+\`\`\`
+¡Disfruta tu proyecto!`;
+
+    const res = extractProjectFilesFromAiResponse(response, 'catálogo en otra página, en una carpeta petra');
+    expect(res.files).toHaveLength(3);
+    expect(res.files[0].path).toBe('petra/index.html');
+    expect(res.files[0].language).toBe('html');
+    expect(res.files[1].path).toBe('petra/catalogo.html');
+    expect(res.files[1].language).toBe('html');
+    expect(res.files[2].path).toBe('petra/styles.css');
+    expect(res.files[2].language).toBe('css');
+    expect(res.explanation).toContain('Listo, aquí están los archivos:');
+    expect(res.explanation).not.toContain('```');
+  });
+
+  it('infiere la carpeta solicitada en el prompt si el fence no traía la carpeta', async () => {
+    const { extractProjectFilesFromAiResponse } = await import('../chimucode');
+    const response = `
+\`\`\`html index.html
+<h1>Principal</h1>
+\`\`\`
+\`\`\`html catalogo.html
+<h1>Catálogo</h1>
+\`\`\`
+`;
+    const res = extractProjectFilesFromAiResponse(response, 'en la carpeta tienda crea catalogo en otra página');
+    expect(res.files.map(f => f.path)).toEqual(['tienda/index.html', 'tienda/catalogo.html']);
+  });
+});
+
 

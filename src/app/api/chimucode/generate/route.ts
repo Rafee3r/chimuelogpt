@@ -1,11 +1,11 @@
-import { extractCodeFromAiResponse } from '../../../../lib/chimucode';
+import { extractProjectFilesFromAiResponse } from '../../../../lib/chimucode';
 import { isUncensoredModel } from '../../../../lib/models';
 
 export const maxDuration = 45;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, currentCode, language = 'html', model = 'deepseek-v4-flash' } = await req.json().catch(() => ({}));
+    const { prompt, currentCode, language = 'html', model = 'deepseek-v4-flash', files } = await req.json().catch(() => ({}));
 
     if (!prompt || typeof prompt !== 'string') {
       return Response.json({ ok: false, error: 'Debes proporcionar una instrucción para ChimuCode.' }, { status: 400 });
@@ -24,14 +24,32 @@ export async function POST(req: Request) {
     const apiEndpoint = isOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
     const apiModel = isOpenAi ? 'gpt-4o-mini' : 'deepseek-chat';
 
-    const systemPrompt = `Eres un asistente de programación técnico, directo y conciso.
+    let existingProjectContext = '';
+    if (files && Array.isArray(files) && files.length > 0) {
+      existingProjectContext = `ARCHIVOS EXISTENTES EN ESTE PROYECTO:\n` +
+        files.map((f: any) => `--- ${f.path} ---\n${(f.content || '').slice(0, 10000)}`).join('\n\n');
+    } else if (currentCode) {
+      existingProjectContext = `CÓDIGO ACTUAL EXISTENTE:\n\`\`\`\n${currentCode.slice(0, 12000)}\n\`\`\``;
+    }
+
+    const systemPrompt = `Eres un asistente de desarrollo y programación de software multi-archivo para la plataforma ChimuCode.
+
 REGLAS OBLIGATORIAS:
-- NUNCA des discursos de bienvenida. Prohibido decir "Soy ChimuCode", "tu sistema multiagente", o presentarte.
-- Si el usuario solo saluda (ej. "hola") o aún no pide código específico, responde ÚNICAMENTE con una sola pregunta o frase breve de 1 línea invitándolo a construir (ej. "¿Qué aplicación o script te gustaría programar?").
-- Si el usuario pide una aplicación, juego, widget o UI, devuelve un documento HTML5 completo y autocontenido con <!DOCTYPE html>, <head>, <style> (o CDN de Tailwind) y <script> interactivo funcional.
-- Entrega el código dentro de un solo bloque markdown \`\`\`html ... \`\`\` o el lenguaje solicitado.
-- Toda explicación antes o después del código debe ser de máximo 1 línea o bullets ultracortos.
-${currentCode ? `CÓDIGO ACTUAL EXISTENTE PARA MODIFICAR/MEJORAR:\n\`\`\`\n${currentCode.slice(0, 15000)}\n\`\`\`` : ''}`;
+- SÍ PUEDES CREAR CARPETAS Y ARCHIVOS VIRTUALES. NUNCA digas "no puedo crear carpetas en tu sistema", "no tengo acceso a tu disco" ni "cópialo manualmente". En este entorno tú gestionas un proyecto virtual con múltiples archivos y carpetas.
+- Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown:
+  \`\`\`html petra/index.html
+  <!DOCTYPE html>...
+  \`\`\`
+  \`\`\`html petra/catalogo.html
+  <!DOCTYPE html>...
+  \`\`\`
+- Cada turno modifica el proyecto: devuelve SOLO los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
+- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, petra/index.html y petra/catalogo.html").
+- NUNCA des discursos de bienvenida ni te presentes como "Soy ChimuCode".
+- Si el usuario solo saluda (ej. "hola") o no pide código todavía, responde con una sola pregunta de 1 línea invitándolo a construir.
+- Los enlaces entre páginas deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
+
+${existingProjectContext}`;
 
     const res = await fetch(apiEndpoint, {
       method: 'POST',
@@ -57,20 +75,23 @@ ${currentCode ? `CÓDIGO ACTUAL EXISTENTE PARA MODIFICAR/MEJORAR:\n\`\`\`\n${cur
     const data = await res.json();
     const aiText = data.choices?.[0]?.message?.content || '';
 
-    const extracted = extractCodeFromAiResponse(aiText);
-    const hasCode = !!extracted.code && extracted.code.trim().length > 0;
+    const extracted = extractProjectFilesFromAiResponse(aiText, prompt, files);
+    const hasCode = extracted.files.length > 0;
+    const primaryFile = extracted.files.find(f => f.language === 'html') || extracted.files[0];
 
     return Response.json({
       ok: true,
-      code: hasCode ? extracted.code : null,
-      language: hasCode ? extracted.language : language,
+      files: extracted.files,
+      code: hasCode ? primaryFile.content : null,
+      language: hasCode ? primaryFile.language : language,
+      activePath: hasCode ? primaryFile.path : null,
       rawExplanation: hasCode
-        ? aiText.replace(/```[\s\S]*?```/g, '').trim() || 'Aquí tienes el código solicitado:'
+        ? (extracted.explanation || 'Archivos del proyecto actualizados.')
         : aiText.trim(),
       stages: [
-        '📐 Arquitecto: Estructura y dependencias planificadas',
-        '💻 Codex: Código completo e interactivo generado',
-        '🛡️ QA: Sintaxis y compatibilidad de sandbox auditadas',
+        '📁 Multi-file Codex: Archivos del proyecto estructurados',
+        '💻 Código generado e interactivo',
+        '🛡️ Sandbox validado',
       ],
     });
   } catch (err: any) {

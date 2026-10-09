@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
 import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal, Briefcase } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
-import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate } from "../lib/chat-storage";
+import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate, loadChimuCodeSessions, saveChimuCodeSessions, deleteChimuCodeSession } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
@@ -1637,14 +1637,12 @@ export default function Home() {
       if (Array.isArray(parsed) && kept.length !== parsed.length) safeSetChats(kept);
     }
 
-    const savedChimuCode = localStorage.getItem("chimuelo_code_sessions");
-    if (savedChimuCode) {
-      try {
-        const parsed = JSON.parse(savedChimuCode);
-        if (Array.isArray(parsed)) {
-          setChimuCodeSessions(parsed);
-        }
-      } catch (e) {}
+    const loadedSessions = loadChimuCodeSessions();
+    setChimuCodeSessions(loadedSessions);
+    if (loadedSessions.length > 0) {
+      const lastActiveId = localStorage.getItem('chimucode-active-session-id');
+      const found = loadedSessions.find(s => s.id === lastActiveId);
+      setActiveChimuSessionId(found ? found.id : loadedSessions[0].id);
     }
 
     const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
@@ -4110,7 +4108,15 @@ export default function Home() {
             <MessageSquare size={14} /> Chat
           </button>
           <button 
-            onClick={() => { if (viewMode !== 'chimucode') { prevViewMode.current = viewMode as any; setViewMode('chimucode'); } }} 
+            onClick={() => {
+              if (viewMode !== 'chimucode') {
+                prevViewMode.current = viewMode as any;
+                setViewMode('chimucode');
+                if (!activeChimuSessionId && chimuCodeSessions.length > 0) {
+                  setActiveChimuSessionId(chimuCodeSessions[0].id);
+                }
+              }
+            }} 
             style={{ flex: 1, padding: '6px', borderRadius: '8px', background: viewMode === 'chimucode' ? 'var(--sidebar-hover)' : 'transparent', border: '1px solid ' + (viewMode === 'chimucode' ? 'var(--border-color)' : 'transparent'), color: viewMode === 'chimucode' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: viewMode === 'chimucode' ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s' }}
           >
             <Terminal size={14} /> Code
@@ -4179,10 +4185,13 @@ export default function Home() {
                        style={{ color: '#666' }} 
                        onClick={(e) => {
                          e.stopPropagation();
-                         const next = chimuCodeSessions.filter(cs => cs.id !== s.id);
+                         const ok = window.confirm(`¿Eliminar la sesión "${s.title || 'de código'}"?`);
+                         if (!ok) return;
+                         const next = deleteChimuCodeSession(s.id);
                          setChimuCodeSessions(next);
-                         localStorage.setItem('chimuelo_code_sessions', JSON.stringify(next));
-                         if (activeChimuSessionId === s.id) setActiveChimuSessionId(null);
+                         if (activeChimuSessionId === s.id) {
+                           setActiveChimuSessionId(next.length > 0 ? next[0].id : null);
+                         }
                        }}
                      />
                   </button>
@@ -4476,11 +4485,15 @@ export default function Home() {
               setChimuCodeSessions((prev: any[]) => {
                 const idx = prev.findIndex(s => s.id === session.id);
                 const raw = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
-                const unique = Array.from(new Map(raw.map(item => [item.id, item])).values());
-                localStorage.setItem("chimuelo_code_sessions", JSON.stringify(unique));
-                return unique;
+                saveChimuCodeSessions(raw);
+                return raw.sort((a, b) => b.updatedAt - a.updatedAt);
               });
-              if (session.id !== activeChimuSessionId) setActiveChimuSessionId(session.id);
+              if (session.id !== activeChimuSessionId) {
+                setActiveChimuSessionId(session.id);
+              }
+              try {
+                localStorage.setItem('chimucode-active-session-id', session.id);
+              } catch {}
             }}
             initialSessionData={chimuCodeSessions.find(s => s.id === activeChimuSessionId)}
             model={model}

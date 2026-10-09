@@ -1,4 +1,4 @@
-export type SandboxLanguage = 'javascript' | 'typescript' | 'python' | 'html';
+export type SandboxLanguage = 'javascript' | 'typescript' | 'python' | 'html' | 'css' | 'json';
 
 export type SandboxEngine = 'worker' | 'cloud' | 'agent' | 'preview';
 
@@ -13,11 +13,18 @@ export interface SandboxResult {
   language: SandboxLanguage;
 }
 
+export interface ChimuCodeFile {
+  path: string;
+  language: string;
+  content: string;
+}
+
 export interface ChimuCodeMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   codeSnippet?: string;
+  changedFiles?: ChimuCodeFile[];
   executionResult?: SandboxResult;
   timestamp: string;
 }
@@ -32,8 +39,10 @@ export interface ChimuCodeSession {
   id: string;
   title: string;
   messages: ChimuCodeMessage[];
-  activeCode: string;
-  language: string;
-  consoleOutput: string | null;
+  files: ChimuCodeFile[];
+  activePath: string;
+  activeCode?: string;
+  language?: string;
+  consoleOutput?: string | null;
   updatedAt: number;
 }

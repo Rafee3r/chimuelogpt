@@ -281,40 +281,123 @@ export function parseChimuCodeCommand(input: string): {
   return { isCommand: false, rawCode: input };
 }
 
-export function extractCodeFromAiResponse(response: string): { code: string; language: SandboxLanguage } {
+import type { ChimuCodeFile } from './sandbox-types';
+
+export function extractProjectFilesFromAiResponse(
+  response: string,
+  userPrompt: string = '',
+  existingFiles: ChimuCodeFile[] = []
+): { files: ChimuCodeFile[]; explanation: string } {
   if (!response || typeof response !== 'string') {
+    return { files: [], explanation: '' };
+  }
+
+  const filesMap = new Map<string, ChimuCodeFile>();
+  const fenceRegex = /```([a-zA-Z0-9_-]+)?(?:[ \t]+([^\n\r`]+))?\r?\n([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+  let hasFences = false;
+
+  const folderMatch = userPrompt.match(/(?:en\s+(?:la\s+|una\s+)?carpeta\s+([a-zA-Z0-9_-]+)|([a-zA-Z0-9_-]+)\/)/i);
+  const preferredFolder = folderMatch ? (folderMatch[1] || folderMatch[2]) : null;
+
+  let fenceIndex = 0;
+  while ((match = fenceRegex.exec(response)) !== null) {
+    hasFences = true;
+    fenceIndex++;
+    const rawLang = (match[1] || '').trim().toLowerCase();
+    let rawPath = (match[2] || '').trim();
+    const content = match[3].trim();
+
+    // Si no vino ruta en la cabecera, inspeccionar primera línea del código
+    if (!rawPath) {
+      const headerLineMatch = content.match(/^(?:<!--|\/\/|\/\*)\s*(?:filename:?\s*|archivo:?\s*)?([a-zA-Z0-9_\-\.\/]+)\s*(?:-->|\*\/)?/i);
+      if (headerLineMatch && (headerLineMatch[1].includes('.') || headerLineMatch[1].includes('/'))) {
+        rawPath = headerLineMatch[1].trim();
+      }
+    }
+
+    // Inferir ruta según contexto si aún no tiene nombre
+    if (!rawPath) {
+      if (rawLang === 'html' || rawLang === 'xml' || content.includes('<!DOCTYPE') || content.includes('<html')) {
+        const promptLower = userPrompt.toLowerCase();
+        if ((promptLower.includes('catalogo') || promptLower.includes('catálogo')) && (fenceIndex > 1 || existingFiles.some(f => f.path.endsWith('index.html')))) {
+          rawPath = 'catalogo.html';
+        } else if (fenceIndex === 1) {
+          rawPath = 'index.html';
+        } else {
+          rawPath = `page${fenceIndex}.html`;
+        }
+      } else if (rawLang === 'css') {
+        rawPath = 'styles.css';
+      } else if (rawLang === 'js' || rawLang === 'javascript') {
+        rawPath = 'app.js';
+      } else if (rawLang === 'ts' || rawLang === 'typescript') {
+        rawPath = 'app.ts';
+      } else if (rawLang === 'py' || rawLang === 'python') {
+        rawPath = 'main.py';
+      } else if (rawLang === 'json') {
+        rawPath = 'data.json';
+      } else {
+        rawPath = `file${fenceIndex}.txt`;
+      }
+    }
+
+    // Si el usuario pidió carpeta explícita y el path no la tiene, anteponerla
+    if (preferredFolder && !rawPath.includes('/') && !rawPath.startsWith(preferredFolder + '/')) {
+      rawPath = `${preferredFolder}/${rawPath}`;
+    }
+
+    // Limpiar comillas o caracteres raros en la ruta
+    rawPath = rawPath.replace(/^["']|["']$/g, '').trim();
+
+    let resolvedLang: SandboxLanguage = 'html';
+    if (rawPath.endsWith('.html') || rawPath.endsWith('.htm') || rawLang === 'html') {
+      resolvedLang = 'html';
+    } else if (rawPath.endsWith('.css') || rawLang === 'css') {
+      resolvedLang = 'css';
+    } else if (rawPath.endsWith('.js') || rawLang === 'js' || rawLang === 'javascript') {
+      resolvedLang = 'javascript';
+    } else if (rawPath.endsWith('.ts') || rawLang === 'ts' || rawLang === 'typescript') {
+      resolvedLang = 'typescript';
+    } else if (rawPath.endsWith('.py') || rawLang === 'py' || rawLang === 'python') {
+      resolvedLang = 'python';
+    } else if (rawPath.endsWith('.json') || rawLang === 'json') {
+      resolvedLang = 'json';
+    }
+
+    filesMap.set(rawPath, {
+      path: rawPath,
+      language: resolvedLang,
+      content,
+    });
+  }
+
+  // Documento HTML suelto sin fences
+  if (!hasFences) {
+    const trimmed = response.trim();
+    if (trimmed.includes('<!DOCTYPE') && trimmed.includes('</html>')) {
+      const start = trimmed.indexOf('<!DOCTYPE');
+      const end = trimmed.indexOf('</html>') + 7;
+      const htmlCode = trimmed.slice(start, end).trim();
+      const path = preferredFolder ? `${preferredFolder}/index.html` : 'index.html';
+      filesMap.set(path, { path, language: 'html', content: htmlCode });
+    }
+  }
+
+  const files = Array.from(filesMap.values());
+  const fenceCleanRegex = /```(?:[a-zA-Z0-9_-]+)?(?:[ \t]+[^\n\r`]+)?\r?\n[\s\S]*?```/g;
+  const explanation = response.replace(fenceCleanRegex, '').trim();
+
+  return { files, explanation };
+}
+
+export function extractCodeFromAiResponse(response: string): { code: string; language: SandboxLanguage } {
+  const { files } = extractProjectFilesFromAiResponse(response);
+  if (files.length === 0) {
     return { code: '', language: 'html' };
   }
-
-  // Regex para bloques de código delimitados por markdown ```lang ... ```
-  const codeBlockRegex = /```(html|xml|javascript|js|typescript|ts|python|py)?\s*([\s\S]*?)```/i;
-  const match = response.match(codeBlockRegex);
-
-  if (match) {
-    const rawLang = (match[1] || '').toLowerCase();
-    const rawContent = match[2].trim();
-    if (rawLang === 'html' || rawLang === 'xml' || rawContent.includes('<!DOCTYPE') || rawContent.includes('<html')) {
-      return { code: rawContent, language: 'html' };
-    }
-    if (rawLang === 'python' || rawLang === 'py') {
-      return { code: rawContent, language: 'python' };
-    }
-    if (rawLang === 'typescript' || rawLang === 'ts') {
-      return { code: rawContent, language: 'typescript' };
-    }
-    return { code: rawContent, language: 'javascript' };
-  }
-
-  // Si no hay bloques de markdown con fences, verificar si es un documento HTML completo
-  const trimmed = response.trim();
-  if (trimmed.includes('<!DOCTYPE') && trimmed.includes('</html>')) {
-    const start = trimmed.indexOf('<!DOCTYPE');
-    const end = trimmed.indexOf('</html>') + 7;
-    return { code: trimmed.slice(start, end).trim(), language: 'html' };
-  }
-
-  // Saludos, preguntas o texto conversacional SIN fence NO son código
-  return { code: '', language: 'html' };
+  const primary = files.find(f => f.language === 'html') || files[0];
+  return { code: primary.content, language: primary.language as SandboxLanguage };
 }
 
 export function detectCodeLanguage(code: string): SandboxLanguage {

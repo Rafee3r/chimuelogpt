@@ -382,26 +382,45 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
-.chimucode-code-card-header {
+.chimucode-code-card-files {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chimucode-card-file-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8a8a93;
   font-size: 12.5px;
-  font-weight: 600;
+  color: #eee;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.chimucode-code-card-lang {
+
+.chimucode-file-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.2);
   color: #60a5fa;
-  font-family: ui-monospace, monospace;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
 .chimucode-code-card-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .chimucode-card-btn {
@@ -420,6 +439,52 @@
 .chimucode-card-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* File tabs strip in right panel */
+.chimucode-file-tabs-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #131316;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.chimucode-file-tabs-strip::-webkit-scrollbar {
+  height: 4px;
+}
+.chimucode-file-tabs-strip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.chimucode-file-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #8a8a93;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.chimucode-file-tab:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #eee;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.chimucode-file-tab.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.35);
+  font-weight: 500;
 }
 
 /* ── 4. COMPOSER PEGED DOWN OUTSIDE SCROLL ── */
