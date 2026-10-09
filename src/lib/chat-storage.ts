@@ -77,15 +77,28 @@ function normalizeSession(s: any): ChimuCodeSession {
   }
   const activePath = s.activePath || (files.length > 0 ? files[0].path : 'index.html');
   const activeContent = files.find(f => f.path === activePath)?.content || s.activeCode || '';
+
+  // Filtrar mensajes de error como "Error: Unexpected token"
+  const rawMsgs = Array.isArray(s.messages) ? s.messages : [];
+  const cleanMsgs = rawMsgs.filter((m: any) => {
+    if (!m || !m.content || typeof m.content !== 'string') return false;
+    const trimmed = m.content.trim();
+    if (trimmed.startsWith('Error: Unexpected token') || trimmed.startsWith('⚠️ Error: Unexpected token')) {
+      return false;
+    }
+    return true;
+  });
+
   return {
     id: String(s.id),
     title: s.title || 'Sesión de código',
-    messages: Array.isArray(s.messages) ? s.messages : [],
+    messages: cleanMsgs,
     files,
     activePath,
     activeCode: activeContent,
     language: files.find(f => f.path === activePath)?.language || s.language || 'html',
     consoleOutput: s.consoleOutput || null,
+    pageContext: s.pageContext || null,
     updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : Date.now(),
   };
 }

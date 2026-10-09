@@ -25,9 +25,20 @@ import {
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
-import { detectCodeLanguage } from '../lib/chimucode';
-import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall } from '../lib/sandbox-types';
+import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall, ChimuCodePageContext } from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
+
+function cleanMessages(msgs: ChimuCodeMessage[]): ChimuCodeMessage[] {
+  if (!Array.isArray(msgs)) return [];
+  return msgs.filter((m) => {
+    if (!m || !m.content || typeof m.content !== 'string') return false;
+    const trimmed = m.content.trim();
+    if (trimmed.startsWith('Error: Unexpected token') || trimmed.startsWith('⚠️ Error: Unexpected token')) {
+      return false;
+    }
+    return true;
+  });
+}
 
 const REAL_MODELS = [
   { id: CLIENT_MODEL_FLASH, shortName: 'Flash', desc: 'DeepSeek Flash' },
@@ -56,6 +67,14 @@ export function ChimuCodeView({
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionTitle, setSessionTitle] = useState<string>('Nueva sesión');
+
+  // Contexto de página web detectada en la sesión (para no volver a parsear la misma URL)
+  const [pageContext, setPageContext] = useState<ChimuCodePageContext | null>(
+    initialSessionData?.pageContext || null
+  );
+
+  // Lock síncrono para prevenir duplicación de burbujas de usuario
+  const isSendingRef = useRef<boolean>(false);
 
   // Estados de streaming en vivo estilo Claude Code
   const [liveTools, setLiveTools] = useState<ChimuCodeToolCall[]>([]);
@@ -90,6 +109,14 @@ export function ChimuCodeView({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
+  // Mensajes limpios para render (sin errores corruptos ni burbujas consecutivas duplicadas)
+  const renderedMessages = useMemo(() => {
+    return cleanMessages(messages).filter(
+      (m, idx, arr) =>
+        !(m.role === 'user' && idx > 0 && arr[idx - 1].role === 'user' && arr[idx - 1].content.trim() === m.content.trim())
+    );
+  }, [messages]);
+
   // Archivo actualmente activo
   const activeFile = useMemo(() => {
     return files.find((f) => f.path === activePath) || files[0] || null;
@@ -104,8 +131,9 @@ export function ChimuCodeView({
     if (activeSessionId !== currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId;
       if (activeSessionId && initialSessionData) {
-        setMessages(initialSessionData.messages || []);
+        setMessages(cleanMessages(initialSessionData.messages || []));
         setSessionTitle(initialSessionData.title || 'Sesión de código');
+        setPageContext(initialSessionData.pageContext || null);
 
         let sessionFiles: ChimuCodeFile[] = Array.isArray(initialSessionData.files) && initialSessionData.files.length > 0
           ? initialSessionData.files
@@ -131,6 +159,7 @@ export function ChimuCodeView({
         setFiles([]);
         setActivePath('index.html');
         setConsoleOutput(null);
+        setPageContext(null);
         setShowRightPanel(false);
       }
     }
@@ -189,22 +218,25 @@ export function ChimuCodeView({
     title: string,
     currentFiles: ChimuCodeFile[],
     currActivePath: string,
-    output: string | null
+    output: string | null,
+    overridePageContext?: ChimuCodePageContext | null
   ) => {
     if (!currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
     }
     const sId = currentSessionIdRef.current;
     const currentActiveFile = currentFiles.find((f) => f.path === currActivePath) || currentFiles[0];
+    const cleaned = cleanMessages(msgs);
     const sessionObj: ChimuCodeSession = {
       id: sId,
       title: title || 'Sesión de código',
-      messages: msgs,
+      messages: cleaned,
       files: currentFiles,
       activePath: currActivePath,
       activeCode: currentActiveFile?.content || '',
       language: currentActiveFile?.language || 'html',
       consoleOutput: output,
+      pageContext: overridePageContext !== undefined ? overridePageContext : pageContext,
       updatedAt: Date.now(),
     };
     onSaveSession(sessionObj);
@@ -304,21 +336,35 @@ export function ChimuCodeView({
 
   // Enviar mensaje al backend y procesar streaming SSE en vivo
   const handleSendMessage = async () => {
+    if (isSendingRef.current || isGenerating) return;
     const promptText = input.trim();
-    if (!promptText || isGenerating) return;
+    if (!promptText) return;
+
+    isSendingRef.current = true;
 
     if (!currentSessionIdRef.current) {
       currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
     }
 
     const userMsg: ChimuCodeMessage = {
-      id: `u-${Date.now()}`,
+      id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       role: 'user',
       content: promptText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const nextMsgs = [...messages, userMsg];
+    const currentClean = cleanMessages(messages);
+    // Prevenir duplicación de la burbuja del usuario
+    if (
+      currentClean.length > 0 &&
+      currentClean[currentClean.length - 1].role === 'user' &&
+      currentClean[currentClean.length - 1].content.trim() === promptText
+    ) {
+      isSendingRef.current = false;
+      return;
+    }
+
+    const nextMsgs = [...currentClean, userMsg];
     setMessages(nextMsgs);
     setInput('');
 
@@ -335,7 +381,9 @@ export function ChimuCodeView({
       setSessionTitle(nextTitle);
     }
 
-    persistSession(nextMsgs, nextTitle, files, activePath, consoleOutput);
+    persistSession(nextMsgs, nextTitle, files, activePath, consoleOutput, pageContext);
+
+    let currentPageContext = pageContext;
 
     try {
       const res = await fetch('/api/chimucode/generate', {
@@ -347,6 +395,11 @@ export function ChimuCodeView({
           currentCode: activeContent,
           language: detectedLang,
           model: model || CLIENT_MODEL_FLASH,
+          messages: nextMsgs.slice(-12).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          pageContext: pageContext,
         }),
       });
 
@@ -414,6 +467,11 @@ export function ChimuCodeView({
                 );
                 setLiveTools([...accumulatedTools]);
               }
+            } else if (event.type === 'pageContext') {
+              if (event.pageContext) {
+                currentPageContext = event.pageContext;
+                setPageContext(event.pageContext);
+              }
             } else if (event.type === 'status') {
               setLiveStatusText(event.text || '');
             } else if (event.type === 'delta') {
@@ -457,6 +515,10 @@ export function ChimuCodeView({
               if (event.activePath) {
                 finalActivePath = event.activePath;
               }
+              if (event.pageContext) {
+                currentPageContext = event.pageContext;
+                setPageContext(event.pageContext);
+              }
             } else if (event.type === 'error') {
               throw new Error(event.error || 'Error reportado por el servidor');
             }
@@ -496,19 +558,22 @@ export function ChimuCodeView({
       };
 
       const finalMsgs = [...nextMsgs, assistantMsg];
-      setMessages(finalMsgs);
-      persistSession(finalMsgs, nextTitle, updatedFiles, finalActivePath || activePath, consoleOutput);
+      setMessages(cleanMessages(finalMsgs));
+      persistSession(finalMsgs, nextTitle, updatedFiles, finalActivePath || activePath, consoleOutput, currentPageContext);
     } catch (err: any) {
-      const errorMsg: ChimuCodeMessage = {
-        id: `err-${Date.now()}`,
-        role: 'assistant',
-        content: `⚠️ Error: ${err.message || 'No se pudo generar el código'}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      const finalMsgs = [...nextMsgs, errorMsg];
-      setMessages(finalMsgs);
-      persistSession(finalMsgs, nextTitle, files, activePath, consoleOutput);
+      if (!err?.message?.includes('Unexpected token')) {
+        const errorMsg: ChimuCodeMessage = {
+          id: `err-${Date.now()}`,
+          role: 'assistant',
+          content: `⚠️ Error: ${err.message || 'No se pudo generar el código'}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        const finalMsgs = [...nextMsgs, errorMsg];
+        setMessages(cleanMessages(finalMsgs));
+        persistSession(finalMsgs, nextTitle, files, activePath, consoleOutput, currentPageContext);
+      }
     } finally {
+      isSendingRef.current = false;
       setIsGenerating(false);
       setLiveTools([]);
       setLiveStatusText('');
@@ -756,13 +821,13 @@ export function ChimuCodeView({
         >
           {/* Mensajes (min 0, overflow auto, alto restante) */}
           <div className="chimucode-messages-scroll" ref={messagesScrollRef}>
-            {messages.length === 0 ? (
+            {renderedMessages.length === 0 && !isGenerating ? (
               <div className="chimucode-empty-state">
                 Describe la aplicación o script que deseas construir.
               </div>
             ) : (
               <div className="chimucode-messages-list">
-                {messages.map((m) => (
+                {renderedMessages.map((m) => (
                   <div key={m.id} className={`chimucode-msg chimucode-msg-${m.role}`}>
                     <div className="chimucode-msg-bubble">
                       {/* Herramientas ejecutadas en este mensaje estilo Claude Code */}

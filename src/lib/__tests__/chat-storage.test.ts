@@ -156,5 +156,41 @@ describe('ChimuCode sessions storage & migration', () => {
     expect(remaining).toHaveLength(1);
     expect(remaining[0].id).toBe('s2');
   });
+
+  it('filtra mensajes corruptos con Error: Unexpected token y persiste pageContext', async () => {
+    const { loadChimuCodeSessions, saveChimuCodeSessions } = await import('../chat-storage');
+    const storage = makeStorage();
+
+    const sessionWithErrors = [
+      {
+        id: 's-vada',
+        title: 'Vada CL',
+        messages: [
+          { id: 'm1', role: 'user' as const, content: 'landing de vada.cl' },
+          { id: 'm2', role: 'assistant' as const, content: '⚠️ Error: Unexpected token < in JSON' },
+          { id: 'm3', role: 'assistant' as const, content: 'Error: Unexpected token d, data: {"type": ...' },
+          { id: 'm4', role: 'user' as const, content: 'con todo' },
+        ],
+        files: [],
+        activePath: 'index.html',
+        pageContext: {
+          url: 'https://vada.cl',
+          title: 'VADA Chile',
+          text: 'Tiras de blanqueamiento dental sin peróxido por $29.900.',
+        },
+        updatedAt: 100,
+      },
+    ];
+
+    saveChimuCodeSessions(sessionWithErrors, storage);
+    const loaded = loadChimuCodeSessions(storage);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].messages).toHaveLength(2);
+    expect(loaded[0].messages.map((m) => m.content)).toEqual(['landing de vada.cl', 'con todo']);
+    expect(loaded[0].pageContext).toBeDefined();
+    expect(loaded[0].pageContext?.url).toBe('https://vada.cl');
+    expect(loaded[0].pageContext?.title).toBe('VADA Chile');
+  });
 });
+
 

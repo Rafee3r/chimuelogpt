@@ -44,6 +44,12 @@ export interface AgentStageInfo {
   details?: string;
 }
 
+export interface ChimuCodePageContext {
+  url: string;
+  title: string;
+  text: string;
+}
+
 export interface ChimuCodeSession {
   id: string;
   title: string;
@@ -53,5 +59,6 @@ export interface ChimuCodeSession {
   activeCode?: string;
   language?: string;
   consoleOutput?: string | null;
+  pageContext?: ChimuCodePageContext | null;
   updatedAt: number;
 }

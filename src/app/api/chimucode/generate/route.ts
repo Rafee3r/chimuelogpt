@@ -1,14 +1,21 @@
 import { extractProjectFilesFromAiResponse } from '../../../../lib/chimucode';
 import { isUncensoredModel } from '../../../../lib/models';
-import type { ChimuCodeFile } from '../../../../lib/sandbox-types';
+import type { ChimuCodeFile, ChimuCodePageContext } from '../../../../lib/sandbox-types';
 import { extractUrlFromPrompt, scrapeUrlContent } from '../../../../lib/url-parser';
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, currentCode, language = 'html', model = 'deepseek-v4-flash', files = [] } =
-      await req.json().catch(() => ({}));
+    const {
+      prompt,
+      currentCode,
+      language = 'html',
+      model = 'deepseek-v4-flash',
+      files = [],
+      messages = [],
+      pageContext: incomingPageContext,
+    } = await req.json().catch(() => ({}));
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ ok: false, error: 'Debes proporcionar una instrucción para ChimuCode.' }), {
@@ -33,8 +40,21 @@ export async function POST(req: Request) {
     const apiEndpoint = isOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
     const apiModel = isOpenAi ? 'gpt-4o-mini' : 'deepseek-chat';
 
-    // 1. Detectar si el prompt incluye alguna URL
+    // 1. Detectar si el prompt incluye alguna URL y verificar si ya existe en pageContext
     const detectedUrl = extractUrlFromPrompt(prompt);
+    let activePageContext: ChimuCodePageContext | null = incomingPageContext || null;
+
+    const normalizeUrl = (u: string) =>
+      u.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '').toLowerCase();
+
+    let needsScrape = false;
+    if (detectedUrl) {
+      if (!activePageContext || !activePageContext.url || !activePageContext.text) {
+        needsScrape = true;
+      } else if (normalizeUrl(detectedUrl) !== normalizeUrl(activePageContext.url)) {
+        needsScrape = true;
+      }
+    }
 
     // Preparar contexto de archivos existentes
     let existingProjectContext = '';
@@ -60,8 +80,8 @@ export async function POST(req: Request) {
 
         let verifiedBusinessContext = '';
 
-        // 2. Si hay URL, ejecutar tool parse-url ANTES de llamar al modelo
-        if (detectedUrl) {
+        // 2. Si detectamos una URL nueva que no tengamos en pageContext, scrapear
+        if (needsScrape && detectedUrl) {
           sendEvent({
             type: 'tool',
             name: 'parse-url',
@@ -73,6 +93,12 @@ export async function POST(req: Request) {
             const scrapeRes = await scrapeUrlContent(detectedUrl);
             if (scrapeRes.ok && scrapeRes.text) {
               const preview = scrapeRes.text.slice(0, 200);
+              activePageContext = {
+                url: detectedUrl,
+                title: scrapeRes.title || 'Sitio Web',
+                text: scrapeRes.text,
+              };
+
               sendEvent({
                 type: 'tool',
                 name: 'parse-url',
@@ -80,15 +106,10 @@ export async function POST(req: Request) {
                 preview,
               });
 
-              verifiedBusinessContext = `
-DATOS VERÍDICOS REALES EXTRAÍDOS DE LA URL (${detectedUrl}):
-Título: ${scrapeRes.title || 'Sitio Web'}
-Contenido real de la página:
-${scrapeRes.text.slice(0, 15000)}
-
-REGLAS ESTRICTAS DE NEGOCIO:
-- PROHIBIDO INVENTAR EL MODELO O GIRO DEL NEGOCIO. Si la página vende tiras de blanqueo dental (ej. White & Bright, sin peróxido, ~$29.900 CLP, despacho a Chile), la landing page DEBE ser estrictamente de tiras de blanqueo dental. NUNCA inventes que es una agencia de "experiencias digitales" ni inventes servicios que no están en el texto.
-- Copia fielmente las ofertas reales, claims, beneficios clínicos, precios y llamados a la acción (CTA) auténticos del sitio web.`;
+              sendEvent({
+                type: 'pageContext',
+                pageContext: activePageContext,
+              });
             } else {
               const errDetail = scrapeRes.error || 'No se pudo obtener el contenido.';
               sendEvent({
@@ -119,27 +140,71 @@ AVISO: No se pudo leer la URL ${detectedUrl}. Infórmale al usuario que no se pu
           }
         }
 
+        // Si tenemos pageContext (ya sea previo o recién obtenido), inyectarlo en el system prompt
+        if (activePageContext && activePageContext.text) {
+          verifiedBusinessContext = `
+DATOS VERÍDICOS DEL NEGOCIO / PÁGINA WEB (${activePageContext.url}):
+Título: ${activePageContext.title}
+Contenido real del sitio web:
+${activePageContext.text.slice(0, 15000)}
+
+REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
+- PROHIBIDO PREGUNTAR "¿qué proyecto?" o "¿de qué tema es?" si el hilo o el contexto ya indican el sitio web (${activePageContext.url} - ${activePageContext.title}).
+- PROHIBIDO INVENTAR EL GIRO O MODELO DE NEGOCIO. Si la página vende tiras de blanqueo dental (como White & Bright, sin peróxido, ~$29.900 CLP, despacho a Chile, etc.), la landing page DEBE ser estrictamente de tiras de blanqueo dental. NUNCA inventes que es una agencia de "experiencias digitales" ni inventes servicios que no están en el texto.
+- Copia fielmente las ofertas reales, claims, beneficios clínicos, precios y llamados a la acción (CTA) auténticos del sitio web.`;
+        }
+
         const systemPrompt = `Eres un asistente de desarrollo y programación de software multi-archivo para la plataforma ChimuCode.
 
 REGLAS OBLIGATORIAS:
 - SÍ PUEDES CREAR CARPETAS Y ARCHIVOS VIRTUALES. NUNCA digas "no puedo crear carpetas en tu sistema", "no tengo acceso a tu disco" ni "cópialo manualmente". En este entorno tú gestionas un proyecto virtual con múltiples archivos y carpetas.
+- MÁXIMO UNA PREGUNTA, y SOLO si falta un dato indispensable que cambiaría drásticamente el código técnico.
+- Si el usuario dice "con todo lo necesario", "hazlo completo", "con todo", "créalo", "continúa" o cualquier instrucción similar: DECIDE TÚ TODOS LOS DETALLES y ESCRIBE LOS ARCHIVOS DE CÓDIGO COMPLETOS EN ESTE TURNO. NUNCA respondas con "¿de qué tema?" o "dime qué secciones quieres". Escribe el código de inmediato.
+- PROHIBIDO preguntar "¿qué proyecto?" si en el historial de mensajes o en los datos del negocio ya se mencionó el proyecto o sitio web (ej. vada.cl, blanqueamiento dental, etc.).
 - Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown:
-  \`\`\`html petra/index.html
+  \`\`\`html index.html
   <!DOCTYPE html>...
   \`\`\`
   \`\`\`html petra/catalogo.html
   <!DOCTYPE html>...
   \`\`\`
-- Cada turno modifica el proyecto: devuelve SOLO los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
-- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, petra/index.html y petra/catalogo.html").
+- Cada turno modifica el proyecto: devuelve los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
+- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, index.html con la landing page completa.").
 - NUNCA des discursos de bienvenida ni te presentes como "Soy ChimuCode".
-- Si el usuario solo saluda (ej. "hola") o no pide código todavía, responde con una sola pregunta de 1 línea invitándolo a construir.
+- Si el usuario solo saluda (ej. "hola") sin contexto previo ni pedido de código, responde con una sola pregunta de 1 línea invitándolo a construir.
 - Los enlaces entre páginas deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
 - Escribe código HTML moderno, completo y estilizado con Tailwind CSS o CSS embebido según corresponda.
 
 ${verifiedBusinessContext}
 
 ${existingProjectContext}`;
+
+        // 3. Preparar el historial completo de mensajes para el modelo (últimos 12)
+        const cleanHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+        if (Array.isArray(messages)) {
+          for (const m of messages) {
+            if (!m || !m.content || typeof m.content !== 'string') continue;
+            const contentTrimmed = m.content.trim();
+            if (
+              contentTrimmed.startsWith('Error: Unexpected token') ||
+              contentTrimmed.startsWith('⚠️ Error: Unexpected token')
+            ) {
+              continue;
+            }
+            const role = m.role === 'assistant' ? 'assistant' : 'user';
+            cleanHistory.push({ role, content: m.content });
+          }
+        }
+
+        // Si el último mensaje del historial no es el prompt actual, agregarlo
+        if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].content !== prompt) {
+          cleanHistory.push({ role: 'user', content: prompt });
+        }
+
+        const llmMessages = [
+          { role: 'system', content: systemPrompt },
+          ...cleanHistory.slice(-12),
+        ];
 
         try {
           const aiRes = await fetch(apiEndpoint, {
@@ -150,10 +215,7 @@ ${existingProjectContext}`;
             },
             body: JSON.stringify({
               model: apiModel,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: prompt },
-              ],
+              messages: llmMessages,
               temperature: 0.2,
               stream: true,
             }),
@@ -364,11 +426,12 @@ ${existingProjectContext}`;
             }
           }
 
-          // Emitir evento final de finalización con los archivos del proyecto
+          // Emitir evento final de finalización con los archivos del proyecto y pageContext actualizado
           sendEvent({
             type: 'done',
             files: completedFiles,
             activePath: completedFiles.find((f) => f.language === 'html')?.path || completedFiles[0]?.path || 'index.html',
+            pageContext: activePageContext,
           });
         } catch (err: any) {
           sendEvent({ type: 'error', error: err?.message || 'Error en la generación de código.' });
