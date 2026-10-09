@@ -4475,9 +4475,10 @@ export default function Home() {
             onSaveSession={(session: any) => {
               setChimuCodeSessions((prev: any[]) => {
                 const idx = prev.findIndex(s => s.id === session.id);
-                const next = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
-                localStorage.setItem("chimuelo_code_sessions", JSON.stringify(next));
-                return next;
+                const raw = idx >= 0 ? [...prev.slice(0, idx), session, ...prev.slice(idx + 1)] : [session, ...prev];
+                const unique = Array.from(new Map(raw.map(item => [item.id, item])).values());
+                localStorage.setItem("chimuelo_code_sessions", JSON.stringify(unique));
+                return unique;
               });
               if (session.id !== activeChimuSessionId) setActiveChimuSessionId(session.id);
             }}

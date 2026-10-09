@@ -291,8 +291,11 @@
 .chimucode-messages-list {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px 24px 12px 24px;
+  gap: 16px;
+  padding: 24px 20px 16px 20px;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .chimucode-msg {
@@ -307,7 +310,7 @@
 }
 
 .chimucode-msg-bubble {
-  max-width: 86%;
+  max-width: 85%;
   background: #17171a;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -320,8 +323,8 @@
 }
 
 .chimucode-msg-user .chimucode-msg-bubble {
-  background: rgba(59, 130, 246, 0.16);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: #232328;
+  border-color: rgba(255, 255, 255, 0.12);
   color: #f1f5f9;
 }
 
@@ -666,6 +669,9 @@
   outline: none !important;
   resize: none;
   white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+  word-break: normal;
   tab-size: 2;
 }
 
@@ -679,12 +685,13 @@
   line-height: 1.6;
   color: #e2e8f0;
   overflow-y: auto;
+  overflow-x: auto;
 }
 
 .chimucode-console-output {
   margin: 0;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
   color: #e2e8f0;
 }
 

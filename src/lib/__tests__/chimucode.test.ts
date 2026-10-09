@@ -47,3 +47,45 @@ describe('detectCodeLanguage', () => {
   });
 });
 
+describe('extractCodeFromAiResponse', () => {
+  it('extrae solo el interior del primer fence de html', async () => {
+    const { extractCodeFromAiResponse } = await import('../chimucode');
+    const input = 'Aquí tienes el contador:\n```html\n<div id="counter">0</div>\n<button>Sumar</button>\n```\nEspero que te sirva.';
+    const res = extractCodeFromAiResponse(input);
+    expect(res.language).toBe('html');
+    expect(res.code).toBe('<div id="counter">0</div>\n<button>Sumar</button>');
+  });
+
+  it('extrae solo el interior de fences javascript y python', async () => {
+    const { extractCodeFromAiResponse } = await import('../chimucode');
+    const jsInput = '```javascript\nconsole.log("hola mundo");\n```';
+    expect(extractCodeFromAiResponse(jsInput)).toEqual({
+      code: 'console.log("hola mundo");',
+      language: 'javascript',
+    });
+
+    const pyInput = '```python\nprint("test python")\n```';
+    expect(extractCodeFromAiResponse(pyInput)).toEqual({
+      code: 'print("test python")',
+      language: 'python',
+    });
+  });
+
+  it('devuelve código vacío si no hay fence y es solo texto conversacional', async () => {
+    const { extractCodeFromAiResponse } = await import('../chimucode');
+    const greeting = '¡Hola! ¿Qué aplicación o script te gustaría programar hoy?';
+    const res = extractCodeFromAiResponse(greeting);
+    expect(res.code).toBe('');
+    expect(res.language).toBe('html');
+  });
+
+  it('devuelve documento HTML completo si no tiene fence pero tiene doctype y html', async () => {
+    const { extractCodeFromAiResponse } = await import('../chimucode');
+    const rawHtml = '<!DOCTYPE html><html><body><h1>Hola</h1></body></html>';
+    const res = extractCodeFromAiResponse(rawHtml);
+    expect(res.code).toBe(rawHtml);
+    expect(res.language).toBe('html');
+  });
+});
+
+

@@ -282,8 +282,12 @@ export function parseChimuCodeCommand(input: string): {
 }
 
 export function extractCodeFromAiResponse(response: string): { code: string; language: SandboxLanguage } {
-  // Regex para bloques de código ```html ... ``` o ```javascript ... ```
-  const codeBlockRegex = /```(html|xml|javascript|js|python|py)?\s*([\s\S]*?)```/i;
+  if (!response || typeof response !== 'string') {
+    return { code: '', language: 'html' };
+  }
+
+  // Regex para bloques de código delimitados por markdown ```lang ... ```
+  const codeBlockRegex = /```(html|xml|javascript|js|typescript|ts|python|py)?\s*([\s\S]*?)```/i;
   const match = response.match(codeBlockRegex);
 
   if (match) {
@@ -295,15 +299,22 @@ export function extractCodeFromAiResponse(response: string): { code: string; lan
     if (rawLang === 'python' || rawLang === 'py') {
       return { code: rawContent, language: 'python' };
     }
+    if (rawLang === 'typescript' || rawLang === 'ts') {
+      return { code: rawContent, language: 'typescript' };
+    }
     return { code: rawContent, language: 'javascript' };
   }
 
-  // Si no hay bloques de markdown pero contiene HTML
-  if (response.includes('<!DOCTYPE') || (response.includes('<html') && response.includes('</html>'))) {
-    return { code: response.trim(), language: 'html' };
+  // Si no hay bloques de markdown con fences, verificar si es un documento HTML completo
+  const trimmed = response.trim();
+  if (trimmed.includes('<!DOCTYPE') && trimmed.includes('</html>')) {
+    const start = trimmed.indexOf('<!DOCTYPE');
+    const end = trimmed.indexOf('</html>') + 7;
+    return { code: trimmed.slice(start, end).trim(), language: 'html' };
   }
 
-  return { code: response.trim(), language: 'javascript' };
+  // Saludos, preguntas o texto conversacional SIN fence NO son código
+  return { code: '', language: 'html' };
 }
 
 export function detectCodeLanguage(code: string): SandboxLanguage {

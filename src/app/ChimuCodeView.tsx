@@ -70,6 +70,9 @@ export function ChimuCodeView({
   const [showModelDropdown, setShowModelDropdown] = useState<boolean>(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
+  // ID persistente de la sesión actual para evitar duplicar entradas
+  const currentSessionIdRef = useRef<string | null>(activeSessionId);
+
   const workspaceRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -77,26 +80,25 @@ export function ChimuCodeView({
   const detectedLang = detectCodeLanguage(activeCode);
   const isHtml = detectedLang === 'html';
 
-  // Sincronizar estado al cambiar o cargar sesión
+  // Sincronizar estado al cambiar de sesión en el sidebar
   useEffect(() => {
-    if (activeSessionId && initialSessionData) {
-      setMessages(initialSessionData.messages || []);
-      setSessionTitle(initialSessionData.title || 'Sesión de código');
-      const code = initialSessionData.activeCode || '';
-      setActiveCode(code);
-      setConsoleOutput(initialSessionData.consoleOutput || null);
-      if (code.trim().length > 0) {
-        setShowRightPanel(true);
-      } else {
+    if (activeSessionId !== currentSessionIdRef.current) {
+      currentSessionIdRef.current = activeSessionId;
+      if (activeSessionId && initialSessionData) {
+        setMessages(initialSessionData.messages || []);
+        setSessionTitle(initialSessionData.title || 'Sesión de código');
+        const code = initialSessionData.activeCode || '';
+        setActiveCode(code);
+        setConsoleOutput(initialSessionData.consoleOutput || null);
+        setShowRightPanel(!!code.trim());
+      } else if (!activeSessionId) {
+        // Nueva sesión limpia solicitada
+        setMessages([]);
+        setSessionTitle('Nueva sesión');
+        setActiveCode('');
+        setConsoleOutput(null);
         setShowRightPanel(false);
       }
-    } else {
-      // Nueva sesión limpia
-      setMessages([]);
-      setSessionTitle('Nueva sesión');
-      setActiveCode('');
-      setConsoleOutput(null);
-      setShowRightPanel(false);
     }
   }, [activeSessionId, initialSessionData]);
 
@@ -147,14 +149,17 @@ export function ChimuCodeView({
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Persistir sesión activa
+  // Persistir sesión activa usando siempre el mismo ID
   const persistSession = (
     msgs: ChimuCodeMessage[],
     title: string,
     code: string,
     output: string | null
   ) => {
-    const sId = activeSessionId || `code-${Date.now()}`;
+    if (!currentSessionIdRef.current) {
+      currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
+    }
+    const sId = currentSessionIdRef.current;
     const sessionObj: ChimuCodeSession = {
       id: sId,
       title: title || 'Sesión de código',
@@ -171,6 +176,11 @@ export function ChimuCodeView({
   const handleSendMessage = async () => {
     const promptText = input.trim();
     if (!promptText || isGenerating) return;
+
+    // Asegurar ID único y estable para la sesión antes del primer envío
+    if (!currentSessionIdRef.current) {
+      currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
+    }
 
     const userMsg: ChimuCodeMessage = {
       id: `u-${Date.now()}`,
@@ -209,17 +219,21 @@ export function ChimuCodeView({
         throw new Error(data.error || 'Error al generar código');
       }
 
-      // Extraer código generado de la respuesta
-      let generatedCode = data.code;
-      if (!generatedCode && data.rawExplanation) {
+      // Validar si la respuesta contiene código real extraído de fences
+      let generatedCode: string | null = null;
+      if (data.code && typeof data.code === 'string' && data.code.trim().length > 0) {
+        generatedCode = data.code.trim();
+      } else if (data.rawExplanation) {
         const extracted = extractCodeFromAiResponse(data.rawExplanation);
-        generatedCode = extracted.code;
+        if (extracted.code && extracted.code.trim().length > 0) {
+          generatedCode = extracted.code.trim();
+        }
       }
 
       const assistantMsg: ChimuCodeMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.rawExplanation || 'Aquí tienes el código generado:',
+        content: data.rawExplanation || (generatedCode ? 'Aquí tienes el código solicitado:' : '¿Qué aplicación o script te gustaría programar?'),
         codeSnippet: generatedCode || undefined,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
@@ -232,8 +246,12 @@ export function ChimuCodeView({
         finalCode = generatedCode;
         setActiveCode(finalCode);
         setShowRightPanel(true);
-        const codeLang = detectCodeLanguage(finalCode);
-        setActiveRightTab(codeLang === 'html' ? 'preview' : 'code');
+        const codeLang = data.language || detectCodeLanguage(finalCode);
+        if (codeLang === 'html') {
+          setActiveRightTab('preview');
+        } else {
+          setActiveRightTab('code');
+        }
       }
 
       persistSession(finalMsgs, nextTitle, finalCode, consoleOutput);
@@ -449,7 +467,6 @@ export function ChimuCodeView({
             className={`chimucode-btn-action ${showRightPanel ? 'active' : ''}`}
             onClick={() => {
               if (!showRightPanel && !activeCode && messages.length > 0) {
-                // Si no hay código pero hay mensajes, buscar el último snippet
                 const lastSnippet = [...messages].reverse().find((m) => m.codeSnippet)?.codeSnippet;
                 if (lastSnippet) setActiveCode(lastSnippet);
               }
@@ -488,7 +505,7 @@ export function ChimuCodeView({
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
 
-                      {m.codeSnippet && (
+                      {m.codeSnippet && m.codeSnippet.trim().length > 0 && (
                         <div className="chimucode-code-card">
                           <div className="chimucode-code-card-header">
                             <Code size={14} />
@@ -698,6 +715,7 @@ export function ChimuCodeView({
                 <textarea
                   className="chimucode-code-editor"
                   value={activeCode}
+                  wrap="off"
                   onChange={(e) => {
                     setActiveCode(e.target.value);
                     persistSession(messages, sessionTitle, e.target.value, consoleOutput);
