@@ -25,6 +25,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
+import { stripMarkdown, copyTextToClipboard } from '../lib/chimucode';
 import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall, ChimuCodePageContext } from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
 
@@ -91,11 +92,28 @@ export function ChimuCodeView({
   const [isMobileMode, setIsMobileMode] = useState<boolean>(false);
   const [consoleOutput, setConsoleOutput] = useState<string | null>(null);
 
-  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [copiedBubbleId, setCopiedBubbleId] = useState<string | null>(null);
+  const [copiedCardMsgId, setCopiedCardMsgId] = useState<string | null>(null);
   const [copiedActiveCode, setCopiedActiveCode] = useState<boolean>(false);
+  const [copiedConsole, setCopiedConsole] = useState<boolean>(false);
+
+  const bubbleCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cardCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeCodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const consoleCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (bubbleCopyTimeoutRef.current) clearTimeout(bubbleCopyTimeoutRef.current);
+      if (cardCopyTimeoutRef.current) clearTimeout(cardCopyTimeoutRef.current);
+      if (activeCodeTimeoutRef.current) clearTimeout(activeCodeTimeoutRef.current);
+      if (consoleCopyTimeoutRef.current) clearTimeout(consoleCopyTimeoutRef.current);
+    };
+  }, []);
 
   // Split resizer: default 42% for right panel
   const [panelWidthPercent, setPanelWidthPercent] = useState<number>(42);
+
   const [isResizing, setIsResizing] = useState<boolean>(false);
 
   // Model selector dropdown
@@ -643,20 +661,63 @@ export function ChimuCodeView({
     }
   };
 
-  // Copiar contenido
-  const handleCopySnippet = (snippet: string) => {
-    navigator.clipboard.writeText(snippet);
-    setCopiedSnippet(snippet);
-    setTimeout(() => setCopiedSnippet(null), 1500);
+  // Copiar texto plano de burbuja sin markdown crudo
+  const handleCopyBubble = async (msgId: string, content: string) => {
+    const plain = stripMarkdown(content);
+    const ok = await copyTextToClipboard(plain);
+    if (ok) {
+      if (bubbleCopyTimeoutRef.current) clearTimeout(bubbleCopyTimeoutRef.current);
+      setCopiedBubbleId(msgId);
+      bubbleCopyTimeoutRef.current = setTimeout(() => {
+        setCopiedBubbleId(null);
+      }, 1200);
+    }
   };
 
-  // Copiar código del archivo activo
-  const handleCopyActiveCode = () => {
-    if (!activeContent) return;
-    navigator.clipboard.writeText(activeContent);
-    setCopiedActiveCode(true);
-    setTimeout(() => setCopiedActiveCode(false), 1500);
+  // Copiar código del archivo activo desde la tarjeta (solo el archivo, sin explicación)
+  const handleCopyCard = async (msgId: string, filesInMsg?: ChimuCodeFile[]) => {
+    const fileList = filesInMsg && filesInMsg.length > 0 ? filesInMsg : files;
+    const target =
+      fileList.find((f) => f.path === activePath) ||
+      fileList.find((f) => f.language === 'html' || f.path.endsWith('.html')) ||
+      fileList[0];
+    const codeToCopy = target?.content || '';
+    const ok = await copyTextToClipboard(codeToCopy);
+    if (ok) {
+      if (cardCopyTimeoutRef.current) clearTimeout(cardCopyTimeoutRef.current);
+      setCopiedCardMsgId(msgId);
+      cardCopyTimeoutRef.current = setTimeout(() => {
+        setCopiedCardMsgId(null);
+      }, 1200);
+    }
   };
+
+  // Copiar código del archivo activo (textarea del panel Código)
+  const handleCopyActiveCode = async () => {
+    if (!activeContent) return;
+    const ok = await copyTextToClipboard(activeContent);
+    if (ok) {
+      if (activeCodeTimeoutRef.current) clearTimeout(activeCodeTimeoutRef.current);
+      setCopiedActiveCode(true);
+      activeCodeTimeoutRef.current = setTimeout(() => {
+        setCopiedActiveCode(false);
+      }, 1200);
+    }
+  };
+
+  // Copiar salida de consola
+  const handleCopyConsole = async () => {
+    if (!consoleOutput) return;
+    const ok = await copyTextToClipboard(consoleOutput);
+    if (ok) {
+      if (consoleCopyTimeoutRef.current) clearTimeout(consoleCopyTimeoutRef.current);
+      setCopiedConsole(true);
+      consoleCopyTimeoutRef.current = setTimeout(() => {
+        setCopiedConsole(false);
+      }, 1200);
+    }
+  };
+
 
   // Descargar: 1 archivo = ese archivo. 2 o más = zip con las carpetas
   const handleDownload = async () => {
@@ -830,6 +891,30 @@ export function ChimuCodeView({
                 {renderedMessages.map((m) => (
                   <div key={m.id} className={`chimucode-msg chimucode-msg-${m.role}`}>
                     <div className="chimucode-msg-bubble">
+                      {/* Botón copiar al hover (user y assistant) con texto plano */}
+                      <button
+                        type="button"
+                        className={`chimucode-bubble-copy-btn ${copiedBubbleId === m.id ? 'copied' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyBubble(m.id, m.content);
+                        }}
+                        title="Copiar texto del mensaje"
+                        aria-label="Copiar texto del mensaje"
+                      >
+                        {copiedBubbleId === m.id ? (
+                          <>
+                            <Check size={11} color="#4ade80" />
+                            <span>Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+
                       {/* Herramientas ejecutadas en este mensaje estilo Claude Code */}
                       {m.tools && m.tools.length > 0 && (
                         <div className="chimucode-tools-log">
@@ -895,16 +980,16 @@ export function ChimuCodeView({
                               type="button"
                               className="chimucode-card-btn"
                               onClick={() => {
-                                const fullCode = m.changedFiles?.map((f) => `/* --- ${f.path} --- */\n` + f.content).join('\n\n') || '';
-                                handleCopySnippet(fullCode);
+                                handleCopyCard(m.id, m.changedFiles);
                               }}
+                              title="Copiar código del archivo activo"
                             >
-                              {copiedSnippet ? (
+                              {copiedCardMsgId === m.id ? (
                                 <Check size={12} color="#4ade80" />
                               ) : (
                                 <Copy size={12} />
                               )}
-                              <span>{copiedSnippet ? 'Copiado' : 'Copiar'}</span>
+                              <span>{copiedCardMsgId === m.id ? 'Copiado' : 'Copiar'}</span>
                             </button>
                           </div>
                         </div>
@@ -980,6 +1065,40 @@ export function ChimuCodeView({
                                 <span className="chimucode-file-name">{f.path}</span>
                               </div>
                             ))}
+                          </div>
+
+                          <div className="chimucode-code-card-actions">
+                            <button
+                              type="button"
+                              className="chimucode-card-btn"
+                              onClick={() => {
+                                const target = liveFiles.find((f) => f.language === 'html' || f.path.endsWith('.html')) || liveFiles[0];
+                                if (target) {
+                                  setActivePath(target.path);
+                                  setShowRightPanel(true);
+                                  setActiveRightTab(target.language === 'html' || target.path.endsWith('.html') ? 'preview' : 'code');
+                                }
+                              }}
+                            >
+                              <Eye size={12} />
+                              <span>Vista previa</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="chimucode-card-btn"
+                              onClick={() => {
+                                handleCopyCard('live', liveFiles);
+                              }}
+                              title="Copiar código del archivo activo"
+                            >
+                              {copiedCardMsgId === 'live' ? (
+                                <Check size={12} color="#4ade80" />
+                              ) : (
+                                <Copy size={12} />
+                              )}
+                              <span>{copiedCardMsgId === 'live' ? 'Copiado' : 'Copiar'}</span>
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1096,10 +1215,24 @@ export function ChimuCodeView({
                 <button
                   type="button"
                   className="chimucode-panel-icon-btn"
-                  onClick={handleCopyActiveCode}
-                  title="Copiar código del archivo activo"
+                  onClick={() => {
+                    if (activeRightTab === 'console') {
+                      handleCopyConsole();
+                    } else {
+                      handleCopyActiveCode();
+                    }
+                  }}
+                  title={
+                    activeRightTab === 'console'
+                      ? 'Copiar salida de consola'
+                      : 'Copiar código del archivo activo'
+                  }
                 >
-                  {copiedActiveCode ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
+                  {(activeRightTab === 'console' ? copiedConsole : copiedActiveCode) ? (
+                    <Check size={14} color="#4ade80" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
                 </button>
                 <button
                   type="button"
@@ -1143,6 +1276,7 @@ export function ChimuCodeView({
                       title="ChimuCode Live Preview"
                       sandbox="allow-scripts allow-modals allow-forms allow-popups"
                       className="chimucode-preview-iframe"
+                      style={{ pointerEvents: isResizing ? 'none' : 'auto' }}
                     />
                   </div>
                 ) : (
@@ -1182,7 +1316,25 @@ export function ChimuCodeView({
               {activeRightTab === 'console' && (
                 <div className="chimucode-console-terminal">
                   {consoleOutput ? (
-                    <pre className="chimucode-console-output">{consoleOutput}</pre>
+                    <div className="chimucode-console-wrap">
+                      <div className="chimucode-console-toolbar">
+                        <span className="chimucode-console-title">Salida de consola</span>
+                        <button
+                          type="button"
+                          className="chimucode-card-btn"
+                          onClick={handleCopyConsole}
+                          title="Copiar salida de consola"
+                        >
+                          {copiedConsole ? (
+                            <Check size={12} color="#4ade80" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                          <span>{copiedConsole ? 'Copiado' : 'Copiar consola'}</span>
+                        </button>
+                      </div>
+                      <pre className="chimucode-console-output">{consoleOutput}</pre>
+                    </div>
                   ) : (
                     <div className="chimucode-console-empty">
                       Sin salida aún. Presiona Ejecutar para correr el código.

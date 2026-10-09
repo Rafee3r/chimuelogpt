@@ -429,3 +429,96 @@ export function formatTerminalTimestamp(): string {
   const d = new Date();
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
+
+/**
+ * Convierte texto con sintaxis markdown a texto plano limpio.
+ * Remueve encabezados, negritas, cursivas, enlaces, imágenes, citas y cercas de código.
+ */
+export function stripMarkdown(markdown: string): string {
+  if (!markdown || typeof markdown !== 'string') return '';
+  let text = markdown;
+
+  // Normalizar saltos de línea
+  text = text.replace(/\r\n/g, '\n');
+
+  // Quitar cercas de código dejando el código interior limpio
+  text = text.replace(/```[^\n]*\n([\s\S]*?)```/g, '$1');
+
+  // Quitar código inline `codigo` -> codigo
+  text = text.replace(/`([^`]+)`/g, '$1');
+
+  // Quitar imágenes ![alt](url) -> alt
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+
+  // Quitar enlaces [texto](url) -> texto
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  // Quitar encabezados (# Encabezado -> Encabezado)
+  text = text.replace(/^#{1,6}\s+(.*)$/gm, '$1');
+
+  // Quitar negrita y cursiva
+  text = text.replace(/\*\*\*(.*?)\*\*\*/g, '$1');
+  text = text.replace(/___(.*?)___/g, '$1');
+  text = text.replace(/\*\*(.*?)\*\*/g, '$1');
+  text = text.replace(/__(.*?)__/g, '$1');
+  text = text.replace(/\*([^*\n]+)\*/g, '$1');
+  text = text.replace(/_([^_\n]+)_/g, '$1');
+
+  // Quitar tachado
+  text = text.replace(/~~(.*?)~~/g, '$1');
+
+  // Quitar citas (> cita -> cita)
+  text = text.replace(/^>\s?/gm, '');
+
+  // Quitar viñetas de listas no ordenadas (- item, * item, + item)
+  text = text.replace(/^[ \t]*[-*+]\s+/gm, '');
+
+  // Quitar numeración de listas ordenadas (1. item -> item)
+  text = text.replace(/^[ \t]*\d+\.\s+/gm, '');
+
+  // Quitar separadores horizontales (---, ***, ___)
+  text = text.replace(/^[ \t]*(?:[-*_][ \t]*){3,}$/gm, '');
+
+  // Normalizar múltiples saltos de línea consecutivos
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  return text.trim();
+}
+
+/**
+ * Copia texto al portapapeles con fallback robusto mediante textarea y document.execCommand.
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (!text) return false;
+
+  // 1. Intentar API moderna de Clipboard
+  if (navigator?.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Proceder al fallback clásico
+    }
+  }
+
+  // 2. Fallback clásico con textarea temporal
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch {
+    return false;
+  }
+}
+

@@ -133,4 +133,34 @@ body { background: #000; color: #fff; }
   });
 });
 
+describe('stripMarkdown', () => {
+  it('elimina encabezados, negritas, cursivas y enlaces dejando texto plano', async () => {
+    const { stripMarkdown } = await import('../chimucode');
+    const md = '### Bienvenido a ChimuCode\nAquí tienes **negrita**, *cursiva* y un [enlace](https://vada.cl).';
+    const plain = stripMarkdown(md);
+    expect(plain).toBe('Bienvenido a ChimuCode\nAquí tienes negrita, cursiva y un enlace.');
+  });
+
+  it('elimina cercas de código dejando el contenido del bloque', async () => {
+    const { stripMarkdown } = await import('../chimucode');
+    const md = 'El código es:\n```html\n<h1>Hola</h1>\n```';
+    const plain = stripMarkdown(md);
+    expect(plain).toBe('El código es:\n<h1>Hola</h1>');
+  });
+
+  it('elimina viñetas, citas y separadores', async () => {
+    const { stripMarkdown } = await import('../chimucode');
+    const md = '> Esta es una cita\n\n- Opción A\n- Opción B\n\n---';
+    const plain = stripMarkdown(md);
+    expect(plain).toBe('Esta es una cita\n\nOpción A\nOpción B');
+  });
+
+  it('maneja strings vacíos o nulos limpiamente', async () => {
+    const { stripMarkdown } = await import('../chimucode');
+    expect(stripMarkdown('')).toBe('');
+    expect(stripMarkdown(null as any)).toBe('');
+  });
+});
+
+
 
