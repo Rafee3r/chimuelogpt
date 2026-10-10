@@ -171,3 +171,28 @@ export function deleteChimuCodeSession(id: string, storage: StorageLike = localS
   return next;
 }
 
+export const CHIMUCODE_ACTIVE_SESSION_KEY = 'chimucode-active-session-id';
+export const CHIMUCODE_LAST_OPENED_KEY = 'chimucode-last-opened-id';
+
+/** Obtiene el ID de la última sesión abierta de ChimuCode */
+export function getLastOpenedChimuSessionId(storage: StorageLike = localStorage): string | null {
+  try {
+    return storage.getItem(CHIMUCODE_ACTIVE_SESSION_KEY) || storage.getItem(CHIMUCODE_LAST_OPENED_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Guarda o limpia el ID de la última sesión abierta de ChimuCode */
+export function setLastOpenedChimuSessionId(id: string | null, storage: StorageLike = localStorage): void {
+  try {
+    if (id && id !== 'new') {
+      storage.setItem(CHIMUCODE_ACTIVE_SESSION_KEY, id);
+      storage.setItem(CHIMUCODE_LAST_OPENED_KEY, id);
+    } else {
+      storage.removeItem(CHIMUCODE_ACTIVE_SESSION_KEY);
+      storage.removeItem(CHIMUCODE_LAST_OPENED_KEY);
+    }
+  } catch {}
+}
+

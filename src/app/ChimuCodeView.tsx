@@ -30,6 +30,7 @@ import { executeBrowserJS } from '../lib/sandbox-worker';
 import { stripMarkdown, copyTextToClipboard } from '../lib/chimucode';
 import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall, ChimuCodePageContext } from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
+import { loadChimuCodeSessions, getLastOpenedChimuSessionId, setLastOpenedChimuSessionId } from '../lib/chat-storage';
 
 function cleanMessages(msgs: ChimuCodeMessage[]): ChimuCodeMessage[] {
   if (!Array.isArray(msgs)) return [];
@@ -41,6 +42,37 @@ function cleanMessages(msgs: ChimuCodeMessage[]): ChimuCodeMessage[] {
     }
     return true;
   });
+}
+
+function resolveSessionToLoad(
+  requestedId: string | null | undefined,
+  initialData?: ChimuCodeSession
+): ChimuCodeSession | null {
+  if (requestedId === 'new') {
+    return null;
+  }
+
+  const allSessions = loadChimuCodeSessions();
+  if (allSessions.length === 0) {
+    return null;
+  }
+
+  // 1. Si se especificó un ID válido existente
+  if (requestedId) {
+    const found = allSessions.find((s) => s.id === requestedId);
+    if (found) return found;
+    if (initialData && initialData.id === requestedId) return initialData;
+  }
+
+  // 2. Si no hay ID solicitado, buscar el último ID abierto
+  const lastId = getLastOpenedChimuSessionId();
+  if (lastId) {
+    const foundLast = allSessions.find((s) => s.id === lastId);
+    if (foundLast) return foundLast;
+  }
+
+  // 3. Fallback a la sesión más reciente
+  return allSessions[0] || null;
 }
 
 const REAL_MODELS = [
@@ -69,16 +101,32 @@ export function ChimuCodeView({
   theme = "system",
   setTheme,
 }: ChimuCodeViewProps) {
-  const [messages, setMessages] = useState<ChimuCodeMessage[]>([]);
+  // Sesión resuelta al montar desde chimucode-sessions-v1 (o initialSessionData)
+  const initialSessionRef = useRef<ChimuCodeSession | null | undefined>(undefined);
+  if (initialSessionRef.current === undefined) {
+    initialSessionRef.current = resolveSessionToLoad(activeSessionId, initialSessionData);
+  }
+  const mountSession = initialSessionRef.current;
+
+  // ID de la sesión actualmente cargada en el state
+  const [currentLoadedId, setCurrentLoadedId] = useState<string | null>(() => {
+    return mountSession ? mountSession.id : (activeSessionId === 'new' ? null : null);
+  });
+
+  const [messages, setMessages] = useState<ChimuCodeMessage[]>(() => {
+    return mountSession ? cleanMessages(mountSession.messages || []) : [];
+  });
   const [input, setInput] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [sessionTitle, setSessionTitle] = useState<string>('Nueva sesión');
+  const [sessionTitle, setSessionTitle] = useState<string>(() => {
+    return mountSession ? (mountSession.title || 'Sesión de código') : 'Nueva sesión';
+  });
 
   // Contexto de página web detectada en la sesión (para no volver a parsear la misma URL)
-  const [pageContext, setPageContext] = useState<ChimuCodePageContext | null>(
-    initialSessionData?.pageContext || null
-  );
+  const [pageContext, setPageContext] = useState<ChimuCodePageContext | null>(() => {
+    return mountSession?.pageContext || initialSessionData?.pageContext || null;
+  });
 
   // Lock síncrono para prevenir duplicación de burbujas de usuario
   const isSendingRef = useRef<boolean>(false);
@@ -90,13 +138,36 @@ export function ChimuCodeView({
   const [liveFiles, setLiveFiles] = useState<ChimuCodeFile[]>([]);
 
   // Proyecto multi-archivo
-  const [files, setFiles] = useState<ChimuCodeFile[]>([]);
-  const [activePath, setActivePath] = useState<string>('index.html');
+  const [files, setFiles] = useState<ChimuCodeFile[]>(() => {
+    if (!mountSession) return [];
+    if (Array.isArray(mountSession.files) && mountSession.files.length > 0) {
+      return mountSession.files;
+    }
+    if (mountSession.activeCode) {
+      return [{
+        path: 'index.html',
+        language: mountSession.language || 'html',
+        content: mountSession.activeCode,
+      }];
+    }
+    return [];
+  });
 
-  const [showRightPanel, setShowRightPanel] = useState<boolean>(false);
+  const [activePath, setActivePath] = useState<string>(() => {
+    if (!mountSession) return 'index.html';
+    const sFiles = Array.isArray(mountSession.files) && mountSession.files.length > 0 ? mountSession.files : [];
+    return mountSession.activePath || (sFiles[0]?.path ?? 'index.html');
+  });
+
+  const [showRightPanel, setShowRightPanel] = useState<boolean>(() => {
+    const sFiles = mountSession && Array.isArray(mountSession.files) && mountSession.files.length > 0 ? mountSession.files : [];
+    return sFiles.length > 0 || !!mountSession?.activeCode;
+  });
   const [activeRightTab, setActiveRightTab] = useState<'preview' | 'code' | 'console'>('preview');
   const [isMobileMode, setIsMobileMode] = useState<boolean>(false);
-  const [consoleOutput, setConsoleOutput] = useState<string | null>(null);
+  const [consoleOutput, setConsoleOutput] = useState<string | null>(() => {
+    return mountSession?.consoleOutput || null;
+  });
 
   const [copiedBubbleId, setCopiedBubbleId] = useState<string | null>(null);
   const [copiedCardMsgId, setCopiedCardMsgId] = useState<string | null>(null);
@@ -119,15 +190,70 @@ export function ChimuCodeView({
 
   // Split resizer: default 42% for right panel
   const [panelWidthPercent, setPanelWidthPercent] = useState<number>(42);
-
   const [isResizing, setIsResizing] = useState<boolean>(false);
 
   // Model selector dropdown
   const [showModelDropdown, setShowModelDropdown] = useState<boolean>(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
+  // ── Sincronización en el MISMO TICK durante el render ──
+  // Si activeSessionId cambia por click en el sidebar, actualizamos el state inmediatamente
+  const normalizedPropId = activeSessionId === 'new' ? null : (activeSessionId || null);
+  if (normalizedPropId !== currentLoadedId && activeSessionId !== undefined) {
+    setCurrentLoadedId(normalizedPropId);
+    if (normalizedPropId) {
+      const allSessions = loadChimuCodeSessions();
+      const target = (initialSessionData && initialSessionData.id === normalizedPropId)
+        ? initialSessionData
+        : allSessions.find((s) => s.id === normalizedPropId);
+
+      if (target) {
+        setMessages(cleanMessages(target.messages || []));
+        setSessionTitle(target.title || 'Sesión de código');
+        setPageContext(target.pageContext || null);
+
+        let sessionFiles: ChimuCodeFile[] = Array.isArray(target.files) && target.files.length > 0
+          ? target.files
+          : [];
+        if (sessionFiles.length === 0 && target.activeCode) {
+          sessionFiles = [{
+            path: 'index.html',
+            language: target.language || 'html',
+            content: target.activeCode,
+          }];
+        }
+        setFiles(sessionFiles);
+        const resolvedPath = target.activePath || (sessionFiles[0]?.path ?? 'index.html');
+        setActivePath(resolvedPath);
+        setConsoleOutput(target.consoleOutput || null);
+        setShowRightPanel(sessionFiles.length > 0);
+        setLastOpenedChimuSessionId(target.id);
+      }
+    } else {
+      // Usuario explícitamente abrió "Nueva sesión" limpia
+      setMessages([]);
+      setSessionTitle('Nueva sesión');
+      setFiles([]);
+      setActivePath('index.html');
+      setConsoleOutput(null);
+      setPageContext(null);
+      setShowRightPanel(false);
+      setLastOpenedChimuSessionId(null);
+    }
+  }
+
   // ID persistente de la sesión actual
-  const currentSessionIdRef = useRef<string | null>(activeSessionId);
+  const currentSessionIdRef = useRef<string | null>(currentLoadedId);
+  currentSessionIdRef.current = currentLoadedId;
+
+  // Efecto reactivo con deps [activeSessionId, mountSession]
+  useEffect(() => {
+    if (activeSessionId && activeSessionId !== 'new') {
+      setLastOpenedChimuSessionId(activeSessionId);
+    } else if (mountSession && !activeSessionId) {
+      setLastOpenedChimuSessionId(mountSession.id);
+    }
+  }, [activeSessionId, mountSession]);
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -149,45 +275,6 @@ export function ChimuCodeView({
   const activeContent = activeFile ? activeFile.content : '';
   const detectedLang = activeFile ? activeFile.language : 'html';
   const isHtml = detectedLang === 'html' || activePath.endsWith('.html') || activePath.endsWith('.htm');
-
-  // Sincronizar estado al montar o cambiar de sesión
-  useEffect(() => {
-    if (activeSessionId !== currentSessionIdRef.current) {
-      currentSessionIdRef.current = activeSessionId;
-      if (activeSessionId && initialSessionData) {
-        setMessages(cleanMessages(initialSessionData.messages || []));
-        setSessionTitle(initialSessionData.title || 'Sesión de código');
-        setPageContext(initialSessionData.pageContext || null);
-
-        let sessionFiles: ChimuCodeFile[] = Array.isArray(initialSessionData.files) && initialSessionData.files.length > 0
-          ? initialSessionData.files
-          : [];
-
-        if (sessionFiles.length === 0 && initialSessionData.activeCode) {
-          sessionFiles = [{
-            path: 'index.html',
-            language: initialSessionData.language || 'html',
-            content: initialSessionData.activeCode,
-          }];
-        }
-
-        setFiles(sessionFiles);
-        const resolvedPath = initialSessionData.activePath || (sessionFiles[0]?.path ?? 'index.html');
-        setActivePath(resolvedPath);
-        setConsoleOutput(initialSessionData.consoleOutput || null);
-        setShowRightPanel(sessionFiles.length > 0);
-      } else if (!activeSessionId) {
-        // Nueva sesión limpia
-        setMessages([]);
-        setSessionTitle('Nueva sesión');
-        setFiles([]);
-        setActivePath('index.html');
-        setConsoleOutput(null);
-        setPageContext(null);
-        setShowRightPanel(false);
-      }
-    }
-  }, [activeSessionId, initialSessionData]);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -246,7 +333,10 @@ export function ChimuCodeView({
     overridePageContext?: ChimuCodePageContext | null
   ) => {
     if (!currentSessionIdRef.current) {
-      currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
+      const newId = (activeSessionId && activeSessionId !== 'new') ? activeSessionId : `code-${Date.now()}`;
+      currentSessionIdRef.current = newId;
+      setCurrentLoadedId(newId);
+      setLastOpenedChimuSessionId(newId);
     }
     const sId = currentSessionIdRef.current;
     const currentActiveFile = currentFiles.find((f) => f.path === currActivePath) || currentFiles[0];
@@ -264,6 +354,7 @@ export function ChimuCodeView({
       updatedAt: Date.now(),
     };
     onSaveSession(sessionObj);
+    setLastOpenedChimuSessionId(sessionObj.id);
   };
 
   // Interceptar navegación interna del iframe (<a href="catalogo.html"> cambia el archivo activo)
@@ -398,7 +489,10 @@ export function ChimuCodeView({
     isSendingRef.current = true;
 
     if (!currentSessionIdRef.current) {
-      currentSessionIdRef.current = activeSessionId || `code-${Date.now()}`;
+      const newId = (activeSessionId && activeSessionId !== 'new') ? activeSessionId : `code-${Date.now()}`;
+      currentSessionIdRef.current = newId;
+      setCurrentLoadedId(newId);
+      setLastOpenedChimuSessionId(newId);
     }
 
     const userMsg: ChimuCodeMessage = {

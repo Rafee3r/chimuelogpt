@@ -35,6 +35,8 @@ export const BACKUP_KEYS_TO_CAPTURE = [
   'chimuelo_sidebar_minimized',
   'chimuelo_code_sessions',
   'chimucode-sessions-v1',
+  'chimucode-active-session-id',
+  'chimucode-last-opened-id',
 ];
 
 export function captureAppSnapshot(storage: StorageLike = localStorage): Record<string, string> {

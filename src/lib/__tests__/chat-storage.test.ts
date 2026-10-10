@@ -191,6 +191,24 @@ describe('ChimuCode sessions storage & migration', () => {
     expect(loaded[0].pageContext?.url).toBe('https://vada.cl');
     expect(loaded[0].pageContext?.title).toBe('VADA Chile');
   });
+
+  it('guarda y recupera el último ID abierto con getLastOpenedChimuSessionId y setLastOpenedChimuSessionId', async () => {
+    const { getLastOpenedChimuSessionId, setLastOpenedChimuSessionId } = await import('../chat-storage');
+    const storage = makeStorage();
+
+    expect(getLastOpenedChimuSessionId(storage)).toBeNull();
+
+    setLastOpenedChimuSessionId('session-xyz', storage);
+    expect(getLastOpenedChimuSessionId(storage)).toBe('session-xyz');
+
+    // Limpieza con null o 'new'
+    setLastOpenedChimuSessionId('new', storage);
+    expect(getLastOpenedChimuSessionId(storage)).toBeNull();
+
+    setLastOpenedChimuSessionId('session-abc', storage);
+    setLastOpenedChimuSessionId(null, storage);
+    expect(getLastOpenedChimuSessionId(storage)).toBeNull();
+  });
 });
 
 

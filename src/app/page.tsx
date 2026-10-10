@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
 import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal, Briefcase, Sun, Moon, Monitor } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
-import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate, loadChimuCodeSessions, saveChimuCodeSessions, deleteChimuCodeSession } from "../lib/chat-storage";
+import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate, loadChimuCodeSessions, saveChimuCodeSessions, deleteChimuCodeSession, getLastOpenedChimuSessionId, setLastOpenedChimuSessionId } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
 import type { BaseMessage, Chat } from "../lib/types";
 import { useReminders } from "../lib/use-reminders";
@@ -1640,9 +1640,11 @@ export default function Home() {
     const loadedSessions = loadChimuCodeSessions();
     setChimuCodeSessions(loadedSessions);
     if (loadedSessions.length > 0) {
-      const lastActiveId = localStorage.getItem('chimucode-active-session-id');
+      const lastActiveId = getLastOpenedChimuSessionId();
       const found = loadedSessions.find(s => s.id === lastActiveId);
-      setActiveChimuSessionId(found ? found.id : loadedSessions[0].id);
+      const chosen = found ? found.id : loadedSessions[0].id;
+      setActiveChimuSessionId(chosen);
+      setLastOpenedChimuSessionId(chosen);
     }
 
     const savedTheme = localStorage.getItem("chimuelo_theme") as "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
@@ -3744,7 +3746,18 @@ export default function Home() {
         ? [{ id: 'a_uni', icon: GraduationCap, label: 'Modo Universitario', run: () => { prevViewMode.current = 'chat'; setViewMode('university'); } }]
         : []),
       { id: 'a_settings', icon: Settings, label: 'Configuración', hint: '⌘,', run: () => { prevViewMode.current = viewMode === 'settings' ? 'chat' : (viewMode as any); setViewMode('settings'); } },
-      { id: 'a_chimucode', icon: Terminal, label: 'ChimuCode (Dev Sandbox)', hint: 'Dev', run: () => { prevViewMode.current = 'chat'; setViewMode('chimucode'); } },
+      { id: 'a_chimucode', icon: Terminal, label: 'ChimuCode (Dev Sandbox)', hint: 'Dev', run: () => {
+        prevViewMode.current = 'chat';
+        const sessions = loadChimuCodeSessions();
+        setChimuCodeSessions(sessions);
+        if (sessions.length > 0) {
+          const lastId = getLastOpenedChimuSessionId();
+          const target = sessions.find(s => s.id === (activeChimuSessionId || lastId)) || sessions[0];
+          setActiveChimuSessionId(target.id);
+          setLastOpenedChimuSessionId(target.id);
+        }
+        setViewMode('chimucode');
+      } },
       { id: 'a_model_flash', icon: Zap, label: 'Modelo: ⚡ Flash', run: () => { setModel('deepseek-v4-flash'); localStorage.setItem('chimuelo_model', 'deepseek-v4-flash'); } },
       { id: 'a_model_uncensored', icon: Sparkles, label: 'Modelo: 🔓 Sin censura (4o-mini)', run: () => {
         if (dontShowUncensoredModal) {
@@ -4122,10 +4135,15 @@ export default function Home() {
             onClick={() => {
               if (viewMode !== 'chimucode') {
                 prevViewMode.current = viewMode as any;
-                setViewMode('chimucode');
-                if (!activeChimuSessionId && chimuCodeSessions.length > 0) {
-                  setActiveChimuSessionId(chimuCodeSessions[0].id);
+                const sessions = loadChimuCodeSessions();
+                setChimuCodeSessions(sessions);
+                if (sessions.length > 0) {
+                  const lastId = getLastOpenedChimuSessionId();
+                  const target = sessions.find(s => s.id === (activeChimuSessionId || lastId)) || sessions[0];
+                  setActiveChimuSessionId(target.id);
+                  setLastOpenedChimuSessionId(target.id);
                 }
+                setViewMode('chimucode');
               }
             }} 
             style={{ flex: 1, padding: '6px', borderRadius: '8px', background: viewMode === 'chimucode' ? 'var(--sidebar-hover)' : 'transparent', border: '1px solid ' + (viewMode === 'chimucode' ? 'var(--border-color)' : 'transparent'), color: viewMode === 'chimucode' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: viewMode === 'chimucode' ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s' }}
@@ -4164,7 +4182,11 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
             <button 
               className="sb-row sb-row-primary" 
-              onClick={() => { setActiveChimuSessionId(null); setSidebarOpen(false); }}
+              onClick={() => {
+                setActiveChimuSessionId('new');
+                setLastOpenedChimuSessionId(null);
+                setSidebarOpen(false);
+              }}
               style={{ color: 'var(--text-primary)', fontWeight: 500 }}
             >
               <Plus size={16} /> <span>Nueva sesión</span>
@@ -4187,7 +4209,11 @@ export default function Home() {
                   <button 
                     key={s.id}
                     className={`sb-row ${activeChimuSessionId === s.id ? 'active' : ''}`} 
-                    onClick={() => { setActiveChimuSessionId(s.id); setSidebarOpen(false); }}
+                    onClick={() => {
+                      setActiveChimuSessionId(s.id);
+                      setLastOpenedChimuSessionId(s.id);
+                      setSidebarOpen(false);
+                    }}
                     style={{ paddingLeft: '8px' }}
                   >
                      <Terminal size={14} style={{ color: '#666', marginRight: '6px' }} /> <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{s.title || 'Sesión de código'}</span>
@@ -4201,7 +4227,9 @@ export default function Home() {
                          const next = deleteChimuCodeSession(s.id);
                          setChimuCodeSessions(next);
                          if (activeChimuSessionId === s.id) {
-                           setActiveChimuSessionId(next.length > 0 ? next[0].id : null);
+                           const fallback = next.length > 0 ? next[0].id : null;
+                           setActiveChimuSessionId(fallback);
+                           setLastOpenedChimuSessionId(fallback);
                          }
                        }}
                      />
@@ -4532,9 +4560,7 @@ export default function Home() {
               if (session.id !== activeChimuSessionId) {
                 setActiveChimuSessionId(session.id);
               }
-              try {
-                localStorage.setItem('chimucode-active-session-id', session.id);
-              } catch {}
+              setLastOpenedChimuSessionId(session.id);
             }}
             initialSessionData={chimuCodeSessions.find(s => s.id === activeChimuSessionId)}
             model={model}
