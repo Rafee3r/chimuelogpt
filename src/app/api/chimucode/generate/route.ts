@@ -1,7 +1,7 @@
 import { extractProjectFilesFromAiResponse } from '../../../../lib/chimucode';
 import { isUncensoredModel } from '../../../../lib/models';
 import type { ChimuCodeFile, ChimuCodePageContext } from '../../../../lib/sandbox-types';
-import { extractUrlFromPrompt, scrapeUrlContent } from '../../../../lib/url-parser';
+import { extractUrlFromPrompt, readPage, scrapeUrlContent } from '../../../../lib/url-parser';
 
 export const maxDuration = 60;
 
@@ -40,18 +40,28 @@ export async function POST(req: Request) {
     const apiEndpoint = isOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
     const apiModel = isOpenAi ? 'gpt-4o-mini' : 'deepseek-chat';
 
-    // 1. Detectar si el prompt incluye alguna URL y verificar si ya existe en pageContext
+    // 1. Detectar si el prompt incluye alguna URL o si es una petición de revisión de colores con contexto existente
     const detectedUrl = extractUrlFromPrompt(prompt);
     let activePageContext: ChimuCodePageContext | null = incomingPageContext || null;
 
     const normalizeUrl = (u: string) =>
       u.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '').toLowerCase();
 
+    const isColorOrReviewRequest =
+      /(?:no\s+es\s+su\s+color|color(?:es)?|revisa|actualiza|paleta|estilo)/i.test(prompt);
+
+    let targetUrl = detectedUrl;
+    if (!targetUrl && isColorOrReviewRequest && activePageContext?.url) {
+      targetUrl = activePageContext.url;
+    }
+
     let needsScrape = false;
-    if (detectedUrl) {
-      if (!activePageContext || !activePageContext.url || !activePageContext.text) {
+    if (targetUrl) {
+      if (!activePageContext || !activePageContext.url || !activePageContext.text || !activePageContext.colors || activePageContext.colors.length === 0) {
         needsScrape = true;
-      } else if (normalizeUrl(detectedUrl) !== normalizeUrl(activePageContext.url)) {
+      } else if (normalizeUrl(targetUrl) !== normalizeUrl(activePageContext.url)) {
+        needsScrape = true;
+      } else if (isColorOrReviewRequest) {
         needsScrape = true;
       }
     }
@@ -80,28 +90,37 @@ export async function POST(req: Request) {
 
         let verifiedBusinessContext = '';
 
-        // 2. Si detectamos una URL nueva que no tengamos en pageContext, scrapear
-        if (needsScrape && detectedUrl) {
+        // 2. Si detectamos una URL o petición de revisión, llamar a read-page
+        if (needsScrape && targetUrl) {
           sendEvent({
             type: 'tool',
-            name: 'parse-url',
+            name: 'read-page',
             status: 'start',
-            input: detectedUrl,
+            input: targetUrl,
           });
 
           try {
-            const scrapeRes = await scrapeUrlContent(detectedUrl);
-            if (scrapeRes.ok && scrapeRes.text) {
-              const preview = scrapeRes.text.slice(0, 200);
+            const readRes = await readPage(targetUrl);
+            if (readRes.ok && readRes.text) {
+              const topColorsHex = (readRes.colors || []).slice(0, 5).map((c) => c.hex).join(', ');
+              const previewParts: string[] = [];
+              if (readRes.cta) previewParts.push(`CTA: ${readRes.cta}`);
+              if (readRes.background) previewParts.push(`Fondo: ${readRes.background}`);
+              if (topColorsHex) previewParts.push(`Colores: ${topColorsHex}`);
+              const preview = previewParts.join(' | ') || (readRes.text ? readRes.text.slice(0, 150) : 'OK');
+
               activePageContext = {
-                url: detectedUrl,
-                title: scrapeRes.title || 'Sitio Web',
-                text: scrapeRes.text,
+                url: targetUrl,
+                title: readRes.title || 'Sitio Web',
+                text: readRes.text,
+                colors: readRes.colors,
+                background: readRes.background,
+                cta: readRes.cta,
               };
 
               sendEvent({
                 type: 'tool',
-                name: 'parse-url',
+                name: 'read-page',
                 status: 'done',
                 preview,
               });
@@ -111,42 +130,58 @@ export async function POST(req: Request) {
                 pageContext: activePageContext,
               });
             } else {
-              const errDetail = scrapeRes.error || 'No se pudo obtener el contenido.';
+              const errDetail = readRes.error || 'No se pudo obtener el contenido.';
               sendEvent({
                 type: 'tool',
-                name: 'parse-url',
+                name: 'read-page',
                 status: 'error',
                 preview: `Error: ${errDetail}`,
                 error: errDetail,
               });
 
               verifiedBusinessContext = `
-AVISO: Se intentó acceder a la URL ${detectedUrl} pero no fue posible (${errDetail}).
+AVISO: Se intentó acceder a la URL ${targetUrl} pero no fue posible (${errDetail}).
 REGLAS:
-- Menciona en la primera línea al usuario que no pudiste acceder a la página ${detectedUrl} (${errDetail}).
+- Menciona en la primera línea al usuario que no pudiste acceder a la página ${targetUrl} (${errDetail}).
 - PROHIBIDO inventar qué vende o cómo es el negocio sin tener los datos reales. Pídele al usuario los detalles o genera una estructura neutral indicando que faltan los datos reales.`;
             }
-          } catch (scrapeErr: any) {
-            const errDetail = scrapeErr?.message || 'Fallo de conexión.';
+          } catch (readErr: any) {
+            const errDetail = readErr?.message || 'Fallo de conexión.';
             sendEvent({
               type: 'tool',
-              name: 'parse-url',
+              name: 'read-page',
               status: 'error',
               preview: `Error: ${errDetail}`,
               error: errDetail,
             });
             verifiedBusinessContext = `
-AVISO: No se pudo leer la URL ${detectedUrl}. Infórmale al usuario que no se pudo acceder y no inventes el negocio.`;
+AVISO: No se pudo leer la URL ${targetUrl}. Infórmale al usuario que no se pudo acceder y no inventes el negocio.`;
           }
         }
 
-        // Si tenemos pageContext (ya sea previo o recién obtenido), inyectarlo en el system prompt
-        if (activePageContext && activePageContext.text) {
+        // Si tenemos pageContext (ya sea previo o recién obtenido), inyectarlo en el system prompt con su paleta de colores
+        if (activePageContext && activePageContext.text && !verifiedBusinessContext.startsWith('AVISO:')) {
+          let colorsContext = '';
+          if (activePageContext.colors && activePageContext.colors.length > 0) {
+            const paletteList = activePageContext.colors.slice(0, 8).map((c) => `${c.hex} (${c.count}x)`).join(', ');
+            colorsContext = `
+PALETA DE COLORES REAL EXTRAÍDA DE LA PÁGINA (${activePageContext.url}):
+- Color del botón principal / Llamado a la acción (CTA): ${activePageContext.cta || '#8b44e9'}
+- Fondo predominante (background): ${activePageContext.background || '#ffffff'}
+- Colores detectados en CSS/estilos: ${paletteList}
+
+REGLAS ESTRICTAS DE COLOR:
+- OBLIGATORIO: Utiliza la paleta real extraída arriba para los botones, degradados, encabezados y fondos.
+- PROHIBIDO INVENTAR colores como azul cielo (#0ea5e9, sky-500, blue-500), dorado (#d4a017) o amarillos si no vinieron en la paleta extraída del sitio web. En vada.cl el color de marca y de los botones es morado/púrpura (#8b44e9), NUNCA azul cielo ni dorado.
+- Si el usuario dice "no es su color" o pide corregir colores, REEMPLAZA de inmediato todos los colores inventados por los colores reales extraídos (${activePageContext.cta || '#8b44e9'} para CTA/botones/acentos, ${activePageContext.background || '#ffffff'} para fondos).`;
+          }
+
           verifiedBusinessContext = `
 DATOS VERÍDICOS DEL NEGOCIO / PÁGINA WEB (${activePageContext.url}):
 Título: ${activePageContext.title}
 Contenido real del sitio web:
 ${activePageContext.text.slice(0, 15000)}
+${colorsContext}
 
 REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
 - PROHIBIDO PREGUNTAR "¿qué proyecto?" o "¿de qué tema es?" si el hilo o el contexto ya indican el sitio web (${activePageContext.url} - ${activePageContext.title}).
@@ -161,6 +196,11 @@ REGLAS OBLIGATORIAS:
 - MÁXIMO UNA PREGUNTA, y SOLO si falta un dato indispensable que cambiaría drásticamente el código técnico.
 - Si el usuario dice "con todo lo necesario", "hazlo completo", "con todo", "créalo", "continúa" o cualquier instrucción similar: DECIDE TÚ TODOS LOS DETALLES y ESCRIBE LOS ARCHIVOS DE CÓDIGO COMPLETOS EN ESTE TURNO. NUNCA respondas con "¿de qué tema?" o "dime qué secciones quieres". Escribe el código de inmediato.
 - PROHIBIDO preguntar "¿qué proyecto?" si en el historial de mensajes o en los datos del negocio ya se mencionó el proyecto o sitio web (ej. vada.cl, blanqueamiento dental, etc.).
+- OBLIGATORIO: CADA TURNO QUE CAMBIA DISEÑO, ESTILOS O CÓDIGO DEBE DEVOLVER EL FENCE COMPLETO DEL ARCHIVO (ej. \`\`\`html index.html). Si no devuelves el fence con el código completo, ESTÁ ESTRICTAMENTE PROHIBIDO decir "Listo" o afirmar que hiciste el cambio, porque el cliente SÓLO actualiza la vista previa al recibir el fence de archivo.
+- Si el usuario dice "no es su color" o pide corregir colores/estilos:
+  * Aplica los colores de la paleta real extraída.
+  * Responde con EXACTAMENTE UNA SOLA LÍNEA DE DIFF (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.") seguida inmediatamente del fence completo \`\`\`html index.html.
+  * PROHIBIDO escribir ensayos, discursos o explicaciones largas.
 - Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown:
   \`\`\`html index.html
   <!DOCTYPE html>...

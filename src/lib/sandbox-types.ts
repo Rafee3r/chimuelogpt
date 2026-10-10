@@ -44,11 +44,20 @@ export interface AgentStageInfo {
   details?: string;
 }
 
+export interface ChimuCodePageColor {
+  hex: string;
+  count: number;
+}
+
 export interface ChimuCodePageContext {
   url: string;
   title: string;
   text: string;
+  colors?: ChimuCodePageColor[];
+  background?: string;
+  cta?: string;
 }
+
 
 export interface ChimuCodeSession {
   id: string;

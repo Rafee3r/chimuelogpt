@@ -352,6 +352,37 @@ export function ChimuCodeView({
     return html + interceptorScript;
   }, [isHtml, activeFile, files]);
 
+  // Blob URL para recargar limpiamente el iframe en cada cambio de HTML
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
+  const prevBlobUrlRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!isHtml || !previewHtml) {
+      if (prevBlobUrlRef.current) {
+        URL.revokeObjectURL(prevBlobUrlRef.current);
+        prevBlobUrlRef.current = '';
+      }
+      setPreviewBlobUrl('');
+      return;
+    }
+
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    if (prevBlobUrlRef.current) {
+      URL.revokeObjectURL(prevBlobUrlRef.current);
+    }
+    prevBlobUrlRef.current = url;
+    setPreviewBlobUrl(url);
+  }, [previewHtml, isHtml]);
+
+  useEffect(() => {
+    return () => {
+      if (prevBlobUrlRef.current) {
+        URL.revokeObjectURL(prevBlobUrlRef.current);
+      }
+    };
+  }, []);
+
   // Enviar mensaje al backend y procesar streaming SSE en vivo
   const handleSendMessage = async () => {
     if (isSendingRef.current || isGenerating) return;
@@ -919,16 +950,19 @@ export function ChimuCodeView({
                       {m.tools && m.tools.length > 0 && (
                         <div className="chimucode-tools-log">
                           {m.tools.map((t, idx) => (
-                            <div key={idx} className="chimucode-tool-row">
-                              <span className="chimucode-tool-icon">
-                                <Globe size={13} />
-                              </span>
-                              <span className="chimucode-tool-name">{t.name}</span>
-                              {t.input && <span className="chimucode-tool-input">{t.input}</span>}
-                              <div className={`chimucode-tool-status ${t.status}`}>
-                                {t.status === 'done' && <Check size={12} color="#4ade80" />}
-                                {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                            <div key={idx} className="chimucode-tool-item">
+                              <div className="chimucode-tool-row">
+                                <span className="chimucode-tool-icon">
+                                  <Globe size={13} />
+                                </span>
+                                <span className="chimucode-tool-name">{t.name}</span>
+                                {t.input && <span className="chimucode-tool-input">{t.input}</span>}
+                                <div className={`chimucode-tool-status ${t.status}`}>
+                                  {t.status === 'done' && <Check size={12} color="#4ade80" />}
+                                  {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                                </div>
                               </div>
+                              {t.preview && <div className="chimucode-tool-preview">{t.preview}</div>}
                             </div>
                           ))}
                         </div>
@@ -1005,17 +1039,20 @@ export function ChimuCodeView({
                       {liveTools.length > 0 && (
                         <div className="chimucode-tools-log">
                           {liveTools.map((t, idx) => (
-                            <div key={idx} className="chimucode-tool-row">
-                              <span className="chimucode-tool-icon">
-                                <Globe size={13} />
-                              </span>
-                              <span className="chimucode-tool-name">{t.name}</span>
-                              {t.input && <span className="chimucode-tool-input">{t.input}</span>}
-                              <div className={`chimucode-tool-status ${t.status}`}>
-                                {t.status === 'start' && <RotateCw size={12} className="chimucode-spin" />}
-                                {t.status === 'done' && <Check size={12} color="#4ade80" />}
-                                {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                            <div key={idx} className="chimucode-tool-item">
+                              <div className="chimucode-tool-row">
+                                <span className="chimucode-tool-icon">
+                                  <Globe size={13} />
+                                </span>
+                                <span className="chimucode-tool-name">{t.name}</span>
+                                {t.input && <span className="chimucode-tool-input">{t.input}</span>}
+                                <div className={`chimucode-tool-status ${t.status}`}>
+                                  {t.status === 'start' && <RotateCw size={12} className="chimucode-spin" />}
+                                  {t.status === 'done' && <Check size={12} color="#4ade80" />}
+                                  {t.status === 'error' && <AlertCircle size={12} color="#f87171" />}
+                                </div>
                               </div>
+                              {t.preview && <div className="chimucode-tool-preview">{t.preview}</div>}
                             </div>
                           ))}
                         </div>
@@ -1272,7 +1309,8 @@ export function ChimuCodeView({
                 isHtml ? (
                   <div className={`chimucode-iframe-container ${isMobileMode ? 'mobile-frame' : ''}`}>
                     <iframe
-                      srcDoc={previewHtml}
+                      key={previewBlobUrl}
+                      src={previewBlobUrl || 'about:blank'}
                       title="ChimuCode Live Preview"
                       sandbox="allow-scripts allow-modals allow-forms allow-popups"
                       className="chimucode-preview-iframe"
