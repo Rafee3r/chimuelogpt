@@ -466,6 +466,8 @@ export function extractProjectFilesFromAiResponse(
         rawPath = 'data.json';
       } else if (isDocker) {
         rawPath = fenceIndex === 1 ? 'Dockerfile' : 'docker-compose.yml';
+      } else if (rawLang === 'swift' || (!rawLang && /(?:swift|swiftui|apple|mac|macos|ios)/i.test(promptLower))) {
+        rawPath = fenceIndex === 1 ? 'NotesApp.swift' : (fenceIndex === 2 ? 'ContentView.swift' : `Source${fenceIndex}.swift`);
       } else if (rawLang === 'css') {
         rawPath = 'styles.css';
       } else {
@@ -498,6 +500,8 @@ export function extractProjectFilesFromAiResponse(
       resolvedLang = 'typescript';
     } else if (rawPath.endsWith('.py') || rawLang === 'py' || rawLang === 'python') {
       resolvedLang = 'python';
+    } else if (rawPath.endsWith('.swift') || rawLang === 'swift') {
+      resolvedLang = 'swift';
     } else if (rawPath.endsWith('.json') || rawLang === 'json') {
       resolvedLang = 'json';
     } else if (rawPath.endsWith('.sh') || rawLang === 'sh' || rawLang === 'bash' || rawLang === 'shell') {
@@ -537,7 +541,7 @@ export function extractCodeFromAiResponse(response: string): { code: string; lan
   if (files.length === 0) {
     return { code: '', language: 'html' };
   }
-  const primary = files.find(f => f.language === 'html') || files[0];
+  const primary = files.find(f => f.path === 'preview.html') || files.find(f => f.path === 'index.html') || files.find(f => f.language === 'html') || files[0];
   return { code: primary.content, language: primary.language as SandboxLanguage };
 }
 
@@ -552,6 +556,13 @@ export function detectCodeLanguage(code: string): SandboxLanguage {
     /<canvas\b|<svg\b|<iframe\b|<script\b/i.test(trimmed)
   ) {
     return 'html';
+  }
+
+  // Patrones Swift / SwiftUI (apps macOS / iOS)
+  if (
+    /^(import\s+(SwiftUI|AppKit|UIKit|Foundation)|struct\s+\w+\s*:\s*(View|App)|@main\b|@State\b|@Binding\b)/m.test(trimmed)
+  ) {
+    return 'swift';
   }
 
   // Patrones Python (scripts, análisis de datos, automatización)

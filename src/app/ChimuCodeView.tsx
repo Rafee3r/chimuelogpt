@@ -151,16 +151,24 @@ export function ChimuCodeView({
   });
 
   const [activePath, setActivePath] = useState<string>(() => {
-    if (!mountSession) return 'index.html';
+    if (!mountSession) return 'preview.html';
     const sFiles = Array.isArray(mountSession.files) && mountSession.files.length > 0 ? mountSession.files : [];
-    return mountSession.activePath || (sFiles[0]?.path ?? 'index.html');
+    const previewFile = sFiles.find((f) => f.path === 'preview.html')
+      || sFiles.find((f) => f.path === 'index.html')
+      || sFiles.find((f) => f.language === 'html' || f.path.endsWith('.html') || f.path.endsWith('.htm'));
+    return previewFile ? previewFile.path : (mountSession.activePath || (sFiles[0]?.path ?? 'preview.html'));
   });
 
   const [showRightPanel, setShowRightPanel] = useState<boolean>(() => {
     const sFiles = mountSession && Array.isArray(mountSession.files) && mountSession.files.length > 0 ? mountSession.files : [];
     return sFiles.length > 0 || !!mountSession?.activeCode;
   });
-  const [activeRightTab, setActiveRightTab] = useState<'preview' | 'code' | 'console'>('preview');
+  const [activeRightTab, setActiveRightTab] = useState<'preview' | 'code' | 'console'>(() => {
+    if (!mountSession) return 'preview';
+    const sFiles = Array.isArray(mountSession.files) && mountSession.files.length > 0 ? mountSession.files : [];
+    const hasHtml = sFiles.some((f) => f.language === 'html' || f.path.endsWith('.html') || f.path.endsWith('.htm')) || !!mountSession?.activeCode;
+    return hasHtml ? 'preview' : 'code';
+  });
   const [isMobileMode, setIsMobileMode] = useState<boolean>(false);
   const [consoleOutput, setConsoleOutput] = useState<string | null>(() => {
     return mountSession?.consoleOutput || null;
@@ -220,8 +228,12 @@ export function ChimuCodeView({
           }];
         }
         setFiles(sessionFiles);
-        const resolvedPath = target.activePath || (sessionFiles[0]?.path ?? 'index.html');
+        const previewFile = sessionFiles.find((f) => f.path === 'preview.html')
+          || sessionFiles.find((f) => f.path === 'index.html')
+          || sessionFiles.find((f) => f.language === 'html' || f.path.endsWith('.html') || f.path.endsWith('.htm'));
+        const resolvedPath = previewFile ? previewFile.path : (target.activePath || (sessionFiles[0]?.path ?? 'preview.html'));
         setActivePath(resolvedPath);
+        setActiveRightTab(previewFile ? 'preview' : 'code');
         setConsoleOutput(target.consoleOutput || null);
         setShowRightPanel(sessionFiles.length > 0);
         setLastOpenedChimuSessionId(target.id);
@@ -395,10 +407,23 @@ export function ChimuCodeView({
     return () => window.removeEventListener('message', handleIframeMessage);
   }, [handleNavigateRelative]);
 
-  // Construir HTML autocontenido para la previsualización del archivo activo
+  // Archivo HTML previsualizable en el proyecto (preview.html, index.html o cualquier .html)
+  const projectPreviewHtmlFile = useMemo(() => {
+    return (
+      files.find((f) => f.path === 'preview.html') ||
+      files.find((f) => f.path === 'index.html') ||
+      files.find((f) => f.language === 'html' || f.path.endsWith('.html') || f.path.endsWith('.htm')) ||
+      null
+    );
+  }, [files]);
+
+  const fileToPreview = isHtml ? activeFile : projectPreviewHtmlFile;
+  const hasPreviewableHtml = !!fileToPreview;
+
+  // Construir HTML autocontenido para la previsualización del archivo activo o de preview.html
   const previewHtml = useMemo(() => {
-    if (!isHtml || !activeFile) return '';
-    let html = activeFile.content;
+    if (!fileToPreview) return '';
+    let html = fileToPreview.content;
 
     // Inyectar archivos CSS locales referenciados por <link rel="stylesheet" href="...">
     html = html.replace(/<link\b[^>]*\bhref=["']([^"']+\.css)["'][^>]*>/gi, (tag, href) => {
@@ -444,14 +469,14 @@ export function ChimuCodeView({
       return html.replace('</body>', `${interceptorScript}</body>`);
     }
     return html + interceptorScript;
-  }, [isHtml, activeFile, files]);
+  }, [fileToPreview, files]);
 
   // Blob URL para recargar limpiamente el iframe en cada cambio de HTML
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
   const prevBlobUrlRef = useRef<string>('');
 
   useEffect(() => {
-    if (!isHtml || !previewHtml) {
+    if (!hasPreviewableHtml || !previewHtml) {
       if (prevBlobUrlRef.current) {
         URL.revokeObjectURL(prevBlobUrlRef.current);
         prevBlobUrlRef.current = '';
@@ -467,7 +492,11 @@ export function ChimuCodeView({
     }
     prevBlobUrlRef.current = url;
     setPreviewBlobUrl(url);
-  }, [previewHtml, isHtml]);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [previewHtml, hasPreviewableHtml]);
 
   useEffect(() => {
     return () => {
@@ -643,16 +672,20 @@ export function ChimuCodeView({
                 return Array.from(map.values());
               });
 
-              if (fileObj.language === 'html' || fileObj.path.endsWith('.html')) {
+              const isEventHtml = fileObj.path === 'preview.html' || fileObj.path === 'index.html' || fileObj.language === 'html' || fileObj.path.endsWith('.html');
+              if (isEventHtml) {
                 finalActivePath = fileObj.path;
                 setActivePath(fileObj.path);
                 setShowRightPanel(true);
                 setActiveRightTab('preview');
               } else {
-                finalActivePath = fileObj.path;
-                setActivePath(fileObj.path);
-                setShowRightPanel(true);
-                setActiveRightTab('code');
+                const hasHtmlSoFar = accumulatedFiles.some((f) => f.language === 'html' || f.path.endsWith('.html'));
+                if (!hasHtmlSoFar) {
+                  finalActivePath = fileObj.path;
+                  setActivePath(fileObj.path);
+                  setShowRightPanel(true);
+                  setActiveRightTab('code');
+                }
               }
             } else if (event.type === 'done') {
               if (Array.isArray(event.files) && event.files.length > 0) {
@@ -681,11 +714,14 @@ export function ChimuCodeView({
         updatedFiles = Array.from(map.values());
         setFiles(updatedFiles);
 
-        const changedHtml = accumulatedFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
-        const nextActive = finalActivePath || (changedHtml ? changedHtml.path : accumulatedFiles[0].path);
+        const previewHtml = updatedFiles.find((f) => f.path === 'preview.html')
+          || updatedFiles.find((f) => f.path === 'index.html')
+          || updatedFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
+
+        const nextActive = previewHtml ? previewHtml.path : (finalActivePath || updatedFiles[0]?.path);
         setActivePath(nextActive);
         setShowRightPanel(true);
-        if (nextActive.endsWith('.html') || (changedHtml && nextActive === changedHtml.path)) {
+        if (previewHtml) {
           setActiveRightTab('preview');
         } else {
           setActiveRightTab('code');
@@ -1085,7 +1121,10 @@ export function ChimuCodeView({
                               type="button"
                               className="chimucode-card-btn"
                               onClick={() => {
-                                const target = m.changedFiles?.find((f) => f.language === 'html' || f.path.endsWith('.html')) || m.changedFiles?.[0];
+                                const target = m.changedFiles?.find((f) => f.path === 'preview.html')
+                                  || m.changedFiles?.find((f) => f.path === 'index.html')
+                                  || m.changedFiles?.find((f) => f.language === 'html' || f.path.endsWith('.html'))
+                                  || m.changedFiles?.[0];
                                 if (target) {
                                   setActivePath(target.path);
                                   setShowRightPanel(true);
@@ -1196,7 +1235,10 @@ export function ChimuCodeView({
                               type="button"
                               className="chimucode-card-btn"
                               onClick={() => {
-                                const target = liveFiles.find((f) => f.language === 'html' || f.path.endsWith('.html')) || liveFiles[0];
+                                const target = liveFiles.find((f) => f.path === 'preview.html')
+                                  || liveFiles.find((f) => f.path === 'index.html')
+                                  || liveFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'))
+                                  || liveFiles[0];
                                 if (target) {
                                   setActivePath(target.path);
                                   setShowRightPanel(true);
@@ -1289,7 +1331,12 @@ export function ChimuCodeView({
                 <button
                   type="button"
                   className={`chimucode-tab-btn ${activeRightTab === 'preview' ? 'active' : ''}`}
-                  onClick={() => setActiveRightTab('preview')}
+                  onClick={() => {
+                    if (projectPreviewHtmlFile && !isHtml) {
+                      setActivePath(projectPreviewHtmlFile.path);
+                    }
+                    setActiveRightTab('preview');
+                  }}
                 >
                   <Eye size={13} />
                   <span>Vista previa</span>
@@ -1313,7 +1360,7 @@ export function ChimuCodeView({
               </div>
 
               <div className="chimucode-panel-actions">
-                {activeRightTab === 'preview' && isHtml && (
+                {activeRightTab === 'preview' && hasPreviewableHtml && (
                   <>
                     <button
                       type="button"
@@ -1378,7 +1425,9 @@ export function ChimuCodeView({
                   className={`chimucode-file-tab ${f.path === activePath ? 'active' : ''}`}
                   onClick={() => {
                     setActivePath(f.path);
-                    if (f.language !== 'html' && !f.path.endsWith('.html') && activeRightTab === 'preview') {
+                    if (f.language === 'html' || f.path.endsWith('.html') || f.path.endsWith('.htm')) {
+                      setActiveRightTab('preview');
+                    } else {
                       setActiveRightTab('code');
                     }
                   }}
@@ -1393,7 +1442,7 @@ export function ChimuCodeView({
             {/* Cuerpo del panel derecho según pestaña activa */}
             <div className="chimucode-panel-body">
               {activeRightTab === 'preview' && (
-                isHtml ? (
+                hasPreviewableHtml ? (
                   <div className={`chimucode-iframe-container ${isMobileMode ? 'mobile-frame' : ''}`}>
                     <iframe
                       key={previewBlobUrl}
@@ -1405,60 +1454,8 @@ export function ChimuCodeView({
                     />
                   </div>
                 ) : (
-                  <div className="chimucode-preview-non-html">
-                    <div className="chimucode-script-runner-card">
-                      <div className="chimucode-script-badge">
-                        <Terminal size={15} />
-                        <span>{activePath} ({detectedLang.toUpperCase()})</span>
-                      </div>
-                      <p className="chimucode-script-desc">
-                        {detectedLang === 'python' || activePath.endsWith('.py')
-                          ? 'Script de Python listo para ejecutarse en el sandbox backend.'
-                          : detectedLang === 'javascript' || activePath.endsWith('.js')
-                          ? 'Script de JavaScript listo para ejecutarse en el sandbox.'
-                          : detectedLang === 'sql' || activePath.endsWith('.sql')
-                          ? 'Esquema y consultas SQL de base de datos.'
-                          : detectedLang === 'bash' || activePath.endsWith('.sh')
-                          ? 'Script Shell/Bash de automatización de sistema.'
-                          : 'Archivo de código y configuración del proyecto.'}
-                      </p>
-
-                      <div className="chimucode-script-actions">
-                        {(detectedLang === 'python' || detectedLang === 'javascript' || activePath.endsWith('.py') || activePath.endsWith('.js')) && (
-                          <button
-                            type="button"
-                            className="chimucode-btn-run-primary"
-                            onClick={() => handleRunCode()}
-                            disabled={isRunning}
-                          >
-                            <Play size={13} fill="currentColor" />
-                            <span>{isRunning ? 'Ejecutando en consola…' : 'Ejecutar script en consola'}</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="chimucode-btn-secondary"
-                          onClick={() => setActiveRightTab('code')}
-                        >
-                          <Code size={13} />
-                          <span>Ver y editar código</span>
-                        </button>
-                      </div>
-
-                      {consoleOutput && (
-                        <div
-                          className="chimucode-script-output-preview"
-                          onClick={() => setActiveRightTab('console')}
-                          title="Hacer clic para ir a la consola completa"
-                        >
-                          <div className="chimucode-script-output-header">
-                            <span>Última salida de ejecución:</span>
-                            <span className="chimucode-script-output-link">Abrir Consola →</span>
-                          </div>
-                          <pre>{consoleOutput.slice(0, 320)}{consoleOutput.length > 320 ? '…' : ''}</pre>
-                        </div>
-                      )}
-                    </div>
+                  <div className="chimucode-preview-no-ui">
+                    <span>Sin UI</span>
                   </div>
                 )
               )}

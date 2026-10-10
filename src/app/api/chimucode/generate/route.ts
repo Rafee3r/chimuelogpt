@@ -199,18 +199,35 @@ REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
 - Archivos de configuración y datos: JSON, YAML, TOML, CSV y documentación Markdown (\`config.json\`, \`data.csv\`, \`README.md\`).
 - Tests unitarios y suites de prueba.
 
-REGLAS OBLIGATORIAS:
+- REGLAS OBLIGATORIAS:
+- REGLA SUPREMA DE APPS, UIs Y PROYECTOS VISUALES (SIEMPRE PREVISUALIZABLE):
+  Si el usuario pide una app (ej. "app de notas para Mac", "app de notas", "app de tareas", "dashboard", "juego", "calculadora", app móvil o de escritorio), landing page o CUALQUIER proyecto con interfaz visual:
+  EL PROYECTO DEBE INCLUIR SIEMPRE UN ARCHIVO PREVISUALIZABLE EN EL NAVEGADOR:
+  * Si es web (HTML/CSS/JS): genera \`\`\`html index.html con toda la interfaz interactiva.
+  * Si es nativa o de escritorio (Swift/SwiftUI para Mac/iOS, Python Tkinter/PyQt, Flutter, React Native, Java, C#, etc.):
+    ADEMÁS de entregar todos los archivos de código fuente nativo necesarios (ej. \`\`\`swift NotesApp.swift y \`\`\`swift ContentView.swift),
+    GENERA OBLIGATORIAMENTE en el mismo turno un archivo \`\`\`html preview.html con un mockup fiel, interactivo y completo de la UI (con la misma estructura, estética de ventana de macOS/iOS/escritorio, controles nativos simulados, barra lateral, lista de notas/ítems, editor y los mismos textos). El panel del entorno abrirá preview.html para mostrar la interfaz directamente.
+  * PROHIBIDO PREGUNTAR "¿qué tipo de app?", "¿qué diseño prefieres?" o pedir aclaraciones cuando el pedido sea una app. Con decir "app de notas para mac" o similar ALCANZA: decide tú todas las funciones necesarias y entrega los archivos nativos (ej. .swift) Y el preview.html EN EL MISMO TURNO.
 - SÍ PUEDES CREAR CARPETAS Y ARCHIVOS VIRTUALES. NUNCA digas "no puedo crear carpetas en tu sistema", "no tengo acceso a tu disco" ni "cópialo manualmente". En este entorno tú gestionas un proyecto virtual con múltiples archivos y carpetas.
 - ADAPTA INTELIGENTEMENTE EL LENGUAJE Y LOS ARCHIVOS según la intención del usuario. NO ASUMAS SIEMPRE QUE ES UNA PÁGINA WEB:
   * Si piden automatización, scraper, cálculo, análisis de datos, bot o utilidades -> Genera scripts en Python ejecutables (ej. \`\`\`python main.py) listos para correr, con \`print(...)\` claros para que los resultados se vean directamente en la consola.
   * Si piden backend, API REST o utilidades JS -> Genera archivos Node.js / TypeScript (ej. \`\`\`javascript server.js o \`\`\`typescript api.ts).
-  * Si piden app visual, interfaz interactiva, landing page o juego -> Genera archivos HTML/CSS/JS (ej. \`\`\`html index.html).
+  * Si piden app visual, interfaz interactiva, landing page o juego -> Genera archivos HTML/CSS/JS (ej. \`\`\`html index.html). Si piden app nativa (ej. Mac con Swift), genera los archivos .swift Y \`\`\`html preview.html.
   * Si piden tareas de terminal, despliegue o sysadmin -> Genera scripts Bash (\`\`\`bash script.sh) o Dockerfile/compose.
   * Si piden bases de datos -> Genera archivos SQL (\`\`\`sql schema.sql).
   * Si el proyecto requiere varios archivos (ej: un script Python que lee \`datos.csv\` o \`config.json\`), crea todos los archivos correspondientes en sus bloques markdown.
 - CADA BLOQUE DE CÓDIGO DEBE INCLUIR EL LENGUAJE Y EL NOMBRE DE ARCHIVO EN LA CABECERA:
   \`\`\`python main.py
   # código...
+  \`\`\`
+  \`\`\`swift NotesApp.swift
+  // código...
+  \`\`\`
+  \`\`\`swift ContentView.swift
+  // código...
+  \`\`\`
+  \`\`\`html preview.html
+  <!DOCTYPE html>...
   \`\`\`
   \`\`\`javascript server.js
   // código...
@@ -408,6 +425,9 @@ ${existingProjectContext}`;
                       } else if (isDocker) {
                         rawPath = fenceIndex === 1 ? 'Dockerfile' : 'docker-compose.yml';
                         rawLang = 'docker';
+                      } else if (rawLang === 'swift' || (!rawLang && /(?:swift|swiftui|apple|mac|macos|ios)/i.test(promptLower))) {
+                        rawPath = fenceIndex === 1 ? 'NotesApp.swift' : (fenceIndex === 2 ? 'ContentView.swift' : `Source${fenceIndex}.swift`);
+                        rawLang = 'swift';
                       } else if (rawLang === 'css') {
                         rawPath = 'styles.css';
                         rawLang = 'css';
@@ -508,10 +528,15 @@ ${existingProjectContext}`;
           }
 
           // Emitir evento final de finalización con los archivos del proyecto y pageContext actualizado
+          const previewFile = completedFiles.find((f) => f.path === 'preview.html')
+            || completedFiles.find((f) => f.path === 'index.html')
+            || completedFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
+          const resolvedDoneActivePath = previewFile?.path || completedFiles[0]?.path || files[0]?.path || 'main.py';
+
           sendEvent({
             type: 'done',
             files: completedFiles,
-            activePath: completedFiles[0]?.path || files[0]?.path || 'main.py',
+            activePath: resolvedDoneActivePath,
             pageContext: activePageContext,
           });
         } catch (err: any) {

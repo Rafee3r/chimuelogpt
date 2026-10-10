@@ -14,7 +14,8 @@ export type SandboxLanguage =
   | 'rust'
   | 'go'
   | 'cpp'
-  | 'java';
+  | 'java'
+  | 'swift';
 
 export type SandboxEngine = 'worker' | 'cloud' | 'agent' | 'preview';
 

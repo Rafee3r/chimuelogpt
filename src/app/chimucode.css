@@ -906,6 +906,18 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.chimucode-preview-no-ui {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8a93;
+  font-size: 13px;
+  letter-spacing: normal;
+  padding: 24px;
+  user-select: none;
+}
+
 /* Script runner hub para archivos que no son HTML */
 .chimucode-script-runner-card {
   max-width: 480px;
@@ -1582,6 +1594,12 @@
   background: #e2e8f0;
   border-color: #cbd5e1;
   color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-preview-no-ui,
+:root[data-theme-effective="light"] .chimucode-preview-no-ui,
+:root[data-theme="snow"] .chimucode-preview-no-ui {
+  color: #64748b;
 }
 
 :root[data-theme="light"] .chimucode-script-runner-card,

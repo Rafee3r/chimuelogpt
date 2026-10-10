@@ -45,6 +45,11 @@ describe('detectCodeLanguage', () => {
     expect(detectCodeLanguage('const x = 10;\nconsole.log(x * 2);')).toBe('javascript');
     expect(detectCodeLanguage('function saludar() { return "hola"; }')).toBe('javascript');
   });
+
+  it('detecta Swift/SwiftUI para apps nativas', async () => {
+    const { detectCodeLanguage } = await import('../chimucode');
+    expect(detectCodeLanguage('import SwiftUI\n\nstruct ContentView: View {\n    var body: some View {\n        Text("Hola")\n    }\n}')).toBe('swift');
+  });
 });
 
 describe('extractCodeFromAiResponse', () => {
@@ -85,6 +90,14 @@ describe('extractCodeFromAiResponse', () => {
     const res = extractCodeFromAiResponse(rawHtml);
     expect(res.code).toBe(rawHtml);
     expect(res.language).toBe('html');
+  });
+
+  it('prioriza preview.html sobre fuentes nativos como swift', async () => {
+    const { extractCodeFromAiResponse } = await import('../chimucode');
+    const input = '```swift NotesApp.swift\nimport SwiftUI\n```\n\n```html preview.html\n<!DOCTYPE html><html><body><h1>Mockup Notas</h1></body></html>\n```';
+    const res = extractCodeFromAiResponse(input);
+    expect(res.language).toBe('html');
+    expect(res.code).toContain('Mockup Notas');
   });
 });
 
@@ -130,6 +143,29 @@ body { background: #000; color: #fff; }
 `;
     const res = extractProjectFilesFromAiResponse(response, 'en la carpeta tienda crea catalogo en otra página');
     expect(res.files.map(f => f.path)).toEqual(['tienda/index.html', 'tienda/catalogo.html']);
+  });
+
+  it('extrae fuentes Swift y preview.html juntos para pedidos de apps visuales', async () => {
+    const { extractProjectFilesFromAiResponse } = await import('../chimucode');
+    const response = `
+\`\`\`swift NotesApp.swift
+import SwiftUI
+@main
+struct NotesApp: App {
+    var body: some Scene { WindowGroup { Text("Hola") } }
+}
+\`\`\`
+
+\`\`\`html preview.html
+<!DOCTYPE html><html><body><h1>Notas Mac</h1></body></html>
+\`\`\`
+`;
+    const res = extractProjectFilesFromAiResponse(response, 'app de notas para mac');
+    expect(res.files).toHaveLength(2);
+    expect(res.files[0].path).toBe('NotesApp.swift');
+    expect(res.files[0].language).toBe('swift');
+    expect(res.files[1].path).toBe('preview.html');
+    expect(res.files[1].language).toBe('html');
   });
 });
 
