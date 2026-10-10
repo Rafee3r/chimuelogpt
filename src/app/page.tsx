@@ -4197,45 +4197,57 @@ export default function Home() {
         {/* ── SCROLL: Materias + Chats ── */}
         <div className="sb-scroll">
           {viewMode === 'chimucode' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <div style={{ fontSize: '0.75rem', color: '#8a8a93', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 8px 8px 16px' }}>SESIONES DE CÓDIGO</div>
-              {chimuCodeSessions.length === 0 ? (
-                <div style={{ padding: '8px 16px', color: '#666', fontSize: '0.85rem' }}>No hay sesiones previas</div>
-              ) : (
-                chimuCodeSessions
-                  .filter(s => !sidebarSearch || (s.title || '').toLowerCase().includes(sidebarSearch.toLowerCase()))
-                  .sort((a, b) => b.updatedAt - a.updatedAt)
-                  .map(s => (
-                  <button 
-                    key={s.id}
-                    className={`sb-row ${activeChimuSessionId === s.id ? 'active' : ''}`} 
-                    onClick={() => {
-                      setActiveChimuSessionId(s.id);
-                      setLastOpenedChimuSessionId(s.id);
-                      setSidebarOpen(false);
-                    }}
-                    style={{ paddingLeft: '8px' }}
-                  >
-                     <Terminal size={14} style={{ color: '#666', marginRight: '6px' }} /> <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{s.title || 'Sesión de código'}</span>
-                     <Trash2 
-                       size={12} 
-                       style={{ color: '#666' }} 
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         const ok = window.confirm(`¿Eliminar la sesión "${s.title || 'de código'}"?`);
-                         if (!ok) return;
-                         const next = deleteChimuCodeSession(s.id);
-                         setChimuCodeSessions(next);
-                         if (activeChimuSessionId === s.id) {
-                           const fallback = next.length > 0 ? next[0].id : null;
-                           setActiveChimuSessionId(fallback);
-                           setLastOpenedChimuSessionId(fallback);
-                         }
-                       }}
-                     />
-                  </button>
-                ))
-              )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
+              {chimuCodeSessions
+                .filter(s => !sidebarSearch || (s.title || '').toLowerCase().includes(sidebarSearch.toLowerCase()))
+                .sort((a, b) => b.updatedAt - a.updatedAt)
+                .map(s => (
+                <button 
+                  key={s.id}
+                  className={`sb-row chimucode-sb-session ${activeChimuSessionId === s.id ? 'active' : ''}`} 
+                  onClick={() => {
+                    setActiveChimuSessionId(s.id);
+                    setLastOpenedChimuSessionId(s.id);
+                    setSidebarOpen(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    fontWeight: activeChimuSessionId === s.id ? 500 : 400,
+                    letterSpacing: 'normal',
+                    borderRadius: '8px',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    margin: '2px 0',
+                    width: '100%',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                >
+                   <Terminal size={14} style={{ color: 'var(--text-secondary)', marginRight: '4px', flexShrink: 0, opacity: 0.7 }} />
+                   <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left', fontSize: '14px', letterSpacing: 'normal', fontWeight: 'inherit' }}>
+                     {s.title || 'Sesión de código'}
+                   </span>
+                   <Trash2 
+                     size={12} 
+                     style={{ color: 'var(--text-secondary)', opacity: 0.5, flexShrink: 0 }} 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       const ok = window.confirm(`¿Eliminar la sesión "${s.title || 'de código'}"?`);
+                       if (!ok) return;
+                       const next = deleteChimuCodeSession(s.id);
+                       setChimuCodeSessions(next);
+                       if (activeChimuSessionId === s.id) {
+                         const fallback = next.length > 0 ? next[0].id : null;
+                         setActiveChimuSessionId(fallback);
+                         setLastOpenedChimuSessionId(fallback);
+                       }
+                     }}
+                   />
+                </button>
+              ))}
             </div>
           ) : (
             <>

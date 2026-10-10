@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  ArrowLeft,
   ChevronDown,
   Check,
   Download,
@@ -16,8 +15,6 @@ import {
   ExternalLink,
   Smartphone,
   Monitor,
-  Sun,
-  Moon,
   RotateCw,
   CornerDownLeft,
   FileCode,
@@ -898,19 +895,9 @@ export function ChimuCodeView({
 
   return (
     <div className="chimucode-root">
-      {/* ── 1. TOP BAR EXACTA (48px) ── */}
+      {/* ── 1. TOP BAR EXACTA (44px) ── */}
       <header className="chimucode-topbar">
         <div className="chimucode-topbar-left">
-          <button
-            type="button"
-            className="chimucode-btn-back"
-            onClick={onBackToChat}
-            title="Volver a la conversación principal"
-          >
-            <ArrowLeft size={15} />
-            <span>Volver al chat</span>
-          </button>
-
           <div className="chimucode-title-wrap">
             <input
               type="text"
@@ -961,30 +948,6 @@ export function ChimuCodeView({
             )}
           </div>
 
-          {/* Tema (Auto / Claro / Oscuro) */}
-          <button
-            type="button"
-            className="chimucode-btn-action chimucode-theme-btn"
-            onClick={() => {
-              if (!setTheme) return;
-              if (theme === 'system') setTheme('light');
-              else if (theme === 'light') setTheme('dark');
-              else setTheme('system');
-            }}
-            title={`Tema: ${theme === 'system' ? 'Auto (Sistema)' : theme === 'light' ? 'Claro' : 'Oscuro'} — Clic para alternar`}
-          >
-            {theme === 'light' ? (
-              <Sun size={14} />
-            ) : theme === 'dark' || theme === 'oled' ? (
-              <Moon size={14} />
-            ) : (
-              <Monitor size={14} />
-            )}
-            <span className="chimucode-btn-text">
-              {theme === 'system' ? 'Auto' : theme === 'light' ? 'Claro' : 'Oscuro'}
-            </span>
-          </button>
-
           {/* Descargar */}
           <button
             type="button"
@@ -1018,9 +981,10 @@ export function ChimuCodeView({
           {/* Panel */}
           <button
             type="button"
-            className={`chimucode-btn-action ${showRightPanel ? 'active' : ''}`}
+            className={`chimucode-btn-action ${showRightPanel && files.length > 0 ? 'active' : ''}`}
             onClick={() => setShowRightPanel(!showRightPanel)}
-            title="Alternar panel de código y vista previa"
+            disabled={files.length === 0}
+            title={files.length === 0 ? 'No hay archivos para mostrar' : 'Alternar panel de código y vista previa'}
           >
             <PanelRight size={14} />
             <span className="chimucode-btn-text">Panel</span>
@@ -1040,11 +1004,7 @@ export function ChimuCodeView({
         >
           {/* Mensajes (min 0, overflow auto, alto restante) */}
           <div className="chimucode-messages-scroll" ref={messagesScrollRef}>
-            {renderedMessages.length === 0 && !isGenerating ? (
-              <div className="chimucode-empty-state">
-                Describe lo que deseas construir: scripts de Python, automatizaciones, APIs, análisis de datos o aplicaciones web.
-              </div>
-            ) : (
+            {renderedMessages.length === 0 && !isGenerating ? null : (
               <div className="chimucode-messages-list">
                 {renderedMessages.map((m) => (
                   <div key={m.id} className={`chimucode-msg chimucode-msg-${m.role}`}>

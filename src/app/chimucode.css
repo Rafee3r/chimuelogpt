@@ -22,13 +22,14 @@
   box-sizing: border-box;
 }
 
-/* ── 1. TOP BAR (48px exact) ── */
+/* ── 1. TOP BAR (44px exact) ── */
 .chimucode-topbar {
-  height: 48px;
-  min-height: 48px;
-  max-height: 48px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
   background-color: #17171a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -320,15 +321,14 @@
 
 .chimucode-msg-bubble {
   position: relative;
-  max-width: 85%;
-  min-width: 100px;
-  background: #17171a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 82%;
+  min-width: 80px;
   border-radius: 12px;
-  padding: 12px 36px 12px 16px;
+  padding: 10px 32px 10px 14px;
   font-size: 14px;
-  line-height: 1.55;
-  color: #eee;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: normal;
   overflow-wrap: break-word;
   word-break: break-word;
   user-select: text !important;
@@ -337,9 +337,18 @@
   pointer-events: auto !important;
 }
 
+.chimucode-msg-assistant .chimucode-msg-bubble {
+  max-width: 82%;
+  background: transparent;
+  border: none;
+  color: #eee;
+  padding: 6px 32px 6px 0;
+}
+
 .chimucode-msg-user .chimucode-msg-bubble {
+  max-width: 82%;
   background: #232328;
-  border-color: rgba(255, 255, 255, 0.12);
+  border: none;
   color: #f1f5f9;
 }
 
@@ -417,10 +426,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
+  padding: 4px 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   color: #ccc;
@@ -544,13 +554,14 @@
   -webkit-user-select: text !important;
 }
 
-/* Code Snippet Card inside bubble */
+/* Code Snippet Card inside bubble: sin card dentro de card, separación por espacio */
 .chimucode-code-card {
   margin-top: 12px;
-  background: #121214;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 9px;
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  padding: 8px 0 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -604,9 +615,9 @@
   align-items: center;
   gap: 5px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #eee;
-  padding: 4px 9px;
+  border: none;
+  color: #ccc;
+  padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
@@ -614,7 +625,7 @@
 }
 .chimucode-card-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
 }
 
 /* File tabs strip in right panel */
@@ -1294,17 +1305,22 @@
 :root[data-theme="light"] .chimucode-msg-bubble,
 :root[data-theme-effective="light"] .chimucode-msg-bubble,
 :root[data-theme="snow"] .chimucode-msg-bubble {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .chimucode-msg-assistant .chimucode-msg-bubble,
+:root[data-theme-effective="light"] .chimucode-msg-assistant .chimucode-msg-bubble,
+:root[data-theme="snow"] .chimucode-msg-assistant .chimucode-msg-bubble {
+  background: transparent;
+  border: none;
   color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 :root[data-theme="light"] .chimucode-msg-user .chimucode-msg-bubble,
 :root[data-theme-effective="light"] .chimucode-msg-user .chimucode-msg-bubble,
 :root[data-theme="snow"] .chimucode-msg-user .chimucode-msg-bubble {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: #f1f5f9;
+  border: none;
   color: #0f172a;
 }
 
@@ -1340,10 +1356,11 @@
 :root[data-theme="light"] .chimucode-tool-row,
 :root[data-theme-effective="light"] .chimucode-tool-row,
 :root[data-theme="snow"] .chimucode-tool-row {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
   color: #334155;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 :root[data-theme="light"] .chimucode-tool-icon,
 :root[data-theme-effective="light"] .chimucode-tool-icon,
@@ -1390,9 +1407,10 @@
 :root[data-theme="light"] .chimucode-code-card,
 :root[data-theme-effective="light"] .chimucode-code-card,
 :root[data-theme="snow"] .chimucode-code-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: transparent;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: none;
 }
 :root[data-theme="light"] .chimucode-card-file-item,
 :root[data-theme-effective="light"] .chimucode-card-file-item,
@@ -1403,14 +1421,13 @@
 :root[data-theme-effective="light"] .chimucode-card-btn,
 :root[data-theme="snow"] .chimucode-card-btn {
   background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  border: none;
   color: #334155;
 }
 :root[data-theme="light"] .chimucode-card-btn:hover,
 :root[data-theme-effective="light"] .chimucode-card-btn:hover,
 :root[data-theme="snow"] .chimucode-card-btn:hover {
   background: #e2e8f0;
-  border-color: #cbd5e1;
   color: #0f172a;
 }
 
@@ -1669,14 +1686,14 @@
   :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-chat-panel {
     background-color: #f8fafc;
   }
-  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-msg-bubble {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-msg-assistant .chimucode-msg-bubble {
+    background: transparent;
+    border: none;
     color: #0f172a;
   }
   :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-msg-user .chimucode-msg-bubble {
-    background: #e2e8f0;
-    border-color: #cbd5e1;
+    background: #f1f5f9;
+    border: none;
     color: #0f172a;
   }
   :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-composer-wrap {
@@ -1710,5 +1727,28 @@
     color: #0f172a;
     border-top: 1px solid #e2e8f0;
   }
+}
+
+/* ── Sesiones de ChimuCode en el Sidebar ── */
+.chimucode-sb-session {
+  border: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  letter-spacing: normal !important;
+  font-weight: 400 !important;
+  transition: background 0.15s ease !important;
+}
+.chimucode-sb-session:hover {
+  background: var(--sidebar-hover) !important;
+  border: none !important;
+}
+.chimucode-sb-session.active {
+  background: var(--sidebar-hover) !important;
+  color: var(--text-primary) !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+.chimucode-sb-session::before {
+  display: none !important;
 }
 
