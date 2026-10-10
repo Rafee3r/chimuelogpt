@@ -16,6 +16,8 @@ import {
   ExternalLink,
   Smartphone,
   Monitor,
+  Sun,
+  Moon,
   RotateCw,
   CornerDownLeft,
   FileCode,
@@ -53,6 +55,8 @@ interface ChimuCodeViewProps {
   initialSessionData?: ChimuCodeSession;
   model: string;
   setModel: (m: string) => void;
+  theme?: "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
+  setTheme?: (theme: any) => void;
 }
 
 export function ChimuCodeView({
@@ -62,6 +66,8 @@ export function ChimuCodeView({
   initialSessionData,
   model,
   setModel,
+  theme = "system",
+  setTheme,
 }: ChimuCodeViewProps) {
   const [messages, setMessages] = useState<ChimuCodeMessage[]>([]);
   const [input, setInput] = useState<string>('');
@@ -860,6 +866,30 @@ export function ChimuCodeView({
               </div>
             )}
           </div>
+
+          {/* Tema (Auto / Claro / Oscuro) */}
+          <button
+            type="button"
+            className="chimucode-btn-action chimucode-theme-btn"
+            onClick={() => {
+              if (!setTheme) return;
+              if (theme === 'system') setTheme('light');
+              else if (theme === 'light') setTheme('dark');
+              else setTheme('system');
+            }}
+            title={`Tema: ${theme === 'system' ? 'Auto (Sistema)' : theme === 'light' ? 'Claro' : 'Oscuro'} — Clic para alternar`}
+          >
+            {theme === 'light' ? (
+              <Sun size={14} />
+            ) : theme === 'dark' || theme === 'oled' ? (
+              <Moon size={14} />
+            ) : (
+              <Monitor size={14} />
+            )}
+            <span className="chimucode-btn-text">
+              {theme === 'system' ? 'Auto' : theme === 'light' ? 'Claro' : 'Oscuro'}
+            </span>
+          </button>
 
           {/* Descargar */}
           <button

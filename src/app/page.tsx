@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo, useMemo } from "react";
-import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal, Briefcase } from "lucide-react";
+import { MessageSquare, Plus, Settings, Send, ArrowUp, Paperclip, Link, Menu, X, Cat, XCircle, FileImage, ChevronDown, ChevronLeft, ChevronRight, Smartphone, SquarePen, Download, ZoomIn, Book, Star, Search, ThumbsUp, ThumbsDown, RotateCw, Share2, Copy, MoreVertical, GraduationCap, Trash2, LogOut, Square, Check, Command, Palette, Zap, Sparkles, Mic, MicOff, Play, Pause, Music, Clock, Camera, Image as ImageIcon, FileText, Terminal, Briefcase, Sun, Moon, Monitor } from "lucide-react";
 import { extractGalleryItems } from "../lib/gallery";
 import { sanitizeChatsForStorage, safeSetChats, groupChatsByDate, loadChimuCodeSessions, saveChimuCodeSessions, deleteChimuCodeSession } from "../lib/chat-storage";
 import { BACKUP_KEYS_TO_CAPTURE, captureAppSnapshot, performAutoBackup, downloadBackupFile, importBackupFile } from "../lib/backup";
@@ -1900,12 +1900,23 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (theme === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", theme);
-    }
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const isSystemDark = mediaQuery.matches;
+      if (theme === "system") {
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.setAttribute("data-theme-effective", isSystemDark ? "dark" : "light");
+      } else {
+        document.documentElement.setAttribute("data-theme", theme);
+        const effective = (theme === "dark" || theme === "oled") ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme-effective", effective);
+      }
+    };
+
+    applyTheme();
+    mediaQuery.addEventListener('change', applyTheme);
     localStorage.setItem("chimuelo_theme", theme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
   }, [theme]);
 
   useEffect(() => {
@@ -4362,6 +4373,36 @@ export default function Home() {
 
         {/* ── FOOTER ── */}
         <div className="sb-footer sb-footer-profile" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <div className="sb-theme-switcher" role="group" aria-label="Modo de color">
+            <button
+              type="button"
+              className={`sb-theme-btn ${theme === 'system' ? 'active' : ''}`}
+              onClick={() => setTheme('system')}
+              title="Tema automático según el sistema operativo"
+            >
+              <Monitor size={13} />
+              <span>Auto</span>
+            </button>
+            <button
+              type="button"
+              className={`sb-theme-btn ${theme === 'light' ? 'active' : ''}`}
+              onClick={() => setTheme('light')}
+              title="Modo claro"
+            >
+              <Sun size={13} />
+              <span>Claro</span>
+            </button>
+            <button
+              type="button"
+              className={`sb-theme-btn ${theme === 'dark' || theme === 'oled' ? 'active' : ''}`}
+              onClick={() => setTheme('dark')}
+              title="Modo oscuro"
+            >
+              <Moon size={13} />
+              <span>Oscuro</span>
+            </button>
+          </div>
+
           <button
             type="button"
             className="sb-profile-card"
@@ -4501,6 +4542,8 @@ export default function Home() {
               setModel(newModel as any);
               localStorage.setItem('chimuelo_model', newModel);
             }}
+            theme={theme}
+            setTheme={setTheme}
           />
         ) : (
           <>

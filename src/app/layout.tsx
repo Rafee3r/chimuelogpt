@@ -36,6 +36,25 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Chimuelo" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('chimuelo_theme');
+                  var m = window.matchMedia('(prefers-color-scheme: dark)');
+                  if (t && t !== 'system') {
+                    document.documentElement.setAttribute('data-theme', t);
+                    document.documentElement.setAttribute('data-theme-effective', (t === 'dark' || t === 'oled') ? 'dark' : 'light');
+                  } else {
+                    document.documentElement.removeAttribute('data-theme');
+                    document.documentElement.setAttribute('data-theme-effective', m.matches ? 'dark' : 'light');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body className={inter.variable}>
         {children}

@@ -1116,3 +1116,599 @@
     display: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   CHIMUCODE — MODO CLARO (LIGHT THEME)
+   ════════════════════════════════════════════════════════════ */
+
+:root[data-theme="light"] .chimucode-root,
+:root[data-theme-effective="light"] .chimucode-root,
+:root[data-theme="snow"] .chimucode-root {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-topbar,
+:root[data-theme-effective="light"] .chimucode-topbar,
+:root[data-theme="snow"] .chimucode-topbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-btn-back,
+:root[data-theme-effective="light"] .chimucode-btn-back,
+:root[data-theme="snow"] .chimucode-btn-back {
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  background: transparent;
+}
+:root[data-theme="light"] .chimucode-btn-back:hover,
+:root[data-theme-effective="light"] .chimucode-btn-back:hover,
+:root[data-theme="snow"] .chimucode-btn-back:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+:root[data-theme="light"] .chimucode-title-input,
+:root[data-theme-effective="light"] .chimucode-title-input,
+:root[data-theme="snow"] .chimucode-title-input {
+  color: #0f172a !important;
+}
+:root[data-theme="light"] .chimucode-title-input:hover,
+:root[data-theme-effective="light"] .chimucode-title-input:hover,
+:root[data-theme="snow"] .chimucode-title-input:hover {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+}
+:root[data-theme="light"] .chimucode-title-input:focus,
+:root[data-theme-effective="light"] .chimucode-title-input:focus,
+:root[data-theme="snow"] .chimucode-title-input:focus {
+  border-color: #94a3b8 !important;
+  background: #ffffff !important;
+}
+
+:root[data-theme="light"] .chimucode-model-btn,
+:root[data-theme-effective="light"] .chimucode-model-btn,
+:root[data-theme="snow"] .chimucode-model-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-model-btn:hover,
+:root[data-theme-effective="light"] .chimucode-model-btn:hover,
+:root[data-theme="snow"] .chimucode-model-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme="light"] .chimucode-model-menu,
+:root[data-theme-effective="light"] .chimucode-model-menu,
+:root[data-theme="snow"] .chimucode-model-menu {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+:root[data-theme="light"] .chimucode-model-item,
+:root[data-theme-effective="light"] .chimucode-model-item,
+:root[data-theme="snow"] .chimucode-model-item {
+  color: #334155;
+}
+:root[data-theme="light"] .chimucode-model-item:hover,
+:root[data-theme-effective="light"] .chimucode-model-item:hover,
+:root[data-theme="snow"] .chimucode-model-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-model-item.active,
+:root[data-theme-effective="light"] .chimucode-model-item.active,
+:root[data-theme="snow"] .chimucode-model-item.active {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+:root[data-theme="light"] .chimucode-model-sub,
+:root[data-theme-effective="light"] .chimucode-model-sub,
+:root[data-theme="snow"] .chimucode-model-sub {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .chimucode-btn-action,
+:root[data-theme-effective="light"] .chimucode-btn-action,
+:root[data-theme="snow"] .chimucode-btn-action {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+:root[data-theme="light"] .chimucode-btn-action:hover:not(:disabled),
+:root[data-theme-effective="light"] .chimucode-btn-action:hover:not(:disabled),
+:root[data-theme="snow"] .chimucode-btn-action:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+:root[data-theme="light"] .chimucode-btn-action.active,
+:root[data-theme-effective="light"] .chimucode-btn-action.active,
+:root[data-theme="snow"] .chimucode-btn-action.active {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme="light"] .chimucode-btn-run,
+:root[data-theme-effective="light"] .chimucode-btn-run,
+:root[data-theme="snow"] .chimucode-btn-run {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #2563eb;
+}
+:root[data-theme="light"] .chimucode-btn-run:hover:not(:disabled),
+:root[data-theme-effective="light"] .chimucode-btn-run:hover:not(:disabled),
+:root[data-theme="snow"] .chimucode-btn-run:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #1d4ed8;
+}
+
+:root[data-theme="light"] .chimucode-workspace,
+:root[data-theme-effective="light"] .chimucode-workspace,
+:root[data-theme="snow"] .chimucode-workspace {
+  background-color: #f8fafc;
+}
+
+:root[data-theme="light"] .chimucode-chat-panel,
+:root[data-theme-effective="light"] .chimucode-chat-panel,
+:root[data-theme="snow"] .chimucode-chat-panel {
+  background-color: #f8fafc;
+}
+
+:root[data-theme="light"] .chimucode-messages-scroll::-webkit-scrollbar-thumb,
+:root[data-theme-effective="light"] .chimucode-messages-scroll::-webkit-scrollbar-thumb,
+:root[data-theme="snow"] .chimucode-messages-scroll::-webkit-scrollbar-thumb,
+:root[data-theme="light"] .chimucode-code-editor::-webkit-scrollbar-thumb,
+:root[data-theme-effective="light"] .chimucode-code-editor::-webkit-scrollbar-thumb,
+:root[data-theme="snow"] .chimucode-code-editor::-webkit-scrollbar-thumb,
+:root[data-theme="light"] .chimucode-console-terminal::-webkit-scrollbar-thumb,
+:root[data-theme-effective="light"] .chimucode-console-terminal::-webkit-scrollbar-thumb,
+:root[data-theme="snow"] .chimucode-console-terminal::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] .chimucode-messages-scroll::-webkit-scrollbar-thumb:hover,
+:root[data-theme-effective="light"] .chimucode-messages-scroll::-webkit-scrollbar-thumb:hover,
+:root[data-theme="snow"] .chimucode-messages-scroll::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] .chimucode-code-editor::-webkit-scrollbar-thumb:hover,
+:root[data-theme-effective="light"] .chimucode-code-editor::-webkit-scrollbar-thumb:hover,
+:root[data-theme="snow"] .chimucode-code-editor::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] .chimucode-console-terminal::-webkit-scrollbar-thumb:hover,
+:root[data-theme-effective="light"] .chimucode-console-terminal::-webkit-scrollbar-thumb:hover,
+:root[data-theme="snow"] .chimucode-console-terminal::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="light"] .chimucode-empty-state,
+:root[data-theme-effective="light"] .chimucode-empty-state,
+:root[data-theme="snow"] .chimucode-empty-state {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .chimucode-msg-bubble,
+:root[data-theme-effective="light"] .chimucode-msg-bubble,
+:root[data-theme="snow"] .chimucode-msg-bubble {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .chimucode-msg-user .chimucode-msg-bubble,
+:root[data-theme-effective="light"] .chimucode-msg-user .chimucode-msg-bubble,
+:root[data-theme="snow"] .chimucode-msg-user .chimucode-msg-bubble {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-bubble-copy-btn,
+:root[data-theme-effective="light"] .chimucode-bubble-copy-btn,
+:root[data-theme="snow"] .chimucode-bubble-copy-btn {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .chimucode-bubble-copy-btn:hover,
+:root[data-theme-effective="light"] .chimucode-bubble-copy-btn:hover,
+:root[data-theme="snow"] .chimucode-bubble-copy-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+:root[data-theme="light"] .chimucode-bubble-copy-btn.copied,
+:root[data-theme-effective="light"] .chimucode-bubble-copy-btn.copied,
+:root[data-theme="snow"] .chimucode-bubble-copy-btn.copied {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+:root[data-theme="light"] .chimucode-generating-bubble,
+:root[data-theme-effective="light"] .chimucode-generating-bubble,
+:root[data-theme="snow"] .chimucode-generating-bubble {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .chimucode-tool-row,
+:root[data-theme-effective="light"] .chimucode-tool-row,
+:root[data-theme="snow"] .chimucode-tool-row {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+:root[data-theme="light"] .chimucode-tool-icon,
+:root[data-theme-effective="light"] .chimucode-tool-icon,
+:root[data-theme="snow"] .chimucode-tool-icon {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-tool-name,
+:root[data-theme-effective="light"] .chimucode-tool-name,
+:root[data-theme="snow"] .chimucode-tool-name {
+  color: #2563eb;
+}
+:root[data-theme="light"] .chimucode-tool-input,
+:root[data-theme-effective="light"] .chimucode-tool-input,
+:root[data-theme="snow"] .chimucode-tool-input {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-tool-preview,
+:root[data-theme-effective="light"] .chimucode-tool-preview,
+:root[data-theme="snow"] .chimucode-tool-preview {
+  background: #f1f5f9;
+  color: #475569;
+}
+:root[data-theme="light"] .chimucode-live-status-row,
+:root[data-theme-effective="light"] .chimucode-live-status-row,
+:root[data-theme="snow"] .chimucode-live-status-row {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .chimucode-markdown-body code,
+:root[data-theme-effective="light"] .chimucode-markdown-body code,
+:root[data-theme="snow"] .chimucode-markdown-body code {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-markdown-body pre,
+:root[data-theme-effective="light"] .chimucode-markdown-body pre,
+:root[data-theme="snow"] .chimucode-markdown-body pre {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-code-card,
+:root[data-theme-effective="light"] .chimucode-code-card,
+:root[data-theme="snow"] .chimucode-code-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+:root[data-theme="light"] .chimucode-card-file-item,
+:root[data-theme-effective="light"] .chimucode-card-file-item,
+:root[data-theme="snow"] .chimucode-card-file-item {
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-card-btn,
+:root[data-theme-effective="light"] .chimucode-card-btn,
+:root[data-theme="snow"] .chimucode-card-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+:root[data-theme="light"] .chimucode-card-btn:hover,
+:root[data-theme-effective="light"] .chimucode-card-btn:hover,
+:root[data-theme="snow"] .chimucode-card-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-file-tabs-strip,
+:root[data-theme-effective="light"] .chimucode-file-tabs-strip,
+:root[data-theme="snow"] .chimucode-file-tabs-strip {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-file-tab,
+:root[data-theme-effective="light"] .chimucode-file-tab,
+:root[data-theme="snow"] .chimucode-file-tab {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-file-tab:hover,
+:root[data-theme-effective="light"] .chimucode-file-tab:hover,
+:root[data-theme="snow"] .chimucode-file-tab:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+:root[data-theme="light"] .chimucode-file-tab.active,
+:root[data-theme-effective="light"] .chimucode-file-tab.active,
+:root[data-theme="snow"] .chimucode-file-tab.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.35);
+  font-weight: 600;
+}
+
+:root[data-theme="light"] .chimucode-composer-wrap,
+:root[data-theme-effective="light"] .chimucode-composer-wrap,
+:root[data-theme="snow"] .chimucode-composer-wrap {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-composer-box,
+:root[data-theme-effective="light"] .chimucode-composer-box,
+:root[data-theme="snow"] .chimucode-composer-box {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+:root[data-theme="light"] .chimucode-composer-box:focus-within,
+:root[data-theme-effective="light"] .chimucode-composer-box:focus-within,
+:root[data-theme="snow"] .chimucode-composer-box:focus-within {
+  border-color: #94a3b8 !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .chimucode-composer-input,
+:root[data-theme-effective="light"] .chimucode-composer-input,
+:root[data-theme="snow"] .chimucode-composer-input {
+  color: #0f172a !important;
+}
+:root[data-theme="light"] .chimucode-composer-input::placeholder,
+:root[data-theme-effective="light"] .chimucode-composer-input::placeholder,
+:root[data-theme="snow"] .chimucode-composer-input::placeholder {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .chimucode-composer-submit,
+:root[data-theme-effective="light"] .chimucode-composer-submit,
+:root[data-theme="snow"] .chimucode-composer-submit {
+  background: #f1f5f9;
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-composer-submit.active,
+:root[data-theme-effective="light"] .chimucode-composer-submit.active,
+:root[data-theme="snow"] .chimucode-composer-submit.active {
+  background: #0f172a;
+  color: #ffffff;
+}
+:root[data-theme="light"] .chimucode-composer-submit.active:hover,
+:root[data-theme-effective="light"] .chimucode-composer-submit.active:hover,
+:root[data-theme="snow"] .chimucode-composer-submit.active:hover {
+  background: #1e293b;
+}
+
+:root[data-theme="light"] .chimucode-resizer-handle,
+:root[data-theme-effective="light"] .chimucode-resizer-handle,
+:root[data-theme="snow"] .chimucode-resizer-handle {
+  background: #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-right-panel,
+:root[data-theme-effective="light"] .chimucode-right-panel,
+:root[data-theme="snow"] .chimucode-right-panel {
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-panel-header,
+:root[data-theme-effective="light"] .chimucode-panel-header,
+:root[data-theme="snow"] .chimucode-panel-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-panel-tabs,
+:root[data-theme-effective="light"] .chimucode-panel-tabs,
+:root[data-theme="snow"] .chimucode-panel-tabs {
+  background: #f1f5f9;
+}
+:root[data-theme="light"] .chimucode-tab-btn,
+:root[data-theme-effective="light"] .chimucode-tab-btn,
+:root[data-theme="snow"] .chimucode-tab-btn {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-tab-btn:hover,
+:root[data-theme-effective="light"] .chimucode-tab-btn:hover,
+:root[data-theme="snow"] .chimucode-tab-btn:hover {
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-tab-btn.active,
+:root[data-theme-effective="light"] .chimucode-tab-btn.active,
+:root[data-theme="snow"] .chimucode-tab-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .chimucode-panel-icon-btn,
+:root[data-theme-effective="light"] .chimucode-panel-icon-btn,
+:root[data-theme="snow"] .chimucode-panel-icon-btn {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-panel-icon-btn:hover,
+:root[data-theme-effective="light"] .chimucode-panel-icon-btn:hover,
+:root[data-theme="snow"] .chimucode-panel-icon-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+:root[data-theme="light"] .chimucode-panel-body,
+:root[data-theme-effective="light"] .chimucode-panel-body,
+:root[data-theme="snow"] .chimucode-panel-body {
+  background: #f8fafc;
+}
+
+:root[data-theme="light"] .chimucode-preview-non-html,
+:root[data-theme-effective="light"] .chimucode-preview-non-html,
+:root[data-theme="snow"] .chimucode-preview-non-html {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-btn-secondary,
+:root[data-theme-effective="light"] .chimucode-btn-secondary,
+:root[data-theme="snow"] .chimucode-btn-secondary {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+:root[data-theme="light"] .chimucode-btn-secondary:hover,
+:root[data-theme-effective="light"] .chimucode-btn-secondary:hover,
+:root[data-theme="snow"] .chimucode-btn-secondary:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-script-runner-card,
+:root[data-theme-effective="light"] .chimucode-script-runner-card,
+:root[data-theme="snow"] .chimucode-script-runner-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .chimucode-script-desc,
+:root[data-theme-effective="light"] .chimucode-script-desc,
+:root[data-theme="snow"] .chimucode-script-desc {
+  color: #475569;
+}
+:root[data-theme="light"] .chimucode-script-output-preview,
+:root[data-theme-effective="light"] .chimucode-script-output-preview,
+:root[data-theme="snow"] .chimucode-script-output-preview {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-script-output-preview:hover,
+:root[data-theme-effective="light"] .chimucode-script-output-preview:hover,
+:root[data-theme="snow"] .chimucode-script-output-preview:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+:root[data-theme="light"] .chimucode-script-output-header,
+:root[data-theme-effective="light"] .chimucode-script-output-header,
+:root[data-theme="snow"] .chimucode-script-output-header {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .chimucode-code-editor,
+:root[data-theme-effective="light"] .chimucode-code-editor,
+:root[data-theme="snow"] .chimucode-code-editor {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .chimucode-console-terminal,
+:root[data-theme-effective="light"] .chimucode-console-terminal,
+:root[data-theme="snow"] .chimucode-console-terminal {
+  background: #f8fafc;
+  color: #0f172a;
+  border-top: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-console-toolbar,
+:root[data-theme-effective="light"] .chimucode-console-toolbar,
+:root[data-theme="snow"] .chimucode-console-toolbar {
+  border-bottom: 1px solid #e2e8f0;
+}
+:root[data-theme="light"] .chimucode-console-title,
+:root[data-theme-effective="light"] .chimucode-console-title,
+:root[data-theme="snow"] .chimucode-console-title {
+  color: #64748b;
+}
+:root[data-theme="light"] .chimucode-console-output,
+:root[data-theme-effective="light"] .chimucode-console-output,
+:root[data-theme="snow"] .chimucode-console-output {
+  color: #1e293b;
+}
+:root[data-theme="light"] .chimucode-console-empty,
+:root[data-theme-effective="light"] .chimucode-console-empty,
+:root[data-theme="snow"] .chimucode-console-empty {
+  color: #94a3b8;
+}
+
+/* Fallback para prefers-color-scheme si JS no ha hydrateado */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-root {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-topbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-btn-back {
+    border: 1px solid #cbd5e1;
+    color: #475569;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-title-input {
+    color: #0f172a !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-model-btn {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-model-menu {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-model-item {
+    color: #334155;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-btn-action {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-workspace,
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-chat-panel {
+    background-color: #f8fafc;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-msg-bubble {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-msg-user .chimucode-msg-bubble {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-composer-wrap {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-composer-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-composer-input {
+    color: #0f172a !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-right-panel,
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-panel-header {
+    background: #ffffff;
+    border-color: #e2e8f0;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-panel-tabs {
+    background: #f1f5f9;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-panel-body {
+    background: #f8fafc;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-code-editor {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-console-terminal {
+    background: #f8fafc;
+    color: #0f172a;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
