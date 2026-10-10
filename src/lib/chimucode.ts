@@ -431,7 +431,7 @@ export function extractProjectFilesFromAiResponse(
     fenceIndex++;
     const rawLang = (match[1] || '').trim().toLowerCase();
     let rawPath = (match[2] || '').trim();
-    const content = match[3].trim();
+    let content = match[3].trim();
 
     // Si no vino ruta en la cabecera, inspeccionar primera línea del código
     if (!rawPath) {
@@ -510,6 +510,10 @@ export function extractProjectFilesFromAiResponse(
       resolvedLang = 'sql';
     }
 
+    if (resolvedLang === 'html' || rawPath.endsWith('.html')) {
+      content = ensureVisualDifficultySelector(content, userPrompt);
+    }
+
     filesMap.set(rawPath, {
       path: rawPath,
       language: resolvedLang,
@@ -523,7 +527,8 @@ export function extractProjectFilesFromAiResponse(
     if (trimmed.includes('<!DOCTYPE') && trimmed.includes('</html>')) {
       const start = trimmed.indexOf('<!DOCTYPE');
       const end = trimmed.indexOf('</html>') + 7;
-      const htmlCode = trimmed.slice(start, end).trim();
+      let htmlCode = trimmed.slice(start, end).trim();
+      htmlCode = ensureVisualDifficultySelector(htmlCode, userPrompt);
       const path = preferredFolder ? `${preferredFolder}/index.html` : 'index.html';
       filesMap.set(path, { path, language: 'html', content: htmlCode });
     }
@@ -534,6 +539,97 @@ export function extractProjectFilesFromAiResponse(
   const explanation = response.replace(fenceCleanRegex, '').trim();
 
   return { files, explanation };
+}
+
+/**
+ * Garantiza que si el usuario pidió nivel de poder o dificultad para jugar contra CPU,
+ * el selector visual (Fácil / Medio / Difícil) esté presente en el HTML debajo de "vs CPU"
+ * con el botón activo en fondo #4a7c59 y la lógica de dificultad (profundidad 1, 2 o 3).
+ */
+export function ensureVisualDifficultySelector(html: string, prompt: string): string {
+  if (!html || typeof html !== 'string') return html;
+
+  const promptLower = prompt.toLowerCase();
+  const isDifficultyRequest =
+    /(?:nivel\s+de\s+poder|dificultad|dificil|difícil|facil|fácil|medio|cpu\s+level|ai\s+level)/i.test(promptLower);
+
+  if (!isDifficultyRequest) return html;
+
+  // Verificar si ya tiene los tres botones o controles de dificultad
+  const hasEasy = /<button\b[^>]*>[\s\S]*?F[áa]cil[\s\S]*?<\/button>|<option\b[^>]*>[\s\S]*?F[áa]cil[\s\S]*?<\/option>/i.test(html);
+  const hasMedium = /<button\b[^>]*>[\s\S]*?Medio[\s\S]*?<\/button>|<option\b[^>]*>[\s\S]*?Medio[\s\S]*?<\/option>/i.test(html);
+  const hasHard = /<button\b[^>]*>[\s\S]*?Dif[íi]cil[\s\S]*?<\/button>|<option\b[^>]*>[\s\S]*?Dif[íi]cil[\s\S]*?<\/option>/i.test(html);
+
+  if (hasEasy && hasMedium && hasHard) {
+    return html;
+  }
+
+  const selectorHtml = `
+  <div class="difficulty-selector" id="difficultySelector" style="width: 100%; flex-basis: 100%; display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 8px; margin-bottom: 4px;">
+    <button type="button" class="diff-btn" id="diffEasy" onclick="setDifficulty(1)" style="padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; font-size: 13px; font-weight: 500;">Fácil</button>
+    <button type="button" class="diff-btn active" id="diffMedium" onclick="setDifficulty(2)" style="padding: 6px 14px; border-radius: 6px; border: none; background: #4a7c59; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500;">Medio</button>
+    <button type="button" class="diff-btn" id="diffHard" onclick="setDifficulty(3)" style="padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; font-size: 13px; font-weight: 500;">Difícil</button>
+  </div>`;
+
+  const scriptLogic = `
+<script id="chimu-difficulty-handler">
+(function() {
+  window.difficulty = 2;
+  window.setDifficulty = function(lvl) {
+    window.difficulty = lvl;
+    if (typeof searchDepth !== 'undefined') window.searchDepth = lvl;
+    if (typeof aiDepth !== 'undefined') window.aiDepth = lvl;
+    if (typeof maxDepth !== 'undefined') window.maxDepth = lvl;
+    document.querySelectorAll('.diff-btn').forEach(function(b) {
+      b.classList.remove('active');
+      b.style.background = 'rgba(255,255,255,0.08)';
+      b.style.border = '1px solid rgba(255,255,255,0.2)';
+    });
+    var activeBtn = lvl === 1 ? document.getElementById('diffEasy') : (lvl === 2 ? document.getElementById('diffMedium') : document.getElementById('diffHard'));
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.style.background = '#4a7c59';
+      activeBtn.style.border = 'none';
+    }
+  };
+})();
+</script>`;
+
+  let modifiedHtml = html;
+
+  // Ubicar el botón o control "vs CPU"
+  const vsCpuBtnMatch = modifiedHtml.match(/(<button\b[^>]*>[\s\S]*?(?:vs\s+cpu|contra\s+cpu|cpu)[\s\S]*?<\/button>)/i);
+  if (vsCpuBtnMatch && vsCpuBtnMatch.index !== undefined) {
+    const insertPos = vsCpuBtnMatch.index + vsCpuBtnMatch[0].length;
+    modifiedHtml = modifiedHtml.slice(0, insertPos) + selectorHtml + modifiedHtml.slice(insertPos);
+  } else {
+    const vsCpuTextMatch = modifiedHtml.match(/([\s\S]*?(?:vs\s+cpu|contra\s+cpu)[\s\S]*?<\/(?:button|div|label)>)/i);
+    if (vsCpuTextMatch && vsCpuTextMatch.index !== undefined) {
+      const insertPos = vsCpuTextMatch.index + vsCpuTextMatch[0].length;
+      modifiedHtml = modifiedHtml.slice(0, insertPos) + selectorHtml + modifiedHtml.slice(insertPos);
+    } else {
+      const controlsMatch = modifiedHtml.match(/(<div\b[^>]*class=["'][^"']*(?:controls|buttons|game-info|actions)[^"']*["'][^>]*>)/i);
+      if (controlsMatch && controlsMatch.index !== undefined) {
+        const insertPos = controlsMatch.index + controlsMatch[0].length;
+        modifiedHtml = modifiedHtml.slice(0, insertPos) + selectorHtml + modifiedHtml.slice(insertPos);
+      } else if (modifiedHtml.includes('</body>')) {
+        modifiedHtml = modifiedHtml.replace('</body>', `${selectorHtml}</body>`);
+      } else {
+        modifiedHtml += selectorHtml;
+      }
+    }
+  }
+
+  // Inyectar script si no está presente
+  if (!modifiedHtml.includes('chimu-difficulty-handler') && !modifiedHtml.includes('function setDifficulty')) {
+    if (modifiedHtml.includes('</body>')) {
+      modifiedHtml = modifiedHtml.replace('</body>', `${scriptLogic}</body>`);
+    } else {
+      modifiedHtml += scriptLogic;
+    }
+  }
+
+  return modifiedHtml;
 }
 
 export function extractCodeFromAiResponse(response: string): { code: string; language: SandboxLanguage } {

@@ -198,5 +198,57 @@ describe('stripMarkdown', () => {
   });
 });
 
+describe('ensureVisualDifficultySelector', () => {
+  it('inyecta los botones Fácil, Medio y Difícil debajo de vs CPU si el prompt pide nivel de poder / dificultad', async () => {
+    const { ensureVisualDifficultySelector } = await import('../chimucode');
+    const inputHtml = `
+<!DOCTYPE html>
+<html>
+<body>
+  <div class="controls">
+    <button id="p2p">2 Jugadores</button>
+    <button id="p2cpu">vs CPU</button>
+    <button id="restart">Nueva partida</button>
+  </div>
+  <div id="board"></div>
+</body>
+</html>`;
+
+    const result = ensureVisualDifficultySelector(inputHtml, 'pone nivel de poder para jugar en cpu');
+    expect(result).toContain('Fácil');
+    expect(result).toContain('Medio');
+    expect(result).toContain('Difícil');
+    expect(result).toContain('#4a7c59');
+    expect(result).toContain('setDifficulty');
+    expect(result).toContain('difficulty = 2');
+
+    // Debe insertarse inmediatamente después de vs CPU
+    const vsCpuIndex = result.indexOf('vs CPU</button>');
+    const diffIndex = result.indexOf('id="difficultySelector"');
+    expect(diffIndex).toBeGreaterThan(vsCpuIndex);
+  });
+
+  it('no modifica el HTML si los botones Fácil, Medio y Difícil ya existen en el archivo', async () => {
+    const { ensureVisualDifficultySelector } = await import('../chimucode');
+    const htmlWithButtons = `
+<div>
+  <button>vs CPU</button>
+  <button>Fácil</button>
+  <button>Medio</button>
+  <button>Difícil</button>
+</div>`;
+
+    const result = ensureVisualDifficultySelector(htmlWithButtons, 'pone nivel de poder para jugar en cpu');
+    expect(result).toBe(htmlWithButtons);
+  });
+
+  it('no modifica el HTML si el pedido no solicita dificultad ni nivel de poder', async () => {
+    const { ensureVisualDifficultySelector } = await import('../chimucode');
+    const html = `<div><button>vs CPU</button></div>`;
+    const result = ensureVisualDifficultySelector(html, 'el icono de las negras no es negro sino transparente, ajustalo');
+    expect(result).toBe(html);
+  });
+});
+
 
 

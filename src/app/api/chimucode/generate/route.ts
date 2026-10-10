@@ -1,4 +1,4 @@
-import { extractProjectFilesFromAiResponse } from '../../../../lib/chimucode';
+import { extractProjectFilesFromAiResponse, ensureVisualDifficultySelector } from '../../../../lib/chimucode';
 import { isUncensoredModel } from '../../../../lib/models';
 import type { ChimuCodeFile, ChimuCodePageContext } from '../../../../lib/sandbox-types';
 import { extractUrlFromPrompt, readPage, scrapeUrlContent } from '../../../../lib/url-parser';
@@ -238,14 +238,18 @@ REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
 - MÁXIMO UNA PREGUNTA, y SOLO si falta un dato indispensable que cambiaría drásticamente el código técnico.
 - Si el usuario dice "con todo lo necesario", "hazlo completo", "con todo", "créalo", "continúa" o cualquier instrucción similar: DECIDE TÚ TODOS LOS DETALLES y ESCRIBE LOS ARCHIVOS DE CÓDIGO COMPLETOS EN ESTE TURNO. NUNCA respondas con "¿de qué tema?" o "dime qué secciones quieres". Escribe el código de inmediato.
 - PROHIBIDO preguntar "¿qué proyecto?" si en el historial de mensajes o en los datos del negocio ya se mencionó el proyecto o sitio web (ej. vada.cl, blanqueamiento dental, etc.).
+- REGLA SUPREMA: LA PALABRA "LISTO" SOLO SE ESCRIBE SI EL CAMBIO PEDIDO ES VISIBLE EN EL HTML QUE ACABAS DE DEVOLVER:
+  * Antes de responder, busca en el archivo el texto exacto del pedido. Si pediste o se pidió "Fácil", "Medio" o "Difícil" (o selector de dificultad / nivel de poder para jugar en CPU), TIENEN que estar como <button> o <option> en index.html. Si no están, NO digas Listo: sigue y añádelos al marcado y a la lógica.
+  * Si el usuario pide nivel de poder para jugar en CPU (o dificultad de IA en ajedrez u otros juegos): el selector va DEBAJO de "vs CPU": tres botones Fácil, Medio, Difícil. El activo con fondo #4a7c59. Al click cambia una variable difficulty y la IA usa profundidad 1, 2 o 3.
+  * Devuelve siempre el fence completo \`\`\`html index.html. El cliente recarga el iframe con el nuevo contenido.
+  * ORDEN OBLIGATORIO: Genera PRIMERO el fence completo con el código (ej. \`\`\`html index.html), y SOLO después del fence escribe la línea breve de confirmación (ej. "Listo, añadido selector de nivel de dificultad (Fácil / Medio / Difícil) debajo de vs CPU."). NUNCA digas "Listo" antes del fence de código ni si los elementos no están físicamente presentes en el marcado.
 - OBLIGATORIO: CADA TURNO QUE CAMBIA DISEÑO, ESTILOS O CÓDIGO DEBE DEVOLVER EL FENCE COMPLETO DEL ARCHIVO. Si no devuelves el fence con el código completo, ESTÁ ESTRICTAMENTE PROHIBIDO decir "Listo" o afirmar que hiciste el cambio, porque el cliente SÓLO actualiza el espacio de trabajo al recibir el fence de archivo.
 - Si el usuario dice "no es su color" o pide corregir colores/estilos:
   * Aplica los colores de la paleta real extraída.
-  * Responde con EXACTAMENTE UNA SOLA LÍNEA DE DIFF (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.") seguida inmediatamente del fence completo \`\`\`html index.html.
+  * Devuelve el fence completo \`\`\`html index.html y al final responde con EXACTAMENTE UNA SOLA LÍNEA DE DIFF (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.").
   * PROHIBIDO escribir ensayos, discursos o explicaciones largas.
 - Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown.
 - Cada turno modifica el proyecto: devuelve los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
-- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, script \`main.py\` para análisis de datos implementado.").
 - NUNCA des discursos de bienvenida ni te presentes como "Soy ChimuCode".
 - Si el usuario solo saluda (ej. "hola") sin contexto previo ni pedido de código, responde con una sola pregunta de 1 línea invitándolo a construir.
 - Los enlaces entre páginas web deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
@@ -475,10 +479,14 @@ ${existingProjectContext}`;
                   } else {
                     currentBody += remaining.slice(0, fencePos);
                     cursor += fencePos + 3; // saltar ```
+                    let processedContent = currentBody.trim();
+                    if (currentFileLang === 'html' || currentFilePath.endsWith('.html')) {
+                      processedContent = ensureVisualDifficultySelector(processedContent, prompt);
+                    }
                     const fileObj: ChimuCodeFile = {
                       path: currentFilePath,
                       language: currentFileLang,
-                      content: currentBody.trim(),
+                      content: processedContent,
                     };
                     completedFiles.push(fileObj);
 
@@ -499,10 +507,14 @@ ${existingProjectContext}`;
 
           // Si quedó un fence abierto al cortar el stream, cerrarlo
           if (mode === 'FENCE_BODY' && currentBody.trim()) {
+            let processedContent = currentBody.trim();
+            if (currentFileLang === 'html' || currentFilePath.endsWith('.html')) {
+              processedContent = ensureVisualDifficultySelector(processedContent, prompt);
+            }
             const fileObj: ChimuCodeFile = {
               path: currentFilePath,
               language: currentFileLang,
-              content: currentBody.trim(),
+              content: processedContent,
             };
             completedFiles.push(fileObj);
             sendEvent({
@@ -511,6 +523,7 @@ ${existingProjectContext}`;
               language: fileObj.language,
               content: fileObj.content,
             });
+            sendEvent({ type: 'status', text: '' });
           }
 
           // Conciliación con extractProjectFilesFromAiResponse para garantizar integridad total

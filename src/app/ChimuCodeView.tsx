@@ -653,6 +653,7 @@ export function ChimuCodeView({
               accumulatedExplanation += event.text;
               setLiveExplanation(accumulatedExplanation);
             } else if (event.type === 'file') {
+              setLiveStatusText('');
               const fileObj: ChimuCodeFile = {
                 path: event.path,
                 language: event.language,
@@ -1184,8 +1185,8 @@ export function ChimuCodeView({
                         </div>
                       )}
 
-                      {/* Fila de status en vivo (ej. escribiendo index.html) */}
-                      {liveStatusText && (
+                      {/* Fila de status en vivo (ej. escribiendo index.html). Desaparece al llegar la card */}
+                      {liveStatusText && liveFiles.length === 0 && (
                         <div className="chimucode-live-status-row">
                           <RotateCw size={12} className="chimucode-spin" />
                           <span>{liveStatusText}…</span>
