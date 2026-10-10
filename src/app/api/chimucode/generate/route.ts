@@ -189,31 +189,49 @@ REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
 - Copia fielmente las ofertas reales, claims, beneficios clínicos, precios y llamados a la acción (CTA) auténticos del sitio web.`;
         }
 
-        const systemPrompt = `Eres un asistente de desarrollo y programación de software multi-archivo para la plataforma ChimuCode.
+        const systemPrompt = `Eres ChimuCode, un agente de desarrollo e ingeniería de software universal de alta capacidad. PUEDES PROGRAMAR Y CONSTRUIR ABSOLUTAMENTE DE TODO:
+- Scripts de automatización, web scrapers (BeautifulSoup/requests), bots, procesamiento de datos y matemáticas en Python (\`main.py\`, \`scraper.py\`, etc.).
+- Backends, APIs REST, servidores Express, microservicios y utilidades en Node.js y TypeScript (\`server.js\`, \`api.ts\`, \`app.js\`).
+- Aplicaciones web completas, herramientas interactivas, dashboards y juegos en HTML5, CSS moderno, Tailwind y JavaScript (\`index.html\`, etc.).
+- Scripts de consola, DevOps, automatización de sistemas, Dockerfile, docker-compose.yml y Bash (\`script.sh\`, \`deploy.sh\`, \`Dockerfile\`).
+- Bases de datos, modelos relacionales, esquemas DDL y consultas analíticas en SQL (\`schema.sql\`, \`query.sql\`).
+- Algoritmos, estructuras de datos y resolución de problemas en cualquier lenguaje (Python, JS, TS, Go, Rust, C++, Java).
+- Archivos de configuración y datos: JSON, YAML, TOML, CSV y documentación Markdown (\`config.json\`, \`data.csv\`, \`README.md\`).
+- Tests unitarios y suites de prueba.
 
 REGLAS OBLIGATORIAS:
 - SÍ PUEDES CREAR CARPETAS Y ARCHIVOS VIRTUALES. NUNCA digas "no puedo crear carpetas en tu sistema", "no tengo acceso a tu disco" ni "cópialo manualmente". En este entorno tú gestionas un proyecto virtual con múltiples archivos y carpetas.
+- ADAPTA INTELIGENTEMENTE EL LENGUAJE Y LOS ARCHIVOS según la intención del usuario. NO ASUMAS SIEMPRE QUE ES UNA PÁGINA WEB:
+  * Si piden automatización, scraper, cálculo, análisis de datos, bot o utilidades -> Genera scripts en Python ejecutables (ej. \`\`\`python main.py) listos para correr, con \`print(...)\` claros para que los resultados se vean directamente en la consola.
+  * Si piden backend, API REST o utilidades JS -> Genera archivos Node.js / TypeScript (ej. \`\`\`javascript server.js o \`\`\`typescript api.ts).
+  * Si piden app visual, interfaz interactiva, landing page o juego -> Genera archivos HTML/CSS/JS (ej. \`\`\`html index.html).
+  * Si piden tareas de terminal, despliegue o sysadmin -> Genera scripts Bash (\`\`\`bash script.sh) o Dockerfile/compose.
+  * Si piden bases de datos -> Genera archivos SQL (\`\`\`sql schema.sql).
+  * Si el proyecto requiere varios archivos (ej: un script Python que lee \`datos.csv\` o \`config.json\`), crea todos los archivos correspondientes en sus bloques markdown.
+- CADA BLOQUE DE CÓDIGO DEBE INCLUIR EL LENGUAJE Y EL NOMBRE DE ARCHIVO EN LA CABECERA:
+  \`\`\`python main.py
+  # código...
+  \`\`\`
+  \`\`\`javascript server.js
+  // código...
+  \`\`\`
+  \`\`\`html index.html
+  <!DOCTYPE html>...
+  \`\`\`
 - MÁXIMO UNA PREGUNTA, y SOLO si falta un dato indispensable que cambiaría drásticamente el código técnico.
 - Si el usuario dice "con todo lo necesario", "hazlo completo", "con todo", "créalo", "continúa" o cualquier instrucción similar: DECIDE TÚ TODOS LOS DETALLES y ESCRIBE LOS ARCHIVOS DE CÓDIGO COMPLETOS EN ESTE TURNO. NUNCA respondas con "¿de qué tema?" o "dime qué secciones quieres". Escribe el código de inmediato.
 - PROHIBIDO preguntar "¿qué proyecto?" si en el historial de mensajes o en los datos del negocio ya se mencionó el proyecto o sitio web (ej. vada.cl, blanqueamiento dental, etc.).
-- OBLIGATORIO: CADA TURNO QUE CAMBIA DISEÑO, ESTILOS O CÓDIGO DEBE DEVOLVER EL FENCE COMPLETO DEL ARCHIVO (ej. \`\`\`html index.html). Si no devuelves el fence con el código completo, ESTÁ ESTRICTAMENTE PROHIBIDO decir "Listo" o afirmar que hiciste el cambio, porque el cliente SÓLO actualiza la vista previa al recibir el fence de archivo.
+- OBLIGATORIO: CADA TURNO QUE CAMBIA DISEÑO, ESTILOS O CÓDIGO DEBE DEVOLVER EL FENCE COMPLETO DEL ARCHIVO. Si no devuelves el fence con el código completo, ESTÁ ESTRICTAMENTE PROHIBIDO decir "Listo" o afirmar que hiciste el cambio, porque el cliente SÓLO actualiza el espacio de trabajo al recibir el fence de archivo.
 - Si el usuario dice "no es su color" o pide corregir colores/estilos:
   * Aplica los colores de la paleta real extraída.
   * Responde con EXACTAMENTE UNA SOLA LÍNEA DE DIFF (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.") seguida inmediatamente del fence completo \`\`\`html index.html.
   * PROHIBIDO escribir ensayos, discursos o explicaciones largas.
-- Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown:
-  \`\`\`html index.html
-  <!DOCTYPE html>...
-  \`\`\`
-  \`\`\`html petra/catalogo.html
-  <!DOCTYPE html>...
-  \`\`\`
+- Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown.
 - Cada turno modifica el proyecto: devuelve los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
-- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, index.html con la landing page completa.").
+- Responde con una sola línea de texto breve antes de los bloques de código (ej: "Listo, script \`main.py\` para análisis de datos implementado.").
 - NUNCA des discursos de bienvenida ni te presentes como "Soy ChimuCode".
 - Si el usuario solo saluda (ej. "hola") sin contexto previo ni pedido de código, responde con una sola pregunta de 1 línea invitándolo a construir.
-- Los enlaces entre páginas deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
-- Escribe código HTML moderno, completo y estilizado con Tailwind CSS o CSS embebido según corresponda.
+- Los enlaces entre páginas web deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
 
 ${verifiedBusinessContext}
 
@@ -355,13 +373,45 @@ ${existingProjectContext}`;
                     fenceIndex++;
 
                     const headerMatch = headerLine.match(/^([a-zA-Z0-9_-]+)?(?:[ \t]+([^\n\r`]+))?$/);
-                    let rawLang = (headerMatch ? headerMatch[1] : '')?.toLowerCase() || 'html';
+                    let rawLang = (headerMatch ? headerMatch[1] : '')?.toLowerCase() || '';
                     let rawPath = (headerMatch ? headerMatch[2] : '')?.trim() || '';
 
-                    // Inferencia de ruta si el bloque no trajo nombre explícito
+                    // Inferencia de ruta inteligente según lenguaje y contexto
                     if (!rawPath) {
                       const promptLower = prompt.toLowerCase();
-                      if (rawLang === 'html') {
+                      const isPython = rawLang === 'py' || rawLang === 'python' || /(?:python|py|pandas|numpy|scraper|scraping|analisis|análisis|datos|math|estadist|bot)/i.test(promptLower);
+                      const isJs = rawLang === 'js' || rawLang === 'javascript' || rawLang === 'node' || /(?:node|express|api\s+rest|javascript|backend)/i.test(promptLower);
+                      const isTs = rawLang === 'ts' || rawLang === 'typescript';
+                      const isBash = rawLang === 'sh' || rawLang === 'bash' || rawLang === 'shell' || /(?:bash|shell|terminal|script\.sh|deploy|backup)/i.test(promptLower);
+                      const isSql = rawLang === 'sql' || /(?:sql|database|query|tabla|schema)/i.test(promptLower);
+                      const isJson = rawLang === 'json';
+                      const isDocker = /(?:docker|dockerfile|docker-compose)/i.test(promptLower);
+
+                      if (rawLang === 'py' || rawLang === 'python' || (!rawLang && isPython)) {
+                        rawPath = fenceIndex === 1 ? 'main.py' : `script${fenceIndex}.py`;
+                        rawLang = 'python';
+                      } else if (rawLang === 'js' || rawLang === 'javascript' || (!rawLang && isJs)) {
+                        rawPath = fenceIndex === 1 ? 'app.js' : `module${fenceIndex}.js`;
+                        rawLang = 'javascript';
+                      } else if (rawLang === 'ts' || rawLang === 'typescript' || (!rawLang && isTs)) {
+                        rawPath = fenceIndex === 1 ? 'app.ts' : `module${fenceIndex}.ts`;
+                        rawLang = 'typescript';
+                      } else if (rawLang === 'sh' || rawLang === 'bash' || (!rawLang && isBash)) {
+                        rawPath = fenceIndex === 1 ? 'script.sh' : `task${fenceIndex}.sh`;
+                        rawLang = 'bash';
+                      } else if (rawLang === 'sql' || (!rawLang && isSql)) {
+                        rawPath = fenceIndex === 1 ? 'schema.sql' : `query${fenceIndex}.sql`;
+                        rawLang = 'sql';
+                      } else if (rawLang === 'json' || (!rawLang && isJson)) {
+                        rawPath = 'data.json';
+                        rawLang = 'json';
+                      } else if (isDocker) {
+                        rawPath = fenceIndex === 1 ? 'Dockerfile' : 'docker-compose.yml';
+                        rawLang = 'docker';
+                      } else if (rawLang === 'css') {
+                        rawPath = 'styles.css';
+                        rawLang = 'css';
+                      } else {
                         if (
                           (promptLower.includes('catalogo') || promptLower.includes('catálogo')) &&
                           (fenceIndex > 1 || files.some((f: any) => f.path.endsWith('index.html')))
@@ -372,16 +422,7 @@ ${existingProjectContext}`;
                         } else {
                           rawPath = `page${fenceIndex}.html`;
                         }
-                      } else if (rawLang === 'css') {
-                        rawPath = 'styles.css';
-                      } else if (rawLang === 'js' || rawLang === 'javascript') {
-                        rawPath = 'app.js';
-                      } else if (rawLang === 'ts' || rawLang === 'typescript') {
-                        rawPath = 'app.ts';
-                      } else if (rawLang === 'py' || rawLang === 'python') {
-                        rawPath = 'main.py';
-                      } else {
-                        rawPath = `file${fenceIndex}.txt`;
+                        rawLang = 'html';
                       }
                     }
 
@@ -470,7 +511,7 @@ ${existingProjectContext}`;
           sendEvent({
             type: 'done',
             files: completedFiles,
-            activePath: completedFiles.find((f) => f.language === 'html')?.path || completedFiles[0]?.path || 'index.html',
+            activePath: completedFiles[0]?.path || files[0]?.path || 'main.py',
             pageContext: activePageContext,
           });
         } catch (err: any) {

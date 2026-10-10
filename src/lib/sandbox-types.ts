@@ -1,4 +1,20 @@
-export type SandboxLanguage = 'javascript' | 'typescript' | 'python' | 'html' | 'css' | 'json';
+export type SandboxLanguage =
+  | 'javascript'
+  | 'typescript'
+  | 'python'
+  | 'html'
+  | 'css'
+  | 'json'
+  | 'shell'
+  | 'bash'
+  | 'sql'
+  | 'markdown'
+  | 'text'
+  | 'yaml'
+  | 'rust'
+  | 'go'
+  | 'cpp'
+  | 'java';
 
 export type SandboxEngine = 'worker' | 'cloud' | 'agent' | 'preview';
 

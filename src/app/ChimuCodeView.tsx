@@ -551,7 +551,7 @@ export function ChimuCodeView({
                 setActivePath(fileObj.path);
                 setShowRightPanel(true);
                 setActiveRightTab('preview');
-              } else if (accumulatedFiles.length === 1) {
+              } else {
                 finalActivePath = fileObj.path;
                 setActivePath(fileObj.path);
                 setShowRightPanel(true);
@@ -588,8 +588,10 @@ export function ChimuCodeView({
         const nextActive = finalActivePath || (changedHtml ? changedHtml.path : accumulatedFiles[0].path);
         setActivePath(nextActive);
         setShowRightPanel(true);
-        if (nextActive.endsWith('.html') || changedHtml?.language === 'html') {
+        if (nextActive.endsWith('.html') || (changedHtml && nextActive === changedHtml.path)) {
           setActiveRightTab('preview');
+        } else {
+          setActiveRightTab('code');
         }
       }
 
@@ -672,10 +674,11 @@ export function ChimuCodeView({
 
     // Python u otros a /api/sandbox
     try {
+      const sandboxLang = (lang === 'py' || lang === 'python' || activePath.endsWith('.py')) ? 'python' : lang;
       const res = await fetch('/api/sandbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeToRun, language: lang }),
+        body: JSON.stringify({ code: codeToRun, language: sandboxLang }),
       });
       const data = await res.json();
       const out = data.ok
@@ -915,7 +918,7 @@ export function ChimuCodeView({
           <div className="chimucode-messages-scroll" ref={messagesScrollRef}>
             {renderedMessages.length === 0 && !isGenerating ? (
               <div className="chimucode-empty-state">
-                Describe la aplicación o script que deseas construir.
+                Describe lo que deseas construir: scripts de Python, automatizaciones, APIs, análisis de datos o aplicaciones web.
               </div>
             ) : (
               <div className="chimucode-messages-list">
@@ -1319,15 +1322,59 @@ export function ChimuCodeView({
                   </div>
                 ) : (
                   <div className="chimucode-preview-non-html">
-                    <p>El archivo activo es {activePath} ({detectedLang.toUpperCase()}).</p>
-                    <button
-                      type="button"
-                      className="chimucode-btn-secondary"
-                      onClick={() => setActiveRightTab('code')}
-                    >
-                      <Code size={14} />
-                      <span>Ver y editar código</span>
-                    </button>
+                    <div className="chimucode-script-runner-card">
+                      <div className="chimucode-script-badge">
+                        <Terminal size={15} />
+                        <span>{activePath} ({detectedLang.toUpperCase()})</span>
+                      </div>
+                      <p className="chimucode-script-desc">
+                        {detectedLang === 'python' || activePath.endsWith('.py')
+                          ? 'Script de Python listo para ejecutarse en el sandbox backend.'
+                          : detectedLang === 'javascript' || activePath.endsWith('.js')
+                          ? 'Script de JavaScript listo para ejecutarse en el sandbox.'
+                          : detectedLang === 'sql' || activePath.endsWith('.sql')
+                          ? 'Esquema y consultas SQL de base de datos.'
+                          : detectedLang === 'bash' || activePath.endsWith('.sh')
+                          ? 'Script Shell/Bash de automatización de sistema.'
+                          : 'Archivo de código y configuración del proyecto.'}
+                      </p>
+
+                      <div className="chimucode-script-actions">
+                        {(detectedLang === 'python' || detectedLang === 'javascript' || activePath.endsWith('.py') || activePath.endsWith('.js')) && (
+                          <button
+                            type="button"
+                            className="chimucode-btn-run-primary"
+                            onClick={() => handleRunCode()}
+                            disabled={isRunning}
+                          >
+                            <Play size={13} fill="currentColor" />
+                            <span>{isRunning ? 'Ejecutando en consola…' : 'Ejecutar script en consola'}</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="chimucode-btn-secondary"
+                          onClick={() => setActiveRightTab('code')}
+                        >
+                          <Code size={13} />
+                          <span>Ver y editar código</span>
+                        </button>
+                      </div>
+
+                      {consoleOutput && (
+                        <div
+                          className="chimucode-script-output-preview"
+                          onClick={() => setActiveRightTab('console')}
+                          title="Hacer clic para ir a la consola completa"
+                        >
+                          <div className="chimucode-script-output-header">
+                            <span>Última salida de ejecución:</span>
+                            <span className="chimucode-script-output-link">Abrir Consola →</span>
+                          </div>
+                          <pre>{consoleOutput.slice(0, 320)}{consoleOutput.length > 320 ? '…' : ''}</pre>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               )}

@@ -265,6 +265,131 @@ print(f"Mediana: {statistics.median(data):.2f}")
 print(f"Desviación estándar: {statistics.stdev(data):.2f}")
 `,
   },
+  {
+    id: 'py-scraper-crypto',
+    title: '🌐 Web Scraper & JSON (Python)',
+    description: 'Extractor de datos estructurados y cálculo de promedios',
+    language: 'python',
+    engine: 'cloud',
+    code: `# Scraper y procesamiento de datos
+import json
+import re
+
+raw_html = """
+<div class="product" data-id="101"><span class="name">Tiras White</span><span class="price">$29.900</span></div>
+<div class="product" data-id="102"><span class="name">Cepillo Pro</span><span class="price">$14.990</span></div>
+<div class="product" data-id="103"><span class="name">Pasta Carbón</span><span class="price">$8.500</span></div>
+"""
+
+pattern = r'class="name">([^<]+)<.*?class="price">\$([0-9\.]+)<'
+matches = re.findall(pattern, raw_html)
+
+items = []
+for name, price_str in matches:
+    price = int(price_str.replace('.', ''))
+    items.append({"nombre": name, "precio_clp": price})
+
+print("Productos extraídos:")
+print(json.dumps(items, indent=2, ensure_ascii=False))
+
+total = sum(i["precio_clp"] for i in items)
+print(f"\\nTotal acumulado: \\\${total:,} CLP")
+print(f"Ticket promedio: \\\${int(total / len(items)):,} CLP")
+`,
+  },
+  {
+    id: 'node-api-rest',
+    title: '⚡ Servidor API REST (Node.js)',
+    description: 'Enrutador de microservicio con autenticación y validación',
+    language: 'javascript',
+    engine: 'cloud',
+    code: `// Micro-enrutador API REST
+const routes = {
+  'GET /api/status': () => ({ ok: true, uptime: 1042, service: 'ChimuAPI' }),
+  'GET /api/users': () => [
+    { id: 1, name: 'Rafa', role: 'Admin' },
+    { id: 2, name: 'Chimuelo', role: 'Dragon' }
+  ],
+  'POST /api/echo': (payload) => ({ received: payload, timestamp: Date.now() })
+};
+
+function handleRequest(method, path, body = null) {
+  const key = \`\${method} \${path}\`;
+  const handler = routes[key];
+  if (!handler) return { status: 404, error: 'Endpoint no encontrado' };
+  return { status: 200, data: handler(body) };
+}
+
+console.log("Probando endpoint GET /api/status:");
+console.log(handleRequest('GET', '/api/status'));
+
+console.log("\\nProbando endpoint GET /api/users:");
+console.log(handleRequest('GET', '/api/users'));
+`,
+  },
+  {
+    id: 'sql-ecommerce',
+    title: '🗄️ Consultas & Esquema DDL (SQL)',
+    description: 'Modelado relacional de comercio electrónico y consultas analíticas',
+    language: 'sql',
+    engine: 'preview',
+    code: `-- Esquema DDL y Analítica de Ventas
+CREATE TABLE IF NOT EXISTS clientes (
+  id INTEGER PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ordenes (
+  id INTEGER PRIMARY KEY,
+  cliente_id INTEGER REFERENCES clientes(id),
+  total DECIMAL(10,2) NOT NULL,
+  estado TEXT CHECK (estado IN ('pendiente', 'pagado', 'enviado')),
+  fecha DATE NOT NULL
+);
+
+-- Consulta analítica: Top clientes con mayor gasto acumulado
+SELECT 
+  c.nombre,
+  COUNT(o.id) AS total_pedidos,
+  SUM(o.total) AS total_gastado,
+  ROUND(AVG(o.total), 2) AS ticket_promedio
+FROM clientes c
+JOIN ordenes o ON c.id = o.cliente_id
+WHERE o.estado = 'pagado'
+GROUP BY c.id
+ORDER BY total_gastado DESC
+LIMIT 5;
+`,
+  },
+  {
+    id: 'sh-backup-deploy',
+    title: '🐧 Script de Automatización (Bash)',
+    description: 'Script de respaldo automático, rotación de logs y verificación',
+    language: 'bash',
+    engine: 'preview',
+    code: `#!/usr/bin/env bash
+# Script de automatización de respaldos y salud
+set -euo pipefail
+
+BACKUP_DIR="/var/backups/chimuelogpt"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+ARCHIVE="backup_\${TIMESTAMP}.tar.gz"
+
+echo "=== Iniciando tarea de respaldo [\${TIMESTAMP}] ==="
+mkdir -p "\${BACKUP_DIR}"
+
+# Simulación de empaquetado seguro
+echo "[INFO] Comprimiendo datos críticos a \${ARCHIVE}..."
+echo "[INFO] Verificando checksum SHA256..."
+echo "[OK] Respaldo completado exitosamente con tamaño 14MB."
+
+# Limpieza de copias mayores a 7 días
+echo "[INFO] Rotando copias de seguridad antiguas (> 7 días)..."
+echo "=== Tarea finalizada con código de salida 0 ==="
+`,
+  },
 ];
 
 export function parseChimuCodeCommand(input: string): {
@@ -318,8 +443,32 @@ export function extractProjectFilesFromAiResponse(
 
     // Inferir ruta según contexto si aún no tiene nombre
     if (!rawPath) {
-      if (rawLang === 'html' || rawLang === 'xml' || content.includes('<!DOCTYPE') || content.includes('<html')) {
-        const promptLower = userPrompt.toLowerCase();
+      const promptLower = userPrompt.toLowerCase();
+      const isPython = rawLang === 'py' || rawLang === 'python' || /(?:python|py|pandas|numpy|scraper|scraping|analisis|análisis|datos|math|estadist|bot)/i.test(promptLower);
+      const isJs = rawLang === 'js' || rawLang === 'javascript' || rawLang === 'node' || /(?:node|express|api\s+rest|javascript|backend)/i.test(promptLower);
+      const isTs = rawLang === 'ts' || rawLang === 'typescript';
+      const isBash = rawLang === 'sh' || rawLang === 'bash' || rawLang === 'shell' || /(?:bash|shell|terminal|script\.sh|deploy|backup)/i.test(promptLower);
+      const isSql = rawLang === 'sql' || /(?:sql|database|query|tabla|schema)/i.test(promptLower);
+      const isJson = rawLang === 'json';
+      const isDocker = /(?:docker|dockerfile|docker-compose)/i.test(promptLower);
+
+      if (rawLang === 'py' || rawLang === 'python' || (!rawLang && isPython)) {
+        rawPath = fenceIndex === 1 ? 'main.py' : `script${fenceIndex}.py`;
+      } else if (rawLang === 'js' || rawLang === 'javascript' || (!rawLang && isJs)) {
+        rawPath = fenceIndex === 1 ? 'app.js' : `module${fenceIndex}.js`;
+      } else if (rawLang === 'ts' || rawLang === 'typescript' || (!rawLang && isTs)) {
+        rawPath = fenceIndex === 1 ? 'app.ts' : `module${fenceIndex}.ts`;
+      } else if (rawLang === 'sh' || rawLang === 'bash' || (!rawLang && isBash)) {
+        rawPath = fenceIndex === 1 ? 'script.sh' : `task${fenceIndex}.sh`;
+      } else if (rawLang === 'sql' || (!rawLang && isSql)) {
+        rawPath = fenceIndex === 1 ? 'schema.sql' : `query${fenceIndex}.sql`;
+      } else if (rawLang === 'json' || (!rawLang && isJson)) {
+        rawPath = 'data.json';
+      } else if (isDocker) {
+        rawPath = fenceIndex === 1 ? 'Dockerfile' : 'docker-compose.yml';
+      } else if (rawLang === 'css') {
+        rawPath = 'styles.css';
+      } else {
         if ((promptLower.includes('catalogo') || promptLower.includes('catálogo')) && (fenceIndex > 1 || existingFiles.some(f => f.path.endsWith('index.html')))) {
           rawPath = 'catalogo.html';
         } else if (fenceIndex === 1) {
@@ -327,18 +476,6 @@ export function extractProjectFilesFromAiResponse(
         } else {
           rawPath = `page${fenceIndex}.html`;
         }
-      } else if (rawLang === 'css') {
-        rawPath = 'styles.css';
-      } else if (rawLang === 'js' || rawLang === 'javascript') {
-        rawPath = 'app.js';
-      } else if (rawLang === 'ts' || rawLang === 'typescript') {
-        rawPath = 'app.ts';
-      } else if (rawLang === 'py' || rawLang === 'python') {
-        rawPath = 'main.py';
-      } else if (rawLang === 'json') {
-        rawPath = 'data.json';
-      } else {
-        rawPath = `file${fenceIndex}.txt`;
       }
     }
 
@@ -363,6 +500,10 @@ export function extractProjectFilesFromAiResponse(
       resolvedLang = 'python';
     } else if (rawPath.endsWith('.json') || rawLang === 'json') {
       resolvedLang = 'json';
+    } else if (rawPath.endsWith('.sh') || rawLang === 'sh' || rawLang === 'bash' || rawLang === 'shell') {
+      resolvedLang = 'bash';
+    } else if (rawPath.endsWith('.sql') || rawLang === 'sql') {
+      resolvedLang = 'sql';
     }
 
     filesMap.set(rawPath, {
@@ -413,7 +554,7 @@ export function detectCodeLanguage(code: string): SandboxLanguage {
     return 'html';
   }
 
-  // Patrones Python (Top 1 de Claude: scripts, análisis de datos, automatización)
+  // Patrones Python (scripts, análisis de datos, automatización)
   if (
     /^(import\s+[\w\s,]+|from\s+\w+\s+import|def\s+\w+\s*\(|class\s+\w+\s*[:\(]|print\s*\(|elif\s+|if\s+__name__\s*==)/m.test(trimmed) ||
     /(#.*coding|import\s+(math|sys|os|json|random|statistics|numpy|pandas|requests|datetime))/m.test(trimmed)
@@ -421,7 +562,25 @@ export function detectCodeLanguage(code: string): SandboxLanguage {
     return 'python';
   }
 
-  // Top 2 de Claude: JavaScript / TypeScript (Full-stack, DOM, React)
+  // Patrones SQL
+  if (/^(SELECT\b|INSERT\s+INTO|UPDATE\b|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE|WITH\s+\w+\s+AS)/im.test(trimmed)) {
+    return 'sql';
+  }
+
+  // Patrones Shell / Bash
+  if (/^#!\/bin\/(bash|sh|zsh)/m.test(trimmed) || /^(set\s+-[eou]|chmod\s+\+|apt-get|brew\s+install|docker\s+run)/m.test(trimmed)) {
+    return 'bash';
+  }
+
+  // Patrones JSON
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch {}
+  }
+
+  // JavaScript / TypeScript por defecto para scripts de lógica
   return 'javascript';
 }
 
