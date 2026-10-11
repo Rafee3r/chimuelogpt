@@ -15,6 +15,8 @@ export async function POST(req: Request) {
       files = [],
       messages = [],
       pageContext: incomingPageContext,
+      images = [],
+      attachments = [],
     } = await req.json().catch(() => ({}));
 
     if (!prompt || typeof prompt !== 'string') {
@@ -275,12 +277,34 @@ ${existingProjectContext}`;
           }
         }
 
-        // Si el último mensaje del historial no es el prompt actual, agregarlo
-        if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].content !== prompt) {
-          cleanHistory.push({ role: 'user', content: prompt });
+        // Procesar archivos adjuntos de texto
+        let attachedContext = '';
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          attachedContext = '\n\nARCHIVOS ADJUNTOS POR EL USUARIO:\n' +
+            attachments.map((a: any) => `--- Archivo: ${a.name} ---\n${(a.content || '').slice(0, 15000)}`).join('\n\n');
         }
 
-        const llmMessages = [
+        const fullPromptText = prompt + attachedContext;
+
+        let userContentPayload: any = fullPromptText;
+        if (Array.isArray(images) && images.length > 0) {
+          userContentPayload = [
+            { type: 'text', text: fullPromptText },
+            ...images.slice(0, 10).map((imgUrl: string) => ({
+              type: 'image_url',
+              image_url: { url: imgUrl },
+            })),
+          ];
+        }
+
+        // Si el último mensaje del historial no es el prompt actual, agregarlo
+        if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].content !== prompt) {
+          cleanHistory.push({ role: 'user', content: userContentPayload });
+        } else {
+          cleanHistory[cleanHistory.length - 1] = { role: 'user', content: userContentPayload };
+        }
+
+        const llmMessages: any[] = [
           { role: 'system', content: systemPrompt },
           ...cleanHistory.slice(-12),
         ];
@@ -472,8 +496,16 @@ ${existingProjectContext}`;
                     if (remaining.endsWith('``')) safeLen -= 2;
                     else if (remaining.endsWith('`')) safeLen -= 1;
                     if (safeLen > 0) {
-                      currentBody += remaining.slice(0, safeLen);
+                      const deltaChunk = remaining.slice(0, safeLen);
+                      currentBody += deltaChunk;
                       cursor += safeLen;
+                      sendEvent({
+                        type: 'file_delta',
+                        path: currentFilePath,
+                        language: currentFileLang,
+                        delta: deltaChunk,
+                        totalLength: currentBody.length,
+                      });
                       progress = true;
                     }
                   } else {

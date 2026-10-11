@@ -20,14 +20,65 @@ import {
   FileCode,
   Globe,
   AlertCircle,
+  Paperclip,
+  Square,
+  GitBranch,
+  GitPullRequest,
+  FolderGit2,
+  GitCommit,
+  Trash2,
+  ShieldCheck,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
 import { stripMarkdown, copyTextToClipboard } from '../lib/chimucode';
-import type { ChimuCodeSession, ChimuCodeMessage, ChimuCodeFile, ChimuCodeToolCall, ChimuCodePageContext } from '../lib/sandbox-types';
+import type {
+  ChimuCodeSession,
+  ChimuCodeMessage,
+  ChimuCodeFile,
+  ChimuCodeToolCall,
+  ChimuCodePageContext,
+  ChimuCodeAttachment,
+} from '../lib/sandbox-types';
 import { CLIENT_MODEL_FLASH, CLIENT_MODEL_UNCENSORED, isUncensoredModel } from '../lib/models';
 import { loadChimuCodeSessions, getLastOpenedChimuSessionId, setLastOpenedChimuSessionId } from '../lib/chat-storage';
+import {
+  getStoredGitHubToken,
+  saveStoredGitHubToken,
+  clearStoredGitHubToken,
+  getStoredGitHubUser,
+  saveStoredGitHubUser,
+  validateGitHubToken,
+  listUserRepos,
+  fetchRepoFiles,
+  createRepoBranch,
+  commitFilesToRepo,
+  createPullRequest,
+  type GitHubUser,
+  type GitHubRepo,
+} from '../lib/github';
+
+function GithubIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+    </svg>
+  );
+}
 
 function cleanMessages(msgs: ChimuCodeMessage[]): ChimuCodeMessage[] {
   if (!Array.isArray(msgs)) return [];
@@ -197,9 +248,44 @@ export function ChimuCodeView({
   const [panelWidthPercent, setPanelWidthPercent] = useState<number>(42);
   const [isResizing, setIsResizing] = useState<boolean>(false);
 
-  // Model selector dropdown
+  // Model selector dropdowns (topbar y dentro del input composer)
   const [showModelDropdown, setShowModelDropdown] = useState<boolean>(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const [showInputModelDropdown, setShowInputModelDropdown] = useState<boolean>(false);
+  const inputModelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Archivos e imágenes adjuntos al prompt (con visión)
+  const [attachments, setAttachments] = useState<ChimuCodeAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+
+  // Streaming de código en vivo (file_delta)
+  const [liveWritingFile, setLiveWritingFile] = useState<{
+    path: string;
+    language: string;
+    totalBytes: number;
+    currentChunk: string;
+  } | null>(null);
+
+  // AbortController para detener la generación
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // GitHub Modal & State
+  const [showGitHubModal, setShowGitHubModal] = useState<boolean>(false);
+  const [gitHubToken, setGitHubToken] = useState<string>(() => getStoredGitHubToken() || '');
+  const [gitHubUser, setGitHubUser] = useState<GitHubUser | null>(() => getStoredGitHubUser() || null);
+  const [gitHubActiveTab, setGitHubActiveTab] = useState<'status' | 'repos' | 'commit' | 'pr'>('status');
+  const [gitHubRepos, setGitHubRepos] = useState<GitHubRepo[]>([]);
+  const [gitHubSelectedRepo, setGitHubSelectedRepo] = useState<string>('');
+  const [gitHubBranch, setGitHubBranch] = useState<string>('main');
+  const [gitHubNewBranch, setGitHubNewBranch] = useState<string>('');
+  const [gitHubCreateNewBranch, setGitHubCreateNewBranch] = useState<boolean>(false);
+  const [gitHubCommitMsg, setGitHubCommitMsg] = useState<string>('');
+  const [gitHubPrTitle, setGitHubPrTitle] = useState<string>('');
+  const [gitHubPrBody, setGitHubPrBody] = useState<string>('');
+  const [gitHubPrBase, setGitHubPrBase] = useState<string>('main');
+  const [gitHubLoading, setGitHubLoading] = useState<boolean>(false);
+  const [gitHubFeedback, setGitHubFeedback] = useState<{ type: 'success' | 'error'; message: string; url?: string } | null>(null);
 
   // ── Sincronización en el MISMO TICK durante el render ──
   // Si activeSessionId cambia por click en el sidebar, actualizamos el state inmediatamente
@@ -290,6 +376,9 @@ export function ChimuCodeView({
     function handleClickOutside(e: MouseEvent) {
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
         setShowModelDropdown(false);
+      }
+      if (inputModelDropdownRef.current && !inputModelDropdownRef.current.contains(e.target as Node)) {
+        setShowInputModelDropdown(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -506,11 +595,237 @@ export function ChimuCodeView({
     };
   }, []);
 
+  // ── Manejo de Archivos e Imágenes Adjuntas (Visión) ──
+  const processSelectedFiles = (selectedFiles: File[]) => {
+    for (const file of selectedFiles) {
+      const isImg = file.type.startsWith('image/');
+      const reader = new FileReader();
+      const id = `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      if (isImg) {
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id,
+              name: file.name,
+              type: 'image',
+              size: file.size,
+              content: `[Imagen adjunta: ${file.name}]`,
+              dataUrl,
+            },
+          ]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        reader.onload = () => {
+          const content = (reader.result as string) || '';
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id,
+              name: file.name,
+              type: 'file',
+              size: file.size,
+              content,
+            },
+          ]);
+        };
+        reader.readAsText(file);
+      }
+    }
+  };
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    processSelectedFiles(Array.from(fileList));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveAttachment = (attId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+  };
+
+  // ── Detener Generación (AbortController) ──
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsGenerating(false);
+    isSendingRef.current = false;
+    setLiveWritingFile(null);
+    setLiveStatusText('');
+  };
+
+  // ── GitHub: Operaciones y Control ──
+  const handleConnectGitHub = async () => {
+    if (!gitHubToken.trim()) return;
+    setGitHubLoading(true);
+    setGitHubFeedback(null);
+    try {
+      const res = await validateGitHubToken(gitHubToken.trim());
+      if (res.ok && res.user) {
+        setGitHubUser(res.user);
+        saveStoredGitHubToken(gitHubToken.trim());
+        saveStoredGitHubUser(res.user);
+        setGitHubFeedback({
+          type: 'success',
+          message: `¡Conectado exitosamente como @${res.user.login}! Permisos concedidos: ${res.scopes?.join(', ') || 'repo'}.`,
+        });
+        const reposRes = await listUserRepos(gitHubToken.trim());
+        if (reposRes.ok && reposRes.repos) {
+          setGitHubRepos(reposRes.repos);
+          if (reposRes.repos[0]) {
+            setGitHubSelectedRepo(reposRes.repos[0].full_name);
+            setGitHubBranch(reposRes.repos[0].default_branch || 'main');
+            setGitHubPrBase(reposRes.repos[0].default_branch || 'main');
+          }
+        }
+      } else {
+        setGitHubFeedback({
+          type: 'error',
+          message: res.error || 'Token de GitHub inválido. Verifica los permisos mínimos (repo).',
+        });
+      }
+    } catch (err: any) {
+      setGitHubFeedback({
+        type: 'error',
+        message: err.message || 'Error al conectar con GitHub.',
+      });
+    } finally {
+      setGitHubLoading(false);
+    }
+  };
+
+  const handleDisconnectGitHub = () => {
+    clearStoredGitHubToken();
+    setGitHubUser(null);
+    setGitHubToken('');
+    setGitHubRepos([]);
+    setGitHubFeedback({ type: 'success', message: 'Cuenta de GitHub desconectada con éxito.' });
+  };
+
+  const handleListRepos = async () => {
+    if (!gitHubToken) return;
+    setGitHubLoading(true);
+    try {
+      const reposRes = await listUserRepos(gitHubToken);
+      if (reposRes.ok && reposRes.repos) {
+        setGitHubRepos(reposRes.repos);
+      } else {
+        setGitHubFeedback({ type: 'error', message: reposRes.error || 'Error al listar repositorios.' });
+      }
+    } catch (err: any) {
+      setGitHubFeedback({ type: 'error', message: err.message || 'Error al listar repositorios.' });
+    } finally {
+      setGitHubLoading(false);
+    }
+  };
+
+  const handleImportRepo = async () => {
+    if (!gitHubToken || !gitHubSelectedRepo) return;
+    setGitHubLoading(true);
+    setGitHubFeedback(null);
+    try {
+      const [owner, repo] = gitHubSelectedRepo.split('/');
+      const repoRes = await fetchRepoFiles(gitHubToken, owner, repo, gitHubBranch);
+      if (!repoRes.ok || !repoRes.files || repoRes.files.length === 0) {
+        setGitHubFeedback({ type: 'error', message: repoRes.error || 'No se encontraron archivos en la rama seleccionada.' });
+        return;
+      }
+      const repoFiles = repoRes.files;
+      setFiles(repoFiles);
+      const previewHtml = repoFiles.find((f) => f.path === 'preview.html')
+        || repoFiles.find((f) => f.path === 'index.html')
+        || repoFiles.find((f) => f.language === 'html' || f.path.endsWith('.html'));
+      const nextActive = previewHtml ? previewHtml.path : repoFiles[0].path;
+      setActivePath(nextActive);
+      setShowRightPanel(true);
+      setActiveRightTab(previewHtml ? 'preview' : 'code');
+      persistSession(messages, sessionTitle || `Repo: ${repo}`, repoFiles, nextActive, consoleOutput);
+      setGitHubFeedback({
+        type: 'success',
+        message: `¡${repoFiles.length} archivos importados exitosamente desde ${gitHubSelectedRepo}!`,
+      });
+    } catch (err: any) {
+      setGitHubFeedback({ type: 'error', message: err.message || 'Error al importar repositorio.' });
+    } finally {
+      setGitHubLoading(false);
+    }
+  };
+
+  const handleCommitAndPush = async () => {
+    if (!gitHubToken || !gitHubSelectedRepo || files.length === 0) return;
+    setGitHubLoading(true);
+    setGitHubFeedback(null);
+    try {
+      const [owner, repo] = gitHubSelectedRepo.split('/');
+      let targetBranch = gitHubBranch;
+
+      if (gitHubCreateNewBranch && gitHubNewBranch.trim()) {
+        targetBranch = gitHubNewBranch.trim();
+        const branchRes = await createRepoBranch(gitHubToken, owner, repo, gitHubBranch, targetBranch);
+        if (!branchRes.ok) {
+          throw new Error(branchRes.error || 'No se pudo crear la nueva rama en GitHub.');
+        }
+      }
+
+      const commitMsg = gitHubCommitMsg.trim() || `Update from ChimuCode: ${sessionTitle}`;
+      const res = await commitFilesToRepo(gitHubToken, owner, repo, targetBranch, files, commitMsg);
+      if (res.ok) {
+        setGitHubFeedback({
+          type: 'success',
+          message: `¡Commit y Push completados en la rama ${targetBranch}!`,
+          url: res.commitUrl,
+        });
+        setGitHubBranch(targetBranch);
+        setGitHubCreateNewBranch(false);
+      } else {
+        throw new Error(res.error || 'Error al realizar el commit.');
+      }
+    } catch (err: any) {
+      setGitHubFeedback({ type: 'error', message: err.message || 'Error al realizar commit y push.' });
+    } finally {
+      setGitHubLoading(false);
+    }
+  };
+
+  const handleCreatePullRequest = async () => {
+    if (!gitHubToken || !gitHubSelectedRepo) return;
+    setGitHubLoading(true);
+    setGitHubFeedback(null);
+    try {
+      const [owner, repo] = gitHubSelectedRepo.split('/');
+      const title = gitHubPrTitle.trim() || `ChimuCode: ${sessionTitle}`;
+      const body = gitHubPrBody.trim() || `Pull request generado desde ChimuCode.\n\nArchivos modificados: ${files.map(f => f.path).join(', ')}`;
+      const res = await createPullRequest(gitHubToken, owner, repo, gitHubBranch, gitHubPrBase || 'main', title, body);
+      if (res.ok) {
+        setGitHubFeedback({
+          type: 'success',
+          message: `¡Pull Request #${res.prNumber || ''} creado con éxito!`,
+          url: res.prUrl,
+        });
+      } else {
+        throw new Error(res.error || 'Error al crear Pull Request.');
+      }
+    } catch (err: any) {
+      setGitHubFeedback({ type: 'error', message: err.message || 'Error al crear Pull Request.' });
+    } finally {
+      setGitHubLoading(false);
+    }
+  };
+
   // Enviar mensaje al backend y procesar streaming SSE en vivo
   const handleSendMessage = async () => {
     if (isSendingRef.current || isGenerating) return;
-    const promptText = input.trim();
-    if (!promptText) return;
+    let promptText = input.trim();
+    if (!promptText && attachments.length === 0) return;
+    if (!promptText && attachments.length > 0) {
+      promptText = 'Analiza los archivos adjuntos y asísteme con el código.';
+    }
 
     isSendingRef.current = true;
 
@@ -521,10 +836,12 @@ export function ChimuCodeView({
       setLastOpenedChimuSessionId(newId);
     }
 
+    const currentAttachments = [...attachments];
     const userMsg: ChimuCodeMessage = {
       id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       role: 'user',
       content: promptText,
+      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -533,7 +850,8 @@ export function ChimuCodeView({
     if (
       currentClean.length > 0 &&
       currentClean[currentClean.length - 1].role === 'user' &&
-      currentClean[currentClean.length - 1].content.trim() === promptText
+      currentClean[currentClean.length - 1].content.trim() === promptText &&
+      currentAttachments.length === 0
     ) {
       isSendingRef.current = false;
       return;
@@ -542,13 +860,18 @@ export function ChimuCodeView({
     const nextMsgs = [...currentClean, userMsg];
     setMessages(nextMsgs);
     setInput('');
+    setAttachments([]);
 
     // Resetear estados de streaming en vivo
     setLiveTools([]);
     setLiveStatusText('');
     setLiveExplanation('');
     setLiveFiles([]);
+    setLiveWritingFile(null);
     setIsGenerating(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     let nextTitle = sessionTitle;
     if (sessionTitle === 'Nueva sesión' || !sessionTitle) {
@@ -561,8 +884,17 @@ export function ChimuCodeView({
     let currentPageContext = pageContext;
 
     try {
+      const imagesToSend = currentAttachments
+        .filter((a) => a.dataUrl)
+        .map((a) => a.dataUrl!);
+
+      const attachmentsToSend = currentAttachments
+        .filter((a) => !a.dataUrl && (a.content || a.textContent))
+        .map((a) => ({ name: a.name, content: a.content || a.textContent || '' }));
+
       const res = await fetch('/api/chimucode/generate', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: promptText,
@@ -570,6 +902,8 @@ export function ChimuCodeView({
           currentCode: activeContent,
           language: detectedLang,
           model: model || CLIENT_MODEL_FLASH,
+          images: imagesToSend.length > 0 ? imagesToSend : undefined,
+          attachments: attachmentsToSend.length > 0 ? attachmentsToSend : undefined,
           messages: nextMsgs.slice(-12).map((m) => ({
             role: m.role,
             content: m.content,
@@ -652,8 +986,17 @@ export function ChimuCodeView({
             } else if (event.type === 'delta') {
               accumulatedExplanation += event.text;
               setLiveExplanation(accumulatedExplanation);
+            } else if (event.type === 'file_delta') {
+              setLiveStatusText(`Escribiendo ${event.path}…`);
+              setLiveWritingFile({
+                path: event.path,
+                language: event.language || 'html',
+                totalBytes: event.totalBytes || 0,
+                currentChunk: event.chunk || '',
+              });
             } else if (event.type === 'file') {
               setLiveStatusText('');
+              setLiveWritingFile(null);
               const fileObj: ChimuCodeFile = {
                 path: event.path,
                 language: event.language,
@@ -689,6 +1032,7 @@ export function ChimuCodeView({
                 }
               }
             } else if (event.type === 'done') {
+              setLiveWritingFile(null);
               if (Array.isArray(event.files) && event.files.length > 0) {
                 accumulatedFiles = event.files;
               }
@@ -746,6 +1090,10 @@ export function ChimuCodeView({
       setMessages(cleanMessages(finalMsgs));
       persistSession(finalMsgs, nextTitle, updatedFiles, finalActivePath || activePath, consoleOutput, currentPageContext);
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        // Generación cancelada por el usuario
+        return;
+      }
       if (!err?.message?.includes('Unexpected token')) {
         const errorMsg: ChimuCodeMessage = {
           id: `err-${Date.now()}`,
@@ -760,6 +1108,8 @@ export function ChimuCodeView({
     } finally {
       isSendingRef.current = false;
       setIsGenerating(false);
+      abortControllerRef.current = null;
+      setLiveWritingFile(null);
       setLiveTools([]);
       setLiveStatusText('');
       setLiveExplanation('');
@@ -985,6 +1335,22 @@ export function ChimuCodeView({
             )}
           </div>
 
+          {/* GitHub */}
+          <button
+            type="button"
+            className={`chimucode-btn-action ${gitHubUser ? 'connected' : ''}`}
+            onClick={() => {
+              setShowGitHubModal(true);
+              setGitHubFeedback(null);
+            }}
+            title={gitHubUser ? `Conectado a GitHub como @${gitHubUser.login}` : 'Conectar y gestionar con GitHub'}
+          >
+            <GithubIcon size={14} />
+            <span className="chimucode-btn-text">
+              {gitHubUser ? gitHubUser.login : 'GitHub'}
+            </span>
+          </button>
+
           {/* Descargar */}
           <button
             type="button"
@@ -1092,6 +1458,24 @@ export function ChimuCodeView({
                         </div>
                       )}
 
+                      {/* Archivos e imágenes adjuntos al mensaje del usuario */}
+                      {m.attachments && m.attachments.length > 0 && (
+                        <div className="chimucode-msg-attachments">
+                          {m.attachments.map((att) => (
+                            <div key={att.id} className="chimucode-msg-att-item">
+                              {att.dataUrl ? (
+                                <img src={att.dataUrl} alt={att.name} className="chimucode-msg-att-img" />
+                              ) : (
+                                <div className="chimucode-msg-att-file">
+                                  <FileCode size={13} />
+                                  <span>{att.name}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="chimucode-markdown-body">
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
@@ -1186,10 +1570,29 @@ export function ChimuCodeView({
                       )}
 
                       {/* Fila de status en vivo (ej. escribiendo index.html). Desaparece al llegar la card */}
-                      {liveStatusText && liveFiles.length === 0 && (
+                      {liveStatusText && !liveWritingFile && liveFiles.length === 0 && (
                         <div className="chimucode-live-status-row">
                           <RotateCw size={12} className="chimucode-spin" />
-                          <span>{liveStatusText}…</span>
+                          <span>{liveStatusText}</span>
+                        </div>
+                      )}
+
+                      {/* Tarjeta de escritura de código en vivo (streaming delta) */}
+                      {liveWritingFile && (
+                        <div className="chimucode-live-writing-card">
+                          <div className="chimucode-live-writing-header">
+                            <div className="chimucode-live-writing-title">
+                              <span className="chimucode-live-pulse-dot" />
+                              <span className="chimucode-live-writing-path">{liveWritingFile.path}</span>
+                            </div>
+                            <div className="chimucode-live-writing-stats">
+                              <span>{Math.round((liveWritingFile.totalBytes / 1024) * 10) / 10} KB</span>
+                              <span className="chimucode-live-badge">{liveWritingFile.language.toUpperCase()}</span>
+                            </div>
+                          </div>
+                          <div className="chimucode-live-code-preview">
+                            <pre><code>{liveWritingFile.currentChunk || '// Escribiendo archivo en vivo…'}</code><span className="chimucode-live-cursor">▋</span></pre>
+                          </div>
                         </div>
                       )}
 
@@ -1201,7 +1604,7 @@ export function ChimuCodeView({
                       )}
 
                       {/* Estado inicial mientras conecta */}
-                      {!liveExplanation && !liveStatusText && liveTools.length === 0 && (
+                      {!liveExplanation && !liveStatusText && !liveWritingFile && liveTools.length === 0 && (
                         <div className="chimucode-generating-bubble">
                           <RotateCw size={14} className="chimucode-spin" />
                           <span>Conectando con ChimuCode…</span>
@@ -1280,31 +1683,169 @@ export function ChimuCodeView({
 
           {/* COMPOSER PEGADO ABAJO, FUERA DEL SCROLL */}
           <div className="chimucode-composer-wrap">
-            <form
-              className="chimucode-composer-box"
-              onSubmit={(e) => {
+            {/* Input oculto para adjuntar archivos e imágenes */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              onChange={handleFilesSelected}
+              style={{ display: 'none' }}
+              accept="image/*,.js,.jsx,.ts,.tsx,.html,.css,.json,.py,.md,.txt,.svg"
+            />
+
+            <div
+              className={`chimucode-composer-box ${isDraggingOver ? 'drag-over' : ''}`}
+              onDragOver={(e) => {
                 e.preventDefault();
-                handleSendMessage();
+                setIsDraggingOver(true);
+              }}
+              onDragLeave={() => setIsDraggingOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingOver(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  processSelectedFiles(Array.from(e.dataTransfer.files));
+                }
               }}
             >
-              <input
-                type="text"
-                className="chimucode-composer-input"
+              {/* Chips de archivos adjuntos */}
+              {attachments.length > 0 && (
+                <div className="chimucode-composer-attachments-bar">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="chimucode-attachment-chip">
+                      {att.dataUrl ? (
+                        <img src={att.dataUrl} alt={att.name} className="chimucode-att-chip-thumb" />
+                      ) : (
+                        <FileCode size={12} className="chimucode-att-chip-icon" />
+                      )}
+                      <span className="chimucode-att-chip-name">{att.name}</span>
+                      <span className="chimucode-att-chip-size">
+                        {att.size < 1024 ? `${att.size}B` : `${Math.round(att.size / 1024)}KB`}
+                      </span>
+                      <button
+                        type="button"
+                        className="chimucode-att-chip-remove"
+                        onClick={() => handleRemoveAttachment(att.id)}
+                        title="Quitar archivo adjunto"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Textarea multilínea con Enter para enviar y Shift+Enter para salto de línea */}
+              <textarea
+                className="chimucode-composer-textarea"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Describe qué quieres programar..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={
+                  isDraggingOver
+                    ? 'Suelta los archivos aquí para adjuntarlos...'
+                    : 'Describe qué quieres programar... (Enter para enviar, Shift+Enter para nueva línea)'
+                }
                 disabled={isGenerating}
+                rows={1}
                 autoFocus
               />
-              <button
-                type="submit"
-                className={`chimucode-composer-submit ${input.trim() && !isGenerating ? 'active' : ''}`}
-                disabled={!input.trim() || isGenerating}
-                title="Enviar mensaje (Enter)"
-              >
-                <CornerDownLeft size={16} />
-              </button>
-            </form>
+
+              {/* Barra inferior de herramientas dentro del composer */}
+              <div className="chimucode-composer-bottom-bar">
+                <div className="chimucode-composer-tools-left">
+                  {/* Botón Adjuntar Archivo o Imagen */}
+                  <button
+                    type="button"
+                    className="chimucode-composer-icon-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isGenerating}
+                    title="Adjuntar imágenes o archivos de código (soporte visión)"
+                  >
+                    <Paperclip size={14} />
+                  </button>
+
+                  {/* Selector de Modelo dentro del input */}
+                  <div className="chimucode-input-model-wrap" ref={inputModelDropdownRef}>
+                    <button
+                      type="button"
+                      className="chimucode-input-model-pill"
+                      onClick={() => setShowInputModelDropdown(!showInputModelDropdown)}
+                      title="Cambiar modelo de IA"
+                    >
+                      <span className="chimucode-model-dot" />
+                      <span>{currentModelData.shortName}</span>
+                      <ChevronDown size={11} />
+                    </button>
+
+                    {showInputModelDropdown && (
+                      <div className="chimucode-input-model-menu">
+                        {REAL_MODELS.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`chimucode-input-model-item ${model === m.id ? 'active' : ''}`}
+                            onClick={() => {
+                              setModel(m.id);
+                              setShowInputModelDropdown(false);
+                            }}
+                          >
+                            <div className="chimucode-input-model-item-title">
+                              <span>{m.shortName}</span>
+                              {model === m.id && <Check size={13} />}
+                            </div>
+                            <span className="chimucode-input-model-item-desc">{m.desc} · Visión</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botón de GitHub en el input */}
+                  <button
+                    type="button"
+                    className={`chimucode-composer-tool-btn ${gitHubUser ? 'connected' : ''}`}
+                    onClick={() => {
+                      setShowGitHubModal(true);
+                      setGitHubFeedback(null);
+                    }}
+                    title={gitHubUser ? `GitHub: Conectado como @${gitHubUser.login}` : 'Conectar GitHub'}
+                  >
+                    <GithubIcon size={13} />
+                    <span>{gitHubUser ? gitHubUser.login : 'GitHub'}</span>
+                  </button>
+                </div>
+
+                <div className="chimucode-composer-tools-right">
+                  {isGenerating ? (
+                    <button
+                      type="button"
+                      className="chimucode-composer-stop-btn"
+                      onClick={handleStopGeneration}
+                      title="Detener generación"
+                    >
+                      <Square size={12} fill="currentColor" />
+                      <span>Detener</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`chimucode-composer-submit ${(input.trim() || attachments.length > 0) ? 'active' : ''}`}
+                      onClick={handleSendMessage}
+                      disabled={!input.trim() && attachments.length === 0}
+                      title="Enviar mensaje (Enter)"
+                    >
+                      <CornerDownLeft size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1513,6 +2054,366 @@ export function ChimuCodeView({
           </div>
         )}
       </div>
+
+      {/* ── 3. MODAL DE GITHUB ── */}
+      {showGitHubModal && (
+        <div className="chimucode-modal-overlay" onClick={() => setShowGitHubModal(false)}>
+          <div className="chimucode-modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="chimucode-modal-header">
+              <div className="chimucode-modal-title">
+                <GithubIcon size={18} />
+                <span>Integración GitHub</span>
+              </div>
+              <button
+                type="button"
+                className="chimucode-modal-close"
+                onClick={() => setShowGitHubModal(false)}
+                title="Cerrar modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Tabs del modal */}
+            <div className="chimucode-modal-tabs">
+              <button
+                type="button"
+                className={`chimucode-modal-tab ${gitHubActiveTab === 'status' ? 'active' : ''}`}
+                onClick={() => { setGitHubActiveTab('status'); setGitHubFeedback(null); }}
+              >
+                <ShieldCheck size={14} />
+                <span>Cuenta</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-modal-tab ${gitHubActiveTab === 'repos' ? 'active' : ''}`}
+                onClick={() => {
+                  setGitHubActiveTab('repos');
+                  setGitHubFeedback(null);
+                  if (gitHubToken && gitHubRepos.length === 0) handleListRepos();
+                }}
+                disabled={!gitHubUser}
+              >
+                <FolderGit2 size={14} />
+                <span>Importar</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-modal-tab ${gitHubActiveTab === 'commit' ? 'active' : ''}`}
+                onClick={() => { setGitHubActiveTab('commit'); setGitHubFeedback(null); }}
+                disabled={!gitHubUser || files.length === 0}
+              >
+                <GitCommit size={14} />
+                <span>Commit & Push</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-modal-tab ${gitHubActiveTab === 'pr' ? 'active' : ''}`}
+                onClick={() => { setGitHubActiveTab('pr'); setGitHubFeedback(null); }}
+                disabled={!gitHubUser}
+              >
+                <GitPullRequest size={14} />
+                <span>Pull Request</span>
+              </button>
+            </div>
+
+            {/* Feedback / Alert banner */}
+            {gitHubFeedback && (
+              <div className={`chimucode-modal-alert ${gitHubFeedback.type}`}>
+                <span>{gitHubFeedback.message}</span>
+                {gitHubFeedback.url && (
+                  <a
+                    href={gitHubFeedback.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chimucode-modal-alert-link"
+                  >
+                    Abrir en GitHub <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Cuerpo del modal según tab */}
+            <div className="chimucode-modal-body">
+              {/* Tab 1: Estado y Conexión */}
+              {gitHubActiveTab === 'status' && (
+                <div className="chimucode-github-tab-status">
+                  {gitHubUser ? (
+                    <div className="chimucode-github-profile">
+                      <div className="chimucode-github-profile-card">
+                        <img
+                          src={gitHubUser.avatar_url}
+                          alt={gitHubUser.login}
+                          className="chimucode-github-avatar"
+                        />
+                        <div className="chimucode-github-info">
+                          <div className="chimucode-github-user-name">
+                            <span>{gitHubUser.name || gitHubUser.login}</span>
+                            <span className="chimucode-github-login">@{gitHubUser.login}</span>
+                          </div>
+                          <div className="chimucode-github-badge-row">
+                            <span className="chimucode-github-badge connected">Conectado</span>
+                            <span className="chimucode-github-badge-repo">Permisos: repo (Contents, PRs, Issues)</span>
+                          </div>
+                          <p className="chimucode-github-subtext">
+                            {gitHubUser.public_repos} repositorios públicos. Tus commits y ramas se firmarán directamente con tu identidad de GitHub.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="chimucode-modal-actions-right">
+                        <button
+                          type="button"
+                          className="chimucode-btn-danger"
+                          onClick={handleDisconnectGitHub}
+                        >
+                          <Trash2 size={13} />
+                          <span>Desconectar cuenta</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="chimucode-github-connect-form">
+                      <div className="chimucode-github-explainer">
+                        <p>
+                          Conecta tu cuenta de GitHub mediante un <strong>Personal Access Token</strong> para sincronizar código, importar proyectos y enviar Pull Requests desde ChimuCode.
+                        </p>
+                        <div className="chimucode-github-scopes-info">
+                          <strong>Permisos mínimos solicitados:</strong>
+                          <ul>
+                            <li><code>repo</code>: Permite leer archivos, crear ramas y enviar Pull Requests.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="chimucode-form-group">
+                        <label htmlFor="gh-token-input">Personal Access Token (PAT)</label>
+                        <input
+                          id="gh-token-input"
+                          type="password"
+                          className="chimucode-modal-input"
+                          placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={gitHubToken}
+                          onChange={(e) => setGitHubToken(e.target.value)}
+                        />
+                        <span className="chimucode-input-hint">
+                          Genera un token clásico o fine-grained en GitHub → Settings → Developer Settings → Personal Access Tokens.
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="chimucode-btn-primary"
+                        onClick={handleConnectGitHub}
+                        disabled={!gitHubToken.trim() || gitHubLoading}
+                      >
+                        {gitHubLoading ? <Loader2 size={14} className="chimucode-spin" /> : <Check size={14} />}
+                        <span>{gitHubLoading ? 'Validando token…' : 'Conectar con GitHub'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Importar Repositorio */}
+              {gitHubActiveTab === 'repos' && (
+                <div className="chimucode-github-tab-repos">
+                  <div className="chimucode-repos-header">
+                    <span>Selecciona un repositorio para clonar en la sesión virtual:</span>
+                    <button
+                      type="button"
+                      className="chimucode-card-btn"
+                      onClick={handleListRepos}
+                      disabled={gitHubLoading}
+                      title="Refrescar repositorios"
+                    >
+                      <RefreshCw size={12} className={gitHubLoading ? 'chimucode-spin' : ''} />
+                      <span>Actualizar</span>
+                    </button>
+                  </div>
+
+                  <div className="chimucode-repos-list">
+                    {gitHubRepos.length === 0 && !gitHubLoading && (
+                      <div className="chimucode-empty-hint">
+                        No se encontraron repositorios o presiona Actualizar para cargarlos.
+                      </div>
+                    )}
+                    {gitHubRepos.map((r) => (
+                      <div
+                        key={r.id}
+                        className={`chimucode-repo-item ${gitHubSelectedRepo === r.full_name ? 'selected' : ''}`}
+                        onClick={() => {
+                          setGitHubSelectedRepo(r.full_name);
+                          setGitHubBranch(r.default_branch || 'main');
+                          setGitHubPrBase(r.default_branch || 'main');
+                        }}
+                      >
+                        <div className="chimucode-repo-main">
+                          <span className="chimucode-repo-name">{r.full_name}</span>
+                          {r.private && <span className="chimucode-repo-private">Privado</span>}
+                        </div>
+                        {r.description && <div className="chimucode-repo-desc">{r.description}</div>}
+                        <div className="chimucode-repo-meta">Rama principal: {r.default_branch}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {gitHubSelectedRepo && (
+                    <div className="chimucode-repo-actions-bottom">
+                      <span>Seleccionado: <strong>{gitHubSelectedRepo}</strong></span>
+                      <button
+                        type="button"
+                        className="chimucode-btn-primary"
+                        onClick={handleImportRepo}
+                        disabled={gitHubLoading}
+                      >
+                        {gitHubLoading ? <Loader2 size={14} className="chimucode-spin" /> : <Download size={14} />}
+                        <span>Importar archivos a ChimuCode</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 3: Commit & Push */}
+              {gitHubActiveTab === 'commit' && (
+                <div className="chimucode-github-tab-commit">
+                  <div className="chimucode-form-group">
+                    <label>Repositorio destino (owner/repo)</label>
+                    <input
+                      type="text"
+                      className="chimucode-modal-input"
+                      placeholder="usuario/nombre-repositorio"
+                      value={gitHubSelectedRepo}
+                      onChange={(e) => setGitHubSelectedRepo(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="chimucode-form-group">
+                    <label>Rama (branch)</label>
+                    <div className="chimucode-branch-row">
+                      <input
+                        type="text"
+                        className="chimucode-modal-input"
+                        placeholder="ej: main o chimucode-patch"
+                        value={gitHubCreateNewBranch ? gitHubNewBranch : gitHubBranch}
+                        onChange={(e) => {
+                          if (gitHubCreateNewBranch) setGitHubNewBranch(e.target.value);
+                          else setGitHubBranch(e.target.value);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className={`chimucode-card-btn ${gitHubCreateNewBranch ? 'active' : ''}`}
+                        onClick={() => setGitHubCreateNewBranch(!gitHubCreateNewBranch)}
+                      >
+                        <GitBranch size={12} />
+                        <span>{gitHubCreateNewBranch ? 'Nueva rama: Sí' : 'Nueva rama'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="chimucode-form-group">
+                    <label>Mensaje del Commit</label>
+                    <input
+                      type="text"
+                      className="chimucode-modal-input"
+                      placeholder={`Update from ChimuCode: ${sessionTitle}`}
+                      value={gitHubCommitMsg}
+                      onChange={(e) => setGitHubCommitMsg(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="chimucode-commit-summary">
+                    Se commitearán <strong>{files.length} archivos</strong> del proyecto virtual a GitHub.
+                  </div>
+
+                  <button
+                    type="button"
+                    className="chimucode-btn-primary"
+                    onClick={handleCommitAndPush}
+                    disabled={!gitHubSelectedRepo.trim() || files.length === 0 || gitHubLoading}
+                  >
+                    {gitHubLoading ? <Loader2 size={14} className="chimucode-spin" /> : <GitCommit size={14} />}
+                    <span>{gitHubLoading ? 'Haciendo Push…' : 'Hacer Commit y Push'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Tab 4: Pull Request */}
+              {gitHubActiveTab === 'pr' && (
+                <div className="chimucode-github-tab-pr">
+                  <div className="chimucode-form-group">
+                    <label>Repositorio (owner/repo)</label>
+                    <input
+                      type="text"
+                      className="chimucode-modal-input"
+                      placeholder="usuario/nombre-repositorio"
+                      value={gitHubSelectedRepo}
+                      onChange={(e) => setGitHubSelectedRepo(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="chimucode-branch-compare-row">
+                    <div className="chimucode-form-group" style={{ flex: 1 }}>
+                      <label>Rama base (destino)</label>
+                      <input
+                        type="text"
+                        className="chimucode-modal-input"
+                        placeholder="main"
+                        value={gitHubPrBase}
+                        onChange={(e) => setGitHubPrBase(e.target.value)}
+                      />
+                    </div>
+                    <div className="chimucode-form-group" style={{ flex: 1 }}>
+                      <label>Rama origen (head)</label>
+                      <input
+                        type="text"
+                        className="chimucode-modal-input"
+                        placeholder="tu-rama"
+                        value={gitHubBranch}
+                        onChange={(e) => setGitHubBranch(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="chimucode-form-group">
+                    <label>Título del Pull Request</label>
+                    <input
+                      type="text"
+                      className="chimucode-modal-input"
+                      placeholder={`ChimuCode: ${sessionTitle}`}
+                      value={gitHubPrTitle}
+                      onChange={(e) => setGitHubPrTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="chimucode-form-group">
+                    <label>Descripción del Pull Request</label>
+                    <textarea
+                      className="chimucode-modal-textarea"
+                      rows={3}
+                      placeholder="Describe los cambios y funcionalidades añadidas..."
+                      value={gitHubPrBody}
+                      onChange={(e) => setGitHubPrBody(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="chimucode-btn-primary"
+                    onClick={handleCreatePullRequest}
+                    disabled={!gitHubSelectedRepo.trim() || !gitHubBranch.trim() || gitHubLoading}
+                  >
+                    {gitHubLoading ? <Loader2 size={14} className="chimucode-spin" /> : <GitPullRequest size={14} />}
+                    <span>{gitHubLoading ? 'Creando PR…' : 'Crear Pull Request'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

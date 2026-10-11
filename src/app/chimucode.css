@@ -496,6 +496,43 @@
   word-break: break-word;
 }
 
+/* Archivos e imágenes adjuntos en el mensaje */
+.chimucode-msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chimucode-msg-att-item {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.chimucode-msg-att-img {
+  max-width: 220px;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.2s ease;
+}
+.chimucode-msg-att-img:hover {
+  transform: scale(1.02);
+}
+.chimucode-msg-att-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #eee;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
 .chimucode-live-status-row {
   display: flex;
   align-items: center;
@@ -504,6 +541,89 @@
   color: #8a8a93;
   padding: 4px 2px 8px 2px;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Tarjeta de escritura de código en vivo (streaming delta) */
+.chimucode-live-writing-card {
+  margin: 8px 0 12px 0;
+  background: rgba(23, 23, 26, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+.chimucode-live-writing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.chimucode-live-writing-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #eee;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+.chimucode-live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+  animation: chimucode-pulse 1.4s infinite ease-in-out;
+}
+@keyframes chimucode-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.chimucode-live-writing-path {
+  color: #60a5fa;
+}
+.chimucode-live-writing-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #8a8a93;
+}
+.chimucode-live-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+.chimucode-live-code-preview {
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  max-height: 140px;
+  overflow-y: auto;
+  background: #0e0e10;
+}
+.chimucode-live-code-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chimucode-live-cursor {
+  display: inline-block;
+  color: #3b82f6;
+  animation: chimucode-blink 0.8s infinite step-end;
+  margin-left: 2px;
+}
+@keyframes chimucode-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* Markdown typography inside bubbles */
@@ -674,9 +794,9 @@
   font-weight: 500;
 }
 
-/* ── 4. COMPOSER PEGED DOWN OUTSIDE SCROLL ── */
+/* ── 4. COMPOSER MODERNO CURSOR / CLAUDE CODE ── */
 .chimucode-composer-wrap {
-  padding: 16px 20px;
+  padding: 14px 20px 16px 20px;
   flex-shrink: 0;
   background: #0e0e10;
   width: 100%;
@@ -684,39 +804,247 @@
 
 .chimucode-composer-box {
   width: 100%;
-  height: 52px;
+  min-height: 84px;
   background: #1c1c1f !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 14px;
   display: flex;
-  align-items: center;
-  padding: 0 14px;
-  gap: 10px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  flex-direction: column;
+  padding: 10px 12px 8px 12px;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .chimucode-composer-box:focus-within {
   border-color: rgba(255, 255, 255, 0.22) !important;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
+.chimucode-composer-box.drag-over {
+  border-color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
 
-.chimucode-composer-input {
-  flex: 1;
-  height: 100%;
+.chimucode-composer-attachments-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.chimucode-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #eee;
+  max-width: 240px;
+}
+.chimucode-att-chip-thumb {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.chimucode-att-chip-icon {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+.chimucode-att-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chimucode-att-chip-size {
+  font-size: 10px;
+  color: #8a8a93;
+}
+.chimucode-att-chip-remove {
+  background: transparent;
+  border: none;
+  color: #8a8a93;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: 2px;
+  transition: color 0.15s ease;
+}
+.chimucode-att-chip-remove:hover {
+  color: #f87171;
+}
+
+.chimucode-composer-textarea {
+  width: 100%;
+  min-height: 38px;
+  max-height: 160px;
   background: transparent !important;
   border: none !important;
   outline: none !important;
   color: #eee !important;
   font-size: 14px;
   font-family: inherit;
+  line-height: 1.5;
+  resize: none;
   padding: 0;
 }
-.chimucode-composer-input::placeholder {
+.chimucode-composer-textarea::placeholder {
   color: #8a8a93 !important;
+}
+
+.chimucode-composer-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 4px;
+  gap: 8px;
+}
+.chimucode-composer-tools-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chimucode-composer-tools-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.chimucode-composer-icon-btn,
+.chimucode-composer-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8a8a93;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: 28px;
+}
+.chimucode-composer-icon-btn:hover,
+.chimucode-composer-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.chimucode-composer-tool-btn.connected {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.25);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+/* Selector de modelo en el input */
+.chimucode-input-model-wrap {
+  position: relative;
+}
+.chimucode-input-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #eee;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  height: 28px;
+  transition: all 0.15s ease;
+}
+.chimucode-input-model-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.chimucode-input-model-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: #17171a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px;
+  width: 220px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  z-index: 120;
+}
+.chimucode-input-model-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #eee;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.chimucode-input-model-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.chimucode-input-model-item.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+.chimucode-input-model-item-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.chimucode-input-model-item-desc {
+  font-size: 11px;
+  color: #8a8a93;
+}
+
+/* Botón Detener Generación */
+.chimucode-composer-stop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 30px;
+  transition: all 0.15s ease;
+}
+.chimucode-composer-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  transform: translateY(-1px);
+}
+
+.chimucode-btn-action.connected {
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
 }
 
 .chimucode-composer-submit {
   width: 32px;
-  height: 32px;
+  height: 30px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.06);
   border: none;
@@ -1107,9 +1435,399 @@
 }
 
 .chimucode-console-empty {
-
   color: #8a8a93;
   font-style: italic;
+}
+
+/* ── MODAL DE GITHUB ── */
+.chimucode-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: chimucode-fadein 0.2s ease;
+}
+@keyframes chimucode-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chimucode-modal-dialog {
+  width: 100%;
+  max-width: 580px;
+  background: #17171a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: chimucode-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes chimucode-pop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.chimucode-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.chimucode-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #eee;
+}
+.chimucode-modal-close {
+  background: transparent;
+  border: none;
+  color: #8a8a93;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chimucode-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+}
+
+.chimucode-modal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+}
+.chimucode-modal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #8a8a93;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.chimucode-modal-tab:hover:not(:disabled) {
+  color: #eee;
+  background: rgba(255, 255, 255, 0.04);
+}
+.chimucode-modal-tab.active {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
+  font-weight: 600;
+}
+.chimucode-modal-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chimucode-modal-alert {
+  margin: 12px 18px 0 18px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.chimucode-modal-alert.success {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}
+.chimucode-modal-alert.error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+.chimucode-modal-alert-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.chimucode-modal-body {
+  padding: 18px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.chimucode-github-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+.chimucode-github-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.chimucode-github-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.chimucode-github-user-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #eee;
+}
+.chimucode-github-login {
+  font-size: 13px;
+  font-weight: 400;
+  color: #8a8a93;
+}
+.chimucode-github-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chimucode-github-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+.chimucode-github-badge-repo {
+  font-size: 11px;
+  color: #8a8a93;
+}
+.chimucode-github-subtext {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #8a8a93;
+}
+
+.chimucode-github-explainer {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.chimucode-github-scopes-info {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.chimucode-github-scopes-info ul {
+  margin: 6px 0 0 16px;
+  padding: 0;
+}
+
+.chimucode-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.chimucode-form-group label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #eee;
+}
+.chimucode-modal-input,
+.chimucode-modal-textarea {
+  width: 100%;
+  background: #111114 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #eee !important;
+  font-size: 13.5px;
+  outline: none !important;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+.chimucode-modal-input:focus,
+.chimucode-modal-textarea:focus {
+  border-color: #3b82f6 !important;
+}
+.chimucode-input-hint {
+  font-size: 11px;
+  color: #8a8a93;
+}
+
+.chimucode-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  background: #3b82f6;
+  border: none;
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 8px;
+}
+.chimucode-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+.chimucode-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chimucode-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chimucode-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.chimucode-modal-actions-right {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.chimucode-repos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: #8a8a93;
+}
+.chimucode-repos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 6px;
+  background: #111114;
+}
+.chimucode-repo-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chimucode-repo-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.chimucode-repo-item.selected {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.chimucode-repo-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chimucode-repo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #eee;
+}
+.chimucode-repo-private {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #8a8a93;
+}
+.chimucode-repo-desc {
+  font-size: 11.5px;
+  color: #8a8a93;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chimucode-repo-meta {
+  font-size: 11px;
+  color: #71717a;
+  margin-top: 3px;
+}
+.chimucode-repo-actions-bottom {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12.5px;
+  color: #eee;
+}
+
+.chimucode-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chimucode-branch-compare-row {
+  display: flex;
+  gap: 12px;
+}
+.chimucode-commit-summary {
+  font-size: 12px;
+  color: #8a8a93;
+  padding: 6px 0;
+}
+.chimucode-empty-hint {
+  font-size: 12.5px;
+  color: #71717a;
+  text-align: center;
+  padding: 16px;
 }
 
 /* ── 7. RESPONSIVE (<900px) ── */
@@ -1664,6 +2382,131 @@
 :root[data-theme-effective="light"] .chimucode-console-empty,
 :root[data-theme="snow"] .chimucode-console-empty {
   color: #94a3b8;
+}
+
+:root[data-theme="light"] .chimucode-composer-box,
+:root[data-theme-effective="light"] .chimucode-composer-box,
+:root[data-theme="snow"] .chimucode-composer-box {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:root[data-theme="light"] .chimucode-composer-textarea,
+:root[data-theme-effective="light"] .chimucode-composer-textarea,
+:root[data-theme="snow"] .chimucode-composer-textarea {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .chimucode-composer-icon-btn,
+:root[data-theme-effective="light"] .chimucode-composer-icon-btn,
+:root[data-theme="snow"] .chimucode-composer-icon-btn,
+:root[data-theme="light"] .chimucode-composer-tool-btn,
+:root[data-theme-effective="light"] .chimucode-composer-tool-btn,
+:root[data-theme="snow"] .chimucode-composer-tool-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+:root[data-theme="light"] .chimucode-input-model-pill,
+:root[data-theme-effective="light"] .chimucode-input-model-pill,
+:root[data-theme="snow"] .chimucode-input-model-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-input-model-menu,
+:root[data-theme-effective="light"] .chimucode-input-model-menu,
+:root[data-theme="snow"] .chimucode-input-model-menu {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-input-model-item,
+:root[data-theme-effective="light"] .chimucode-input-model-item,
+:root[data-theme="snow"] .chimucode-input-model-item {
+  color: #334155;
+}
+
+:root[data-theme="light"] .chimucode-attachment-chip,
+:root[data-theme-effective="light"] .chimucode-attachment-chip,
+:root[data-theme="snow"] .chimucode-attachment-chip {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-live-writing-card,
+:root[data-theme-effective="light"] .chimucode-live-writing-card,
+:root[data-theme="snow"] .chimucode-live-writing-card {
+  background: #ffffff;
+  border: 1px solid #93c5fd;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="light"] .chimucode-live-writing-title,
+:root[data-theme-effective="light"] .chimucode-live-writing-title,
+:root[data-theme="snow"] .chimucode-live-writing-title {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-live-code-preview,
+:root[data-theme-effective="light"] .chimucode-live-code-preview,
+:root[data-theme="snow"] .chimucode-live-code-preview {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-modal-dialog,
+:root[data-theme-effective="light"] .chimucode-modal-dialog,
+:root[data-theme="snow"] .chimucode-modal-dialog {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] .chimucode-modal-title,
+:root[data-theme-effective="light"] .chimucode-modal-title,
+:root[data-theme="snow"] .chimucode-modal-title {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-modal-input,
+:root[data-theme-effective="light"] .chimucode-modal-input,
+:root[data-theme="snow"] .chimucode-modal-input,
+:root[data-theme="light"] .chimucode-modal-textarea,
+:root[data-theme-effective="light"] .chimucode-modal-textarea,
+:root[data-theme="snow"] .chimucode-modal-textarea {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .chimucode-github-profile-card,
+:root[data-theme-effective="light"] .chimucode-github-profile-card,
+:root[data-theme="snow"] .chimucode-github-profile-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-github-user-name,
+:root[data-theme-effective="light"] .chimucode-github-user-name,
+:root[data-theme="snow"] .chimucode-github-user-name {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .chimucode-repos-list,
+:root[data-theme-effective="light"] .chimucode-repos-list,
+:root[data-theme="snow"] .chimucode-repos-list {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-repo-name,
+:root[data-theme-effective="light"] .chimucode-repo-name,
+:root[data-theme="snow"] .chimucode-repo-name {
+  color: #0f172a;
 }
 
 /* Fallback para prefers-color-scheme si JS no ha hydrateado */

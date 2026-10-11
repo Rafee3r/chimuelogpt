@@ -44,6 +44,16 @@ export interface ChimuCodeToolCall {
   error?: string;
 }
 
+export interface ChimuCodeAttachment {
+  id: string;
+  name: string;
+  type: 'image' | 'text' | 'file';
+  size: number;
+  dataUrl?: string;
+  textContent?: string;
+  content?: string;
+}
+
 export interface ChimuCodeMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -51,6 +61,7 @@ export interface ChimuCodeMessage {
   codeSnippet?: string;
   changedFiles?: ChimuCodeFile[];
   tools?: ChimuCodeToolCall[];
+  attachments?: ChimuCodeAttachment[];
   executionResult?: SandboxResult;
   timestamp: string;
 }
