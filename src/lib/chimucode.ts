@@ -837,14 +837,26 @@ export function isConsultationOrQuestion(prompt: string): boolean {
     'cual recomiendas', 'recomiéndame', 'recomiendame', 'sugiéreme', 'sugiereme',
     'cuáles son las opciones', 'cuales son las opciones', 'qué piensas', 'que piensas',
     'qué diferencias hay', 'que diferencias hay', 'debería usar', 'deberia usar',
-    'conviene más', 'conviene mas'
+    'conviene más', 'conviene mas', 'cómo funciona', 'como funciona', 'puedes explicar',
+    'explícame', 'explicame', 'qué harías', 'que harias', 'por qué', 'por que',
+    'para qué sirve', 'para que sirve', 'ayúdame a decidir', 'ayudame a decidir',
+    'qué sugieres', 'que sugieres'
   ];
 
   if (questionKeywords.some((k) => p.includes(k))) {
     return true;
   }
 
-  if (p.startsWith('¿') && !p.includes('haz') && !p.includes('crea') && !p.includes('pon') && !p.includes('agrega')) {
+  // Si tiene signos de interrogación y no es una orden directa de construcción
+  if ((p.startsWith('¿') || p.endsWith('?')) &&
+      !p.includes('haz') &&
+      !p.includes('crea') &&
+      !p.includes('pon') &&
+      !p.includes('agrega') &&
+      !p.includes('añade') &&
+      !p.includes('modifica') &&
+      !p.includes('cambia') &&
+      !p.includes('corrige')) {
     return true;
   }
 

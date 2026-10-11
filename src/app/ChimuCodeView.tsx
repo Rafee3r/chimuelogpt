@@ -7,6 +7,7 @@ import {
   Download,
   Play,
   PanelRight,
+  PanelLeft,
   Eye,
   Code,
   Terminal,
@@ -142,6 +143,8 @@ interface ChimuCodeViewProps {
   setModel: (m: string) => void;
   theme?: "system" | "light" | "dark" | "pink" | "orange" | "oled" | "snow";
   setTheme?: (theme: any) => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export function ChimuCodeView({
@@ -153,6 +156,8 @@ export function ChimuCodeView({
   setModel,
   theme = "system",
   setTheme,
+  isSidebarOpen = true,
+  onToggleSidebar,
 }: ChimuCodeViewProps) {
   // Sesión resuelta al montar desde chimucode-sessions-v1 (o initialSessionData)
   const initialSessionRef = useRef<ChimuCodeSession | null | undefined>(undefined);
@@ -726,6 +731,63 @@ export function ChimuCodeView({
   const handleRemoveAttachment = (attId: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== attId));
   };
+
+  // ── Pegar imágenes y capturas desde el portapapeles (Ctrl+V / Cmd+V) ──
+  const handleClipboardPaste = useCallback((e: React.ClipboardEvent | ClipboardEvent) => {
+    const clipboardData = ('clipboardData' in e) ? e.clipboardData : null;
+    if (!clipboardData) return;
+
+    const filesToProcess: File[] = [];
+
+    // 1. Archivos directos en el clipboard
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        const file = clipboardData.files[i];
+        if (file.type.startsWith('image/')) {
+          filesToProcess.push(file);
+        }
+      }
+    }
+
+    // 2. Items del portapapeles (capturas de pantalla, Cmd+Shift+4, print screen, etc.)
+    if (filesToProcess.length === 0 && clipboardData.items && clipboardData.items.length > 0) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const fileName = blob.name && blob.name !== 'image.png'
+              ? blob.name
+              : `captura-${Date.now()}.png`;
+            const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+            filesToProcess.push(file);
+          }
+        }
+      }
+    }
+
+    if (filesToProcess.length > 0) {
+      e.preventDefault();
+      processSelectedFiles(filesToProcess);
+    }
+  }, []);
+
+  // Listener global de paste para capturas con Ctrl+V / Cmd+V en cualquier parte de ChimuCode
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl as HTMLElement).classList.contains('chimucode-title-input')) {
+        const hasImages = Array.from(e.clipboardData?.items || []).some((item) => item.type.startsWith('image/'));
+        if (!hasImages) return;
+      }
+      handleClipboardPaste(e);
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [handleClipboardPaste]);
 
   // ── Detener Generación (AbortController) ──
   const handleStopGeneration = () => {
@@ -1523,6 +1585,18 @@ export function ChimuCodeView({
       {/* ── 1. TOP BAR EXACTA (44px) ── */}
       <header className="chimucode-topbar">
         <div className="chimucode-topbar-left">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className={`chimucode-sidebar-toggle-btn ${!isSidebarOpen ? 'sidebar-hidden' : ''}`}
+              onClick={onToggleSidebar}
+              title={isSidebarOpen ? "Ocultar panel lateral de sesiones" : "Mostrar panel lateral de sesiones"}
+              aria-label={isSidebarOpen ? "Ocultar panel lateral de sesiones" : "Mostrar panel lateral de sesiones"}
+            >
+              <PanelLeft size={16} />
+            </button>
+          )}
+
           <div className="chimucode-title-wrap">
             <input
               type="text"
@@ -1968,6 +2042,7 @@ export function ChimuCodeView({
                   processSelectedFiles(Array.from(e.dataTransfer.files));
                 }
               }}
+              onPaste={handleClipboardPaste}
             >
               {/* Chips de archivos adjuntos */}
               {attachments.length > 0 && (
@@ -2001,6 +2076,7 @@ export function ChimuCodeView({
                 className="chimucode-composer-textarea"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onPaste={handleClipboardPaste}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();

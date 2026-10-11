@@ -1150,6 +1150,26 @@ export default function Home() {
     }
     return false;
   });
+  const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('chimuelo_sidebar_hidden') === 'true';
+    }
+    return false;
+  });
+
+  const handleToggleSidebar = useCallback(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen((prev) => !prev);
+    } else {
+      setSidebarHidden((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem('chimuelo_sidebar_hidden', String(next));
+        } catch {}
+        return next;
+      });
+    }
+  }, []);
   const [viewMode, setViewMode] = useState<"chat" | "university" | "agents" | "settings" | "gallery" | "food" | "chimucode">("chat");
   const [agentSearch, setAgentSearch] = useState("");
   const [galleryTab, setGalleryTab] = useState<"images" | "music">("images");
@@ -4096,7 +4116,7 @@ export default function Home() {
         />
       )}
 
-      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'} ${sidebarMinimized ? 'sidebar-minimized' : ''}`}>
+      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-mobile-hidden'} ${sidebarMinimized ? 'sidebar-minimized' : ''} ${sidebarHidden ? 'sidebar-hidden' : ''}`}>
 
         {/* ── CABECERA ── */}
         <div className="sb-head">
@@ -4582,6 +4602,8 @@ export default function Home() {
             }}
             theme={theme}
             setTheme={setTheme}
+            isSidebarOpen={typeof window !== 'undefined' && window.innerWidth < 768 ? sidebarOpen : !sidebarHidden}
+            onToggleSidebar={handleToggleSidebar}
           />
         ) : (
           <>

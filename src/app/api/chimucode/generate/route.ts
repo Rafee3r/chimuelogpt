@@ -3,7 +3,7 @@ import {
   ensureVisualDifficultySelector,
   isConsultationOrQuestion,
 } from '../../../../lib/chimucode';
-import { isUncensoredModel } from '../../../../lib/models';
+import { isUncensoredModel, DEEPSEEK_FLASH } from '../../../../lib/models';
 import type { ChimuCodeFile, ChimuCodePageContext } from '../../../../lib/sandbox-types';
 import { extractUrlFromPrompt, readPage, scrapeUrlContent } from '../../../../lib/url-parser';
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
     const isOpenAi = useUncensored || (!process.env.DEEPSEEK_API_KEY && !!process.env.OPENAI_API_KEY);
     const apiEndpoint = isOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
-    const apiModel = isOpenAi ? 'gpt-4o-mini' : 'deepseek-chat';
+    const apiModel = isOpenAi ? 'gpt-4o-mini' : (Array.isArray(images) && images.length > 0 ? DEEPSEEK_FLASH : 'deepseek-chat');
 
     // 1. Detectar si el prompt incluye alguna URL o si es una petición de revisión de colores con contexto existente
     const detectedUrl = extractUrlFromPrompt(prompt);
