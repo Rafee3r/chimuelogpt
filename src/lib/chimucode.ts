@@ -1002,7 +1002,8 @@ export function isConsultationOrQuestion(prompt: string): boolean {
     'hazlo', 'hazla', 'hazme', 'crealo', 'créalo', 'creala', 'créala', 'construye',
     'implementa', 'programa', 'crea una app', 'crea un', 'crea el', 'haz una app',
     'haz un', 'haz el', 'escribe el codigo', 'escribe el código', 'dame el codigo',
-    'dame el código', 'genera el', 'generame', 'genérame', 'dale', 'continua', 'continúa'
+    'dame el código', 'genera el', 'generame', 'genérame', 'dale', 'continua', 'continúa',
+    'adelante', 'procede', 'vamos', 'ok hazlo', 'hazlo tú', 'hazlo tu', 'hazlo pues'
   ];
   if (buildCommands.some((cmd) => p.includes(cmd))) {
     return false;
@@ -1020,7 +1021,8 @@ export function isConsultationOrQuestion(prompt: string): boolean {
     'conviene más', 'conviene mas', 'cómo funciona', 'como funciona', 'puedes explicar',
     'explícame', 'explicame', 'qué harías', 'que harias', 'por qué', 'por que',
     'para qué sirve', 'para que sirve', 'ayúdame a decidir', 'ayudame a decidir',
-    'qué sugieres', 'que sugieres'
+    'qué sugieres', 'que sugieres', 'aconseja', 'recomienda', 'sugiere', 'aconsejame',
+    'aconséjame', 'cómo se hace', 'como se hace', 'cuál elegir', 'cual elegir'
   ];
 
   if (questionKeywords.some((k) => p.includes(k))) {

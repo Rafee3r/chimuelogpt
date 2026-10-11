@@ -1631,6 +1631,16 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+@keyframes chimucode-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .chimucode-modal-dialog {
   width: 100%;
@@ -3234,5 +3244,24 @@
 :root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-line.add {
   color: #16a34a;
 }
+
+/* ── Accesibilidad: Foco del teclado y reducción de movimiento (frontend-design) ── */
+.chimucode-root button:focus-visible,
+.chimucode-root input:focus-visible,
+.chimucode-root textarea:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chimucode-root *,
+  .chimucode-root *::before,
+  .chimucode-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 
 

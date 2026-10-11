@@ -288,6 +288,8 @@ describe('isConsultationOrQuestion', () => {
     expect(isConsultationOrQuestion('¿qué tecnología usarías para este dashboard?')).toBe(true);
     expect(isConsultationOrQuestion('cuál es mejor entre React y Vanilla JS')).toBe(true);
     expect(isConsultationOrQuestion('¿cómo harías la arquitectura de la app?')).toBe(true);
+    expect(isConsultationOrQuestion('aconseja qué librería usar')).toBe(true);
+    expect(isConsultationOrQuestion('sugiéreme una paleta de colores')).toBe(true);
   });
 
   it('no marca como consulta las órdenes explícitas de construcción', async () => {
@@ -298,6 +300,9 @@ describe('isConsultationOrQuestion', () => {
     expect(isConsultationOrQuestion('haz una app de notas para mac')).toBe(false);
     expect(isConsultationOrQuestion('implementa el selector')).toBe(false);
     expect(isConsultationOrQuestion('continúa con el código')).toBe(false);
+    expect(isConsultationOrQuestion('adelante')).toBe(false);
+    expect(isConsultationOrQuestion('procede')).toBe(false);
+    expect(isConsultationOrQuestion('vamos')).toBe(false);
   });
 });
 
