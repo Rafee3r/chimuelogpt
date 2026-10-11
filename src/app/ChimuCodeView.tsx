@@ -30,11 +30,16 @@ import {
   ShieldCheck,
   Loader2,
   RefreshCw,
+  HelpCircle,
+  Send,
+  CheckCircle2,
+  Sparkles,
+  Wrench,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
-import { stripMarkdown, copyTextToClipboard } from '../lib/chimucode';
+import { stripMarkdown, copyTextToClipboard, buildChimuCodeFeedbackPrompt } from '../lib/chimucode';
 import type {
   ChimuCodeSession,
   ChimuCodeMessage,
@@ -264,8 +269,23 @@ export function ChimuCodeView({
     path: string;
     language: string;
     totalBytes: number;
-    currentChunk: string;
+    code: string;
   } | null>(null);
+
+  // Auto-scroll del visor de código en tiempo real
+  const liveCodeContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (liveCodeContainerRef.current) {
+      liveCodeContainerRef.current.scrollTop = liveCodeContainerRef.current.scrollHeight;
+    }
+  }, [liveWritingFile?.code]);
+
+  // Feedbacker state ("¿Funciona?")
+  const [feedbackMsgId, setFeedbackMsgId] = useState<string | null>(null);
+  const [feedbackReaction, setFeedbackReaction] = useState<'works' | 'error' | 'missing' | 'retry' | null>(null);
+  const [feedbackSelectedTag, setFeedbackSelectedTag] = useState<string | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState<string>('');
+  const [feedbackSuccess, setFeedbackSuccess] = useState<boolean>(false);
 
   // AbortController para detener la generación
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -485,11 +505,16 @@ export function ChimuCodeView({
     }
   }, [files, activePath]);
 
-  // Listener para mensajes de navegación desde el iframe sandbox
+  // Listener para mensajes de navegación y consola desde el iframe sandbox
   useEffect(() => {
     function handleIframeMessage(e: MessageEvent) {
-      if (e.data && e.data.type === 'CHIMUCODE_NAVIGATE' && typeof e.data.href === 'string') {
+      if (!e.data) return;
+      if (e.data.type === 'CHIMUCODE_NAVIGATE' && typeof e.data.href === 'string') {
         handleNavigateRelative(e.data.href);
+      } else if (e.data.type === 'CHIMUCODE_CONSOLE') {
+        const text = Array.isArray(e.data.args) ? e.data.args.join(' ') : String(e.data.args || '');
+        const prefix = e.data.level === 'error' ? '❌ [Preview]: ' : 'ℹ️ [Preview]: ';
+        setConsoleOutput((prev) => (prev ? `${prev}\n${prefix}${text}` : `${prefix}${text}`));
       }
     }
     window.addEventListener('message', handleIframeMessage);
@@ -535,10 +560,53 @@ export function ChimuCodeView({
       return tag;
     });
 
-    // Inyectar interceptor de clics en enlaces relativos
-    const interceptorScript = `
-<script id="__chimucode_nav_interceptor__">
+    // Inyectar runtime helper para juegos, errores de consola y navegación
+    const runtimeHelperScript = `
+<script id="__chimucode_runtime_helper__">
 (function() {
+  // Capturar errores no controlados y enviar a la consola de ChimuCode
+  window.addEventListener('error', function(e) {
+    try {
+      window.parent.postMessage({
+        type: 'CHIMUCODE_CONSOLE',
+        level: 'error',
+        args: [e.message + (e.filename ? ' (' + e.filename + ':' + e.lineno + ')' : '')]
+      }, '*');
+    } catch(_) {}
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    try {
+      window.parent.postMessage({
+        type: 'CHIMUCODE_CONSOLE',
+        level: 'error',
+        args: ['Unhandled Promise: ' + (e.reason ? (e.reason.message || String(e.reason)) : 'error')]
+      }, '*');
+    } catch(_) {}
+  });
+
+  // Reenviar console.log y console.error
+  var _origLog = console.log;
+  console.log = function() {
+    try {
+      var s = Array.prototype.slice.call(arguments).map(function(a) {
+        return typeof a === 'object' ? JSON.stringify(a) : String(a);
+      }).join(' ');
+      window.parent.postMessage({ type: 'CHIMUCODE_CONSOLE', level: 'log', args: [s] }, '*');
+    } catch(_) {}
+    if (_origLog) _origLog.apply(console, arguments);
+  };
+  var _origErr = console.error;
+  console.error = function() {
+    try {
+      var s = Array.prototype.slice.call(arguments).map(function(a) {
+        return typeof a === 'object' ? JSON.stringify(a) : String(a);
+      }).join(' ');
+      window.parent.postMessage({ type: 'CHIMUCODE_CONSOLE', level: 'error', args: [s] }, '*');
+    } catch(_) {}
+    if (_origErr) _origErr.apply(console, arguments);
+  };
+
+  // Interceptar navegación por enlaces relativos
   document.addEventListener('click', function(e) {
     var a = e.target.closest('a');
     if (!a) return;
@@ -550,14 +618,25 @@ export function ChimuCodeView({
     e.stopPropagation();
     window.parent.postMessage({ type: 'CHIMUCODE_NAVIGATE', href: href }, '*');
   }, true);
+
+  // Prevenir que las teclas de flechas o espacio desplacen la ventana padre durante juegos
+  window.addEventListener('keydown', function(e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) !== -1) {
+      if (document.activeElement && ['INPUT', 'TEXTAREA'].indexOf(document.activeElement.tagName) === -1) {
+        e.preventDefault();
+      }
+    }
+  }, false);
+
+  try { window.focus(); } catch(_) {}
 })();
 </script>
 `;
 
     if (html.includes('</body>')) {
-      return html.replace('</body>', `${interceptorScript}</body>`);
+      return html.replace('</body>', `${runtimeHelperScript}</body>`);
     }
-    return html + interceptorScript;
+    return html + runtimeHelperScript;
   }, [fileToPreview, files]);
 
   // Blob URL para recargar limpiamente el iframe en cada cambio de HTML
@@ -818,10 +897,36 @@ export function ChimuCodeView({
     }
   };
 
+  // Manejo del Feedbacker ("¿Funciona?")
+  const handleSubmitFeedback = (targetMsgId?: string) => {
+    if (!feedbackReaction) return;
+    if (feedbackReaction === 'works') {
+      setFeedbackSuccess(true);
+      setTimeout(() => {
+        setFeedbackSuccess(false);
+        setFeedbackMsgId(null);
+        setFeedbackReaction(null);
+      }, 2500);
+      return;
+    }
+
+    const prompt = buildChimuCodeFeedbackPrompt({
+      reaction: feedbackReaction,
+      tag: feedbackSelectedTag || undefined,
+      comment: feedbackComment,
+    });
+
+    setFeedbackMsgId(null);
+    setFeedbackReaction(null);
+    setFeedbackSelectedTag(null);
+    setFeedbackComment('');
+    handleSendMessage(prompt);
+  };
+
   // Enviar mensaje al backend y procesar streaming SSE en vivo
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (overridePrompt?: string | React.SyntheticEvent) => {
     if (isSendingRef.current || isGenerating) return;
-    let promptText = input.trim();
+    let promptText = (typeof overridePrompt === 'string' ? overridePrompt : input).trim();
     if (!promptText && attachments.length === 0) return;
     if (!promptText && attachments.length > 0) {
       promptText = 'Analiza los archivos adjuntos y asísteme con el código.';
@@ -859,8 +964,10 @@ export function ChimuCodeView({
 
     const nextMsgs = [...currentClean, userMsg];
     setMessages(nextMsgs);
-    setInput('');
-    setAttachments([]);
+    if (typeof overridePrompt !== 'string') {
+      setInput('');
+      setAttachments([]);
+    }
 
     // Resetear estados de streaming en vivo
     setLiveTools([]);
@@ -987,12 +1094,27 @@ export function ChimuCodeView({
               accumulatedExplanation += event.text;
               setLiveExplanation(accumulatedExplanation);
             } else if (event.type === 'file_delta') {
+              const deltaChunk = event.chunk || event.delta || '';
+              const fullCode = event.fullContent ?? ((liveWritingFile && liveWritingFile.path === event.path ? liveWritingFile.code : '') + deltaChunk);
+              const bytes = event.totalBytes || event.totalLength || fullCode.length;
+
               setLiveStatusText(`Escribiendo ${event.path}…`);
               setLiveWritingFile({
                 path: event.path,
                 language: event.language || 'html',
-                totalBytes: event.totalBytes || 0,
-                currentChunk: event.chunk || '',
+                totalBytes: bytes,
+                code: fullCode,
+              });
+
+              // Actualizar el espacio de trabajo en vivo para que el código y preview crezcan en tiempo real
+              setFiles((prev) => {
+                const map = new Map<string, ChimuCodeFile>(prev.map((f) => [f.path, f]));
+                map.set(event.path, {
+                  path: event.path,
+                  language: event.language || map.get(event.path)?.language || 'html',
+                  content: fullCode,
+                });
+                return Array.from(map.values());
               });
             } else if (event.type === 'file') {
               setLiveStatusText('');
@@ -1276,6 +1398,122 @@ export function ChimuCodeView({
     }
   };
 
+  // Renderizado del componente interactivo Feedbacker ("¿Funciona?")
+  const renderFeedbackBox = (targetMsgId: string) => {
+    return (
+      <div className="chimucode-feedbacker-container">
+        {feedbackSuccess ? (
+          <div className="chimucode-feedback-success-banner">
+            <CheckCircle2 size={14} color="#4ade80" />
+            <span>¡Excelente! Tu proyecto funciona correctamente.</span>
+          </div>
+        ) : (
+          <>
+            <div className="chimucode-feedback-header-row">
+              <span className="chimucode-feedback-prompt-label">¿Cómo funciona la aplicación o código?</span>
+              <button
+                type="button"
+                className="chimucode-fb-close-btn"
+                onClick={() => setFeedbackMsgId(null)}
+                title="Cerrar panel de feedback"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <div className="chimucode-feedback-reactions-grid">
+              <button
+                type="button"
+                className={`chimucode-fb-reaction-btn ${feedbackReaction === 'works' ? 'selected' : ''}`}
+                onClick={() => {
+                  setFeedbackReaction('works');
+                  handleSubmitFeedback(targetMsgId);
+                }}
+              >
+                <span>🎉 Funciona perfecto</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-fb-reaction-btn ${feedbackReaction === 'error' ? 'selected' : ''}`}
+                onClick={() => setFeedbackReaction('error')}
+              >
+                <span>⚠️ Tiene un error</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-fb-reaction-btn ${feedbackReaction === 'missing' ? 'selected' : ''}`}
+                onClick={() => setFeedbackReaction('missing')}
+              >
+                <span>✏️ Falta algo</span>
+              </button>
+              <button
+                type="button"
+                className={`chimucode-fb-reaction-btn ${feedbackReaction === 'retry' ? 'selected' : ''}`}
+                onClick={() => setFeedbackReaction('retry')}
+              >
+                <span>🔄 Reintentar</span>
+              </button>
+            </div>
+
+            {feedbackReaction && feedbackReaction !== 'works' && (
+              <div className="chimucode-feedback-details-box">
+                <div className="chimucode-fb-tags-wrap">
+                  {[
+                    'No responde a clics',
+                    'Error en consola',
+                    'Falta un botón / opción',
+                    'Diseño roto',
+                    'La IA o lógica no responde',
+                  ].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`chimucode-fb-tag-pill ${feedbackSelectedTag === tag ? 'active' : ''}`}
+                      onClick={() => setFeedbackSelectedTag(feedbackSelectedTag === tag ? null : tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="chimucode-fb-input-wrap">
+                  <input
+                    type="text"
+                    className="chimucode-fb-text-input"
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSubmitFeedback(targetMsgId);
+                      }
+                    }}
+                    placeholder={
+                      feedbackReaction === 'error'
+                        ? 'Describe el error o problema...'
+                        : feedbackReaction === 'missing'
+                        ? '¿Qué elemento o funcionalidad falta?'
+                        : '¿Qué debería rehacer o cambiar?'
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="chimucode-fb-submit-btn"
+                    onClick={() => handleSubmitFeedback(targetMsgId)}
+                    disabled={isGenerating}
+                    title="Enviar corrección al agente"
+                  >
+                    <Send size={13} />
+                    <span>Corregir</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   const currentModelData =
     REAL_MODELS.find((m) => m.id === model) ||
     (isUncensoredModel(model) ? REAL_MODELS[1] : REAL_MODELS[0]);
@@ -1536,7 +1774,30 @@ export function ChimuCodeView({
                               )}
                               <span>{copiedCardMsgId === m.id ? 'Copiado' : 'Copiar'}</span>
                             </button>
+
+                            <button
+                              type="button"
+                              className={`chimucode-card-btn chimucode-feedback-trigger-btn ${feedbackMsgId === m.id ? 'active' : ''}`}
+                              onClick={() => {
+                                if (feedbackMsgId === m.id) {
+                                  setFeedbackMsgId(null);
+                                } else {
+                                  setFeedbackMsgId(m.id);
+                                  setFeedbackReaction(null);
+                                  setFeedbackSelectedTag(null);
+                                  setFeedbackComment('');
+                                  setFeedbackSuccess(false);
+                                }
+                              }}
+                              title="Evaluar funcionamiento o solicitar corrección al agente"
+                            >
+                              <HelpCircle size={12} />
+                              <span>¿Funciona?</span>
+                            </button>
                           </div>
+
+                          {/* Panel interactivo del Feedbacker */}
+                          {feedbackMsgId === m.id && renderFeedbackBox(m.id)}
                         </div>
                       )}
                     </div>
@@ -1586,12 +1847,12 @@ export function ChimuCodeView({
                               <span className="chimucode-live-writing-path">{liveWritingFile.path}</span>
                             </div>
                             <div className="chimucode-live-writing-stats">
-                              <span>{Math.round((liveWritingFile.totalBytes / 1024) * 10) / 10} KB</span>
+                              <span>{(liveWritingFile.totalBytes / 1024).toFixed(1)} KB</span>
                               <span className="chimucode-live-badge">{liveWritingFile.language.toUpperCase()}</span>
                             </div>
                           </div>
-                          <div className="chimucode-live-code-preview">
-                            <pre><code>{liveWritingFile.currentChunk || '// Escribiendo archivo en vivo…'}</code><span className="chimucode-live-cursor">▋</span></pre>
+                          <div className="chimucode-live-code-preview" ref={liveCodeContainerRef}>
+                            <pre><code>{liveWritingFile.code || `// Generando ${liveWritingFile.path}...`}</code><span className="chimucode-live-cursor">▋</span></pre>
                           </div>
                         </div>
                       )}
@@ -1836,7 +2097,7 @@ export function ChimuCodeView({
                     <button
                       type="button"
                       className={`chimucode-composer-submit ${(input.trim() || attachments.length > 0) ? 'active' : ''}`}
-                      onClick={handleSendMessage}
+                      onClick={() => handleSendMessage()}
                       disabled={!input.trim() && attachments.length === 0}
                       title="Enviar mensaje (Enter)"
                     >
@@ -1949,6 +2210,24 @@ export function ChimuCodeView({
                 </button>
                 <button
                   type="button"
+                  className={`chimucode-panel-icon-btn ${feedbackMsgId === 'panel' ? 'active' : ''}`}
+                  onClick={() => {
+                    if (feedbackMsgId === 'panel') {
+                      setFeedbackMsgId(null);
+                    } else {
+                      setFeedbackMsgId('panel');
+                      setFeedbackReaction(null);
+                      setFeedbackSelectedTag(null);
+                      setFeedbackComment('');
+                      setFeedbackSuccess(false);
+                    }
+                  }}
+                  title="¿Funciona el proyecto? Evaluar o corregir"
+                >
+                  <HelpCircle size={14} />
+                </button>
+                <button
+                  type="button"
                   className="chimucode-panel-icon-btn"
                   onClick={() => setShowRightPanel(false)}
                   title="Cerrar panel derecho"
@@ -1981,6 +2260,9 @@ export function ChimuCodeView({
               ))}
             </div>
 
+            {/* Panel de feedback desplegado desde el panel derecho */}
+            {feedbackMsgId === 'panel' && renderFeedbackBox('panel')}
+
             {/* Cuerpo del panel derecho según pestaña activa */}
             <div className="chimucode-panel-body">
               {activeRightTab === 'preview' && (
@@ -1990,7 +2272,7 @@ export function ChimuCodeView({
                       key={previewBlobUrl}
                       src={previewBlobUrl || 'about:blank'}
                       title="ChimuCode Live Preview"
-                      sandbox="allow-scripts allow-modals allow-forms allow-popups"
+                      sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups"
                       className="chimucode-preview-iframe"
                       style={{ pointerEvents: isResizing ? 'none' : 'auto' }}
                     />

@@ -250,5 +250,56 @@ describe('ensureVisualDifficultySelector', () => {
   });
 });
 
+describe('buildChimuCodeFeedbackPrompt', () => {
+  it('genera el prompt correcto para cada tipo de reacción', async () => {
+    const { buildChimuCodeFeedbackPrompt } = await import('../chimucode');
+
+    const works = buildChimuCodeFeedbackPrompt({ reaction: 'works' });
+    expect(works).toContain('¡Todo funciona excelente!');
+
+    const error = buildChimuCodeFeedbackPrompt({
+      reaction: 'error',
+      tag: 'No responde a los clics',
+      comment: 'El botón de inicio no hace nada',
+    });
+    expect(error).toContain('Corrige el siguiente problema');
+    expect(error).toContain('No responde a los clics - El botón de inicio no hace nada');
+
+    const missing = buildChimuCodeFeedbackPrompt({
+      reaction: 'missing',
+      tag: 'Falta selector de dificultad',
+    });
+    expect(missing).toContain('Falta lo siguiente en el proyecto: Falta selector de dificultad');
+
+    const retry = buildChimuCodeFeedbackPrompt({
+      reaction: 'retry',
+      comment: 'Rehaz el canvas',
+    });
+    expect(retry).toContain('Reintenta y repara el proyecto: Rehaz el canvas');
+  });
+});
+
+describe('isConsultationOrQuestion', () => {
+  it('detecta preguntas y consultas de recomendación', async () => {
+    const { isConsultationOrQuestion } = await import('../chimucode');
+
+    expect(isConsultationOrQuestion('¿qué me recomiendas?')).toBe(true);
+    expect(isConsultationOrQuestion('que me recomiendas para hacer un juego de ajedrez')).toBe(true);
+    expect(isConsultationOrQuestion('¿qué tecnología usarías para este dashboard?')).toBe(true);
+    expect(isConsultationOrQuestion('cuál es mejor entre React y Vanilla JS')).toBe(true);
+    expect(isConsultationOrQuestion('¿cómo harías la arquitectura de la app?')).toBe(true);
+  });
+
+  it('no marca como consulta las órdenes explícitas de construcción', async () => {
+    const { isConsultationOrQuestion } = await import('../chimucode');
+
+    expect(isConsultationOrQuestion('hazlo con React')).toBe(false);
+    expect(isConsultationOrQuestion('créalo de inmediato')).toBe(false);
+    expect(isConsultationOrQuestion('haz una app de notas para mac')).toBe(false);
+    expect(isConsultationOrQuestion('implementa el selector')).toBe(false);
+    expect(isConsultationOrQuestion('continúa con el código')).toBe(false);
+  });
+});
+
 
 

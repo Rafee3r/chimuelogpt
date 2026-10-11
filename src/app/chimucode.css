@@ -2613,3 +2613,251 @@
   display: none !important;
 }
 
+/* ── Feedbacker ("¿Funciona?") ── */
+.chimucode-feedback-trigger-btn {
+  gap: 5px;
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chimucode-feedback-trigger-btn:hover,
+.chimucode-feedback-trigger-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+}
+
+.chimucode-panel-icon-btn.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.chimucode-feedbacker-container {
+  margin: 10px 0 6px 0;
+  padding: 12px 14px;
+  background: rgba(18, 18, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  animation: chimucode-fade-in 0.2s ease-out;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chimucode-feedback-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.chimucode-feedback-prompt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.chimucode-fb-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+.chimucode-fb-close-btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chimucode-feedback-reactions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chimucode-fb-reaction-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+.chimucode-fb-reaction-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+.chimucode-fb-reaction-btn.selected {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.chimucode-feedback-details-box {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  animation: chimucode-fade-in 0.2s ease-out;
+}
+
+.chimucode-fb-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.chimucode-fb-tag-pill {
+  padding: 4px 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.chimucode-fb-tag-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.chimucode-fb-tag-pill.active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  font-weight: 500;
+}
+
+.chimucode-fb-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chimucode-fb-text-input {
+  flex: 1;
+  padding: 7px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #f8fafc;
+  font-size: 12.5px;
+  outline: none;
+  transition: all 0.18s ease;
+}
+.chimucode-fb-text-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+.chimucode-fb-text-input::placeholder {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.chimucode-fb-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+.chimucode-fb-submit-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+.chimucode-fb-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chimucode-feedback-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 500;
+  animation: chimucode-fade-in 0.2s ease-out;
+}
+
+/* Modo claro para Feedbacker */
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-feedbacker-container {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-feedback-prompt-label {
+  color: #475569;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-reaction-btn {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #1e293b;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-reaction-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-reaction-btn.selected {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0284c7;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-tag-pill {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-tag-pill:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-tag-pill.active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-text-input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-fb-text-input::placeholder {
+  color: #94a3b8;
+}
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-feedback-success-banner {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+

@@ -788,3 +788,66 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+/**
+ * Genera el prompt para el agente a partir de las opciones del feedbacker
+ */
+export function buildChimuCodeFeedbackPrompt(options: {
+  reaction: 'works' | 'error' | 'missing' | 'retry';
+  tag?: string;
+  comment?: string;
+}): string {
+  if (options.reaction === 'works') {
+    return '¡Todo funciona excelente! Continúa optimizando el proyecto si hay mejoras de rendimiento.';
+  }
+  const details = [options.tag, options.comment?.trim()].filter(Boolean).join(' - ');
+  if (options.reaction === 'error') {
+    return `Corrige el siguiente problema en la aplicación: ${details || 'Tiene un error en la ejecución o preview'}. Asegúrate de que el preview sea completamente funcional, interactivo y sin errores en la consola.`;
+  }
+  if (options.reaction === 'missing') {
+    return `Falta lo siguiente en el proyecto: ${details || 'Faltan controles o elementos solicitados'}. Implementa lo que falta y entrega el archivo completo funcionando.`;
+  }
+  return `Reintenta y repara el proyecto: ${details || 'No funcionó correctamente'}. Asegúrate de entregar el código completo y 100% interactivo.`;
+}
+
+/**
+ * Detecta si el prompt del usuario es una pregunta o consulta que NO debe generar archivos de inmediato,
+ * a menos que incluya una orden explícita de construcción.
+ */
+export function isConsultationOrQuestion(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+
+  // Órdenes explícitas de construcción tienen prioridad sobre la consulta
+  const buildCommands = [
+    'hazlo', 'hazla', 'hazme', 'crealo', 'créalo', 'creala', 'créala', 'construye',
+    'implementa', 'programa', 'crea una app', 'crea un', 'crea el', 'haz una app',
+    'haz un', 'haz el', 'escribe el codigo', 'escribe el código', 'dame el codigo',
+    'dame el código', 'genera el', 'generame', 'genérame', 'dale', 'continua', 'continúa'
+  ];
+  if (buildCommands.some((cmd) => p.includes(cmd))) {
+    return false;
+  }
+
+  // Preguntas de recomendación, dudas o consultas
+  const questionKeywords = [
+    'qué me recomiendas', 'que me recomiendas', 'qué recomiendas', 'que recomiendas',
+    'qué opinas', 'que opinas', 'cuál es mejor', 'cual es mejor', 'cómo harías',
+    'como harias', 'cómo me recomiendas', 'cómo lo harías', 'como lo harias',
+    'qué tecnología', 'que tecnologia', 'qué stack', 'que stack', 'cuál recomiendas',
+    'cual recomiendas', 'recomiéndame', 'recomiendame', 'sugiéreme', 'sugiereme',
+    'cuáles son las opciones', 'cuales son las opciones', 'qué piensas', 'que piensas',
+    'qué diferencias hay', 'que diferencias hay', 'debería usar', 'deberia usar',
+    'conviene más', 'conviene mas'
+  ];
+
+  if (questionKeywords.some((k) => p.includes(k))) {
+    return true;
+  }
+
+  if (p.startsWith('¿') && !p.includes('haz') && !p.includes('crea') && !p.includes('pon') && !p.includes('agrega')) {
+    return true;
+  }
+
+  return false;
+}
+
