@@ -196,12 +196,23 @@ REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
         }
 
         const isConsultation = isConsultationOrQuestion(prompt);
-        let consultationGuidance = '';
-        if (isConsultation) {
-          consultationGuidance = `\n\n[INSTRUCCIÓN PRIORITARIA PARA ESTE TURNO]: El usuario está haciendo una consulta o pidiendo una recomendación ("${prompt}"). RESPONDE PRIMERO DE FORMA CLARA Y ESTRUCTURADA EN TEXTO/MARKDOWN explicando tus sugerencias y opciones técnicas recomendadas. ESTÁ PROHIBIDO GENERAR ARCHIVOS DE CÓDIGO O BLOQUES DE ARCHIVO EN ESTE TURNO. Al final, invita brevemente al usuario a elegir una opción o confirmar para que empieces a programar de inmediato.`;
-        }
 
-        const systemPrompt = `Eres ChimuCode, un agente de desarrollo e ingeniería de software universal de alta capacidad. PUEDES PROGRAMAR Y CONSTRUIR ABSOLUTAMENTE DE TODO:
+        let systemPrompt = '';
+        if (isConsultation) {
+          systemPrompt = `Eres ChimuCode, un arquitecto de software y consultor técnico de alto nivel.
+[INSTRUCCIÓN SUPREMA PARA ESTE TURNO]:
+El usuario está haciendo una pregunta, consulta o pidiendo recomendación: "${prompt}".
+
+1. RESPONDE DIRECTA Y CLARAMENTE EN ESPAÑOL:
+   - Explica tus recomendaciones técnicas y opciones concretas (Opción 1, Opción 2, etc.).
+   - Destaca pros, contras, stack recomendado y buenas prácticas.
+2. ESTÁ ESTRICTAMENTE PROHIBIDO GENERAR ARCHIVOS DE CÓDIGO O BLOQUES DE ARCHIVO (\`\`\`archivo) EN ESTE TURNO. NO escribas código todavía ni crees archivos.
+3. Concluye preguntando al usuario qué opción desea construir o pidiéndole confirmación para comenzar a programar de inmediato (ej: "¿Cuál opción prefieres o deseas que construyamos?").
+4. PROHIBIDO decir "Listo" o simular que construiste archivos.
+
+${verifiedBusinessContext}`;
+        } else {
+          systemPrompt = `Eres ChimuCode, un agente de desarrollo e ingeniería de software universal de alta capacidad. PUEDES PROGRAMAR Y CONSTRUIR ABSOLUTAMENTE DE TODO:
 - Scripts de automatización, web scrapers (BeautifulSoup/requests), bots, procesamiento de datos y matemáticas en Python (\`main.py\`, \`scraper.py\`, etc.).
 - Backends, APIs REST, servidores Express, microservicios y utilidades en Node.js y TypeScript (\`server.js\`, \`api.ts\`, \`app.js\`).
 - Aplicaciones web completas, herramientas interactivas, dashboards y juegos en HTML5, CSS moderno, Tailwind y JavaScript (\`index.html\`, etc.).
@@ -284,11 +295,8 @@ REGLAS CRÍTICAS DE CONTENIDO Y NEGOCIO:
 - Si el usuario solo saluda (ej. "hola") sin contexto previo ni pedido de código, responde con una sola pregunta de 1 línea invitándolo a construir.
 - Los enlaces entre páginas web deben ser relativos (ej. <a href="catalogo.html"> o <a href="petra/catalogo.html">).
 
-${verifiedBusinessContext}
-
-${consultationGuidance}
-
 ${existingProjectContext}`;
+        }
 
         // 3. Preparar el historial completo de mensajes para el modelo (últimos 12)
         const cleanHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];

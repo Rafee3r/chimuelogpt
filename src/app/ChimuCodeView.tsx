@@ -644,40 +644,8 @@ export function ChimuCodeView({
     return html + runtimeHelperScript;
   }, [fileToPreview, files]);
 
-  // Blob URL para recargar limpiamente el iframe en cada cambio de HTML
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
-  const prevBlobUrlRef = useRef<string>('');
-
-  useEffect(() => {
-    if (!hasPreviewableHtml || !previewHtml) {
-      if (prevBlobUrlRef.current) {
-        URL.revokeObjectURL(prevBlobUrlRef.current);
-        prevBlobUrlRef.current = '';
-      }
-      setPreviewBlobUrl('');
-      return;
-    }
-
-    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    if (prevBlobUrlRef.current) {
-      URL.revokeObjectURL(prevBlobUrlRef.current);
-    }
-    prevBlobUrlRef.current = url;
-    setPreviewBlobUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [previewHtml, hasPreviewableHtml]);
-
-  useEffect(() => {
-    return () => {
-      if (prevBlobUrlRef.current) {
-        URL.revokeObjectURL(prevBlobUrlRef.current);
-      }
-    };
-  }, []);
+  // Clave para recargar limpiamente el iframe cuando el usuario presiona recargar
+  const [previewReloadKey, setPreviewReloadKey] = useState<number>(0);
 
   // ── Manejo de Archivos e Imágenes Adjuntas (Visión) ──
   const processSelectedFiles = (selectedFiles: File[]) => {
@@ -739,29 +707,28 @@ export function ChimuCodeView({
 
     const filesToProcess: File[] = [];
 
-    // 1. Archivos directos en el clipboard
-    if (clipboardData.files && clipboardData.files.length > 0) {
-      for (let i = 0; i < clipboardData.files.length; i++) {
-        const file = clipboardData.files[i];
-        if (file.type.startsWith('image/')) {
-          filesToProcess.push(file);
+    // 1. Items del portapapeles (capturas de pantalla en macOS/Windows, Cmd+Shift+4, etc.)
+    if (clipboardData.items && clipboardData.items.length > 0) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type.startsWith('image/') || item.kind === 'file') {
+          const blob = item.getAsFile();
+          if (blob && blob.type.startsWith('image/')) {
+            const fileName = blob.name && blob.name !== 'image.png'
+              ? blob.name
+              : `captura-${Date.now()}-${i + 1}.png`;
+            filesToProcess.push(new File([blob], fileName, { type: blob.type || 'image/png' }));
+          }
         }
       }
     }
 
-    // 2. Items del portapapeles (capturas de pantalla, Cmd+Shift+4, print screen, etc.)
-    if (filesToProcess.length === 0 && clipboardData.items && clipboardData.items.length > 0) {
-      for (let i = 0; i < clipboardData.items.length; i++) {
-        const item = clipboardData.items[i];
-        if (item.type.startsWith('image/')) {
-          const blob = item.getAsFile();
-          if (blob) {
-            const fileName = blob.name && blob.name !== 'image.png'
-              ? blob.name
-              : `captura-${Date.now()}.png`;
-            const file = new File([blob], fileName, { type: blob.type || 'image/png' });
-            filesToProcess.push(file);
-          }
+    // 2. Si no hubo en items, revisar files directos
+    if (filesToProcess.length === 0 && clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        const file = clipboardData.files[i];
+        if (file.type.startsWith('image/')) {
+          filesToProcess.push(file);
         }
       }
     }
@@ -1097,6 +1064,8 @@ export function ChimuCodeView({
       let accumulatedFiles: ChimuCodeFile[] = [];
       let accumulatedTools: ChimuCodeToolCall[] = [];
       let finalActivePath = activePath;
+      let currentWritingFilePath = '';
+      let currentWritingFileContent = '';
 
       while (true) {
         const { value, done } = await reader.read();
@@ -1157,30 +1126,25 @@ export function ChimuCodeView({
               setLiveExplanation(accumulatedExplanation);
             } else if (event.type === 'file_delta') {
               const deltaChunk = event.chunk || event.delta || '';
-              const fullCode = event.fullContent ?? ((liveWritingFile && liveWritingFile.path === event.path ? liveWritingFile.code : '') + deltaChunk);
-              const bytes = event.totalBytes || event.totalLength || fullCode.length;
+              if (event.path !== currentWritingFilePath) {
+                currentWritingFilePath = event.path;
+                currentWritingFileContent = '';
+              }
+              currentWritingFileContent = event.fullContent ?? (currentWritingFileContent + deltaChunk);
+              const bytes = event.totalBytes || event.totalLength || currentWritingFileContent.length;
 
               setLiveStatusText(`Escribiendo ${event.path}…`);
               setLiveWritingFile({
                 path: event.path,
                 language: event.language || 'html',
                 totalBytes: bytes,
-                code: fullCode,
-              });
-
-              // Actualizar el espacio de trabajo en vivo para que el código y preview crezcan en tiempo real
-              setFiles((prev) => {
-                const map = new Map<string, ChimuCodeFile>(prev.map((f) => [f.path, f]));
-                map.set(event.path, {
-                  path: event.path,
-                  language: event.language || map.get(event.path)?.language || 'html',
-                  content: fullCode,
-                });
-                return Array.from(map.values());
+                code: currentWritingFileContent,
               });
             } else if (event.type === 'file') {
               setLiveStatusText('');
               setLiveWritingFile(null);
+              currentWritingFilePath = '';
+              currentWritingFileContent = '';
               const fileObj: ChimuCodeFile = {
                 path: event.path,
                 language: event.language,
@@ -1193,7 +1157,7 @@ export function ChimuCodeView({
               }
               setLiveFiles([...accumulatedFiles]);
 
-              // Actualizar el espacio de trabajo en vivo
+              // Actualizar el espacio de trabajo en vivo con el archivo completado
               setFiles((prev) => {
                 const map = new Map<string, ChimuCodeFile>(prev.map((f) => [f.path, f]));
                 map.set(fileObj.path, fileObj);
@@ -1704,6 +1668,29 @@ export function ChimuCodeView({
             <PanelRight size={14} />
             <span className="chimucode-btn-text">Panel</span>
           </button>
+
+          {/* ¿Funciona? (Feedbacker) */}
+          {files.length > 0 && (
+            <button
+              type="button"
+              className={`chimucode-btn-action ${feedbackMsgId ? 'active' : ''}`}
+              onClick={() => {
+                if (feedbackMsgId) {
+                  setFeedbackMsgId(null);
+                } else {
+                  setFeedbackMsgId('topbar');
+                  setFeedbackReaction(null);
+                  setFeedbackSelectedTag(null);
+                  setFeedbackComment('');
+                  setFeedbackSuccess(false);
+                }
+              }}
+              title="Evaluar funcionamiento del proyecto o reportar errores"
+            >
+              <HelpCircle size={14} />
+              <span className="chimucode-btn-text">¿Funciona?</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -1717,9 +1704,119 @@ export function ChimuCodeView({
             maxWidth: showRightPanel && files.length > 0 ? `${100 - panelWidthPercent}%` : '100%',
           }}
         >
+          {/* Banner interactivo de Feedback desplegado desde la barra superior */}
+          {feedbackMsgId === 'topbar' && (
+            <div style={{ padding: '8px 20px 0 20px' }}>
+              {renderFeedbackBox('topbar')}
+            </div>
+          )}
+
           {/* Mensajes (min 0, overflow auto, alto restante) */}
           <div className="chimucode-messages-scroll" ref={messagesScrollRef}>
-            {renderedMessages.length === 0 && !isGenerating ? null : (
+            {renderedMessages.length === 0 && !isGenerating ? (
+              <div className="chimucode-empty-state">
+                <div className="chimucode-starter-container">
+                  <div className="chimucode-starter-header">
+                    <div className="chimucode-starter-badge">
+                      <Terminal size={14} />
+                      <span>ChimuCode Dev</span>
+                    </div>
+                    <h2 className="chimucode-starter-title">¿Qué deseas construir hoy?</h2>
+                    <p className="chimucode-starter-subtitle">
+                      Escribe tu requerimiento abajo o selecciona una idea para generar código, interfaz interactiva y previsualización en vivo.
+                    </p>
+                  </div>
+
+                  <div className="chimucode-starter-grid">
+                    <button
+                      type="button"
+                      className="chimucode-starter-card"
+                      onClick={() => handleSendMessage("Haz una app limpia y completa para jugar ajedrez contra la CPU con selector de dificultad Fácil / Medio / Difícil debajo de vs CPU y tablero interactivo.")}
+                    >
+                      <div className="chimucode-starter-card-icon" style={{ color: '#10b981' }}>
+                        <Play size={18} fill="currentColor" />
+                      </div>
+                      <div className="chimucode-starter-card-content">
+                        <h4>Juego de ajedrez interactivo</h4>
+                        <p>Tablero HTML5, lógica de piezas, jaque mate y selector de dificultad vs CPU.</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chimucode-starter-card"
+                      onClick={() => handleSendMessage("Crea una app de notas estilo Mac limpia y moderna con barra lateral de carpetas, editor Markdown y vista previa en vivo.")}
+                    >
+                      <div className="chimucode-starter-card-icon" style={{ color: '#3b82f6' }}>
+                        <FileCode size={18} />
+                      </div>
+                      <div className="chimucode-starter-card-content">
+                        <h4>App de notas para Mac</h4>
+                        <p>Mockup fiel de macOS con barra lateral, notas guardadas y diseño pulido.</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chimucode-starter-card"
+                      onClick={() => handleSendMessage("Construye un dashboard analítico SaaS moderno en modo oscuro con métricas KPI, gráficos SVG interactivos y tabla de datos.")}
+                    >
+                      <div className="chimucode-starter-card-icon" style={{ color: '#a855f7' }}>
+                        <Sparkles size={18} />
+                      </div>
+                      <div className="chimucode-starter-card-content">
+                        <h4>Dashboard analítico SaaS</h4>
+                        <p>Panel con KPIs en tiempo real, gráficos visuales interactivos y estética premium.</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chimucode-starter-card"
+                      onClick={() => handleSendMessage("Haz una landing page moderna de alto impacto para un producto tech con modo oscuro, animaciones fluidas y llamada a la acción.")}
+                    >
+                      <div className="chimucode-starter-card-icon" style={{ color: '#f59e0b' }}>
+                        <Globe size={18} />
+                      </div>
+                      <div className="chimucode-starter-card-content">
+                        <h4>Landing page moderna</h4>
+                        <p>Diseño responsivo, secciones de características, testimonios y conversión.</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {files.length > 0 && (
+                    <div className="chimucode-starter-files-box">
+                      <div className="chimucode-starter-files-title">
+                        <FolderGit2 size={14} />
+                        <span>Archivos creados en esta sesión ({files.length}):</span>
+                      </div>
+                      <div className="chimucode-starter-files-chips">
+                        {files.map((f) => (
+                          <button
+                            key={f.path}
+                            type="button"
+                            className="chimucode-starter-file-chip"
+                            onClick={() => {
+                              setActivePath(f.path);
+                              setShowRightPanel(true);
+                              if (f.language === 'html' || f.path.endsWith('.html')) {
+                                setActiveRightTab('preview');
+                              } else {
+                                setActiveRightTab('code');
+                              }
+                            }}
+                          >
+                            <FileCode size={12} />
+                            <span>{f.path}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
               <div className="chimucode-messages-list">
                 {renderedMessages.map((m) => (
                   <div key={m.id} className={`chimucode-msg chimucode-msg-${m.role}`}>
@@ -2260,6 +2357,14 @@ export function ChimuCodeView({
                     >
                       <ExternalLink size={14} />
                     </button>
+                    <button
+                      type="button"
+                      className="chimucode-panel-icon-btn"
+                      onClick={() => setPreviewReloadKey((k) => k + 1)}
+                      title="Recargar vista previa"
+                    >
+                      <RotateCw size={14} />
+                    </button>
                   </>
                 )}
                 <button
@@ -2286,7 +2391,7 @@ export function ChimuCodeView({
                 </button>
                 <button
                   type="button"
-                  className={`chimucode-panel-icon-btn ${feedbackMsgId === 'panel' ? 'active' : ''}`}
+                  className={`chimucode-card-btn chimucode-feedback-trigger-btn ${feedbackMsgId === 'panel' ? 'active' : ''}`}
                   onClick={() => {
                     if (feedbackMsgId === 'panel') {
                       setFeedbackMsgId(null);
@@ -2300,7 +2405,8 @@ export function ChimuCodeView({
                   }}
                   title="¿Funciona el proyecto? Evaluar o corregir"
                 >
-                  <HelpCircle size={14} />
+                  <HelpCircle size={13} />
+                  <span>¿Funciona?</span>
                 </button>
                 <button
                   type="button"
@@ -2345,8 +2451,8 @@ export function ChimuCodeView({
                 hasPreviewableHtml ? (
                   <div className={`chimucode-iframe-container ${isMobileMode ? 'mobile-frame' : ''}`}>
                     <iframe
-                      key={previewBlobUrl}
-                      src={previewBlobUrl || 'about:blank'}
+                      key={previewReloadKey}
+                      srcDoc={previewHtml}
                       title="ChimuCode Live Preview"
                       sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups"
                       className="chimucode-preview-iframe"
