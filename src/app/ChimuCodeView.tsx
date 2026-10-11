@@ -36,11 +36,20 @@ import {
   CheckCircle2,
   Sparkles,
   Wrench,
+  GitCompare,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import JSZip from 'jszip';
 import { executeBrowserJS } from '../lib/sandbox-worker';
-import { stripMarkdown, copyTextToClipboard, buildChimuCodeFeedbackPrompt } from '../lib/chimucode';
+import {
+  stripMarkdown,
+  copyTextToClipboard,
+  buildChimuCodeFeedbackPrompt,
+  isSearchReplacePatch,
+  applySearchReplace,
+  parseSearchReplaceBlocks,
+  describeFileDiff,
+} from '../lib/chimucode';
 import type {
   ChimuCodeSession,
   ChimuCodeMessage,
@@ -291,6 +300,7 @@ export function ChimuCodeView({
   const [feedbackSelectedTag, setFeedbackSelectedTag] = useState<string | null>(null);
   const [feedbackComment, setFeedbackComment] = useState<string>('');
   const [feedbackSuccess, setFeedbackSuccess] = useState<boolean>(false);
+  const [expandedDiffMsgId, setExpandedDiffMsgId] = useState<string | null>(null);
 
   // AbortController para detener la generación
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -1145,10 +1155,30 @@ export function ChimuCodeView({
               setLiveWritingFile(null);
               currentWritingFilePath = '';
               currentWritingFileContent = '';
+
+              let finalContent = event.content || '';
+              let isModified = !!event.isModified;
+              let rawPatch = event.rawPatch;
+
+              // Fallback client-side si vino un bloque SEARCH/REPLACE y no venía pre-parcheado
+              if (!isModified && isSearchReplacePatch(finalContent)) {
+                const existing = files.find((f) => f.path === event.path);
+                if (existing) {
+                  const patchRes = applySearchReplace(existing.content, finalContent);
+                  if (patchRes.isModified) {
+                    rawPatch = finalContent;
+                    finalContent = patchRes.content;
+                    isModified = true;
+                  }
+                }
+              }
+
               const fileObj: ChimuCodeFile = {
                 path: event.path,
                 language: event.language,
-                content: event.content || '',
+                content: finalContent,
+                isModified,
+                rawPatch,
               };
               if (!accumulatedFiles.some((f) => f.path === fileObj.path)) {
                 accumulatedFiles = [...accumulatedFiles, fileObj];
@@ -1906,11 +1936,45 @@ export function ChimuCodeView({
                               >
                                 <span className="chimucode-file-badge">{f.language.toUpperCase()}</span>
                                 <span className="chimucode-file-name">{f.path}</span>
+                                {f.isModified && (
+                                  <span
+                                    className="chimucode-file-diff-badge"
+                                    title="Archivo modificado incrementalmente (SEARCH / REPLACE)"
+                                    style={{
+                                      marginLeft: 6,
+                                      fontSize: 10,
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      background: 'rgba(56, 189, 248, 0.15)',
+                                      color: '#38bdf8',
+                                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    DIFF
+                                  </span>
+                                )}
                               </div>
                             ))}
                           </div>
 
                           <div className="chimucode-code-card-actions">
+                            {m.changedFiles.some((f) => f.isModified && f.rawPatch) && (
+                              <button
+                                type="button"
+                                className={`chimucode-card-btn ${expandedDiffMsgId === m.id ? 'active' : ''}`}
+                                onClick={() => setExpandedDiffMsgId((prev) => (prev === m.id ? null : m.id))}
+                                title="Ver bloques de código modificados en este turno"
+                                style={{
+                                  color: expandedDiffMsgId === m.id ? '#38bdf8' : undefined,
+                                  borderColor: expandedDiffMsgId === m.id ? 'rgba(56, 189, 248, 0.4)' : undefined,
+                                }}
+                              >
+                                <GitCompare size={12} />
+                                <span>{expandedDiffMsgId === m.id ? 'Ocultar cambios' : 'Ver cambios'}</span>
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               className="chimucode-card-btn"
@@ -1966,6 +2030,51 @@ export function ChimuCodeView({
                               <span>¿Funciona?</span>
                             </button>
                           </div>
+
+                          {/* Visor de cambios / diffs incrementales */}
+                          {expandedDiffMsgId === m.id && (
+                            <div className="chimucode-diff-panel">
+                              {m.changedFiles
+                                .filter((f) => f.isModified && f.rawPatch)
+                                .map((f) => {
+                                  const blocks = parseSearchReplaceBlocks(f.rawPatch || '');
+                                  return (
+                                    <div key={f.path} className="chimucode-diff-file-block">
+                                      <div className="chimucode-diff-file-header">
+                                        <span className="chimucode-diff-file-title">✏️ {f.path}</span>
+                                        <span className="chimucode-diff-file-summary">{describeFileDiff(blocks)}</span>
+                                      </div>
+                                      {blocks.map((b, bIdx) => (
+                                        <div key={bIdx} className="chimucode-diff-hunk">
+                                          <div className="chimucode-diff-section chimucode-diff-del">
+                                            <div className="chimucode-diff-section-tag">- ORIGINAL</div>
+                                            <pre className="chimucode-diff-code">
+                                              {b.search.split('\n').map((line, lIdx) => (
+                                                <div key={lIdx} className="chimucode-diff-line del">
+                                                  <span className="chimucode-diff-sign">-</span>
+                                                  <span className="chimucode-diff-text">{line}</span>
+                                                </div>
+                                              ))}
+                                            </pre>
+                                          </div>
+                                          <div className="chimucode-diff-section chimucode-diff-add">
+                                            <div className="chimucode-diff-section-tag">+ MODIFICACIÓN</div>
+                                            <pre className="chimucode-diff-code">
+                                              {b.replace.split('\n').map((line, lIdx) => (
+                                                <div key={lIdx} className="chimucode-diff-line add">
+                                                  <span className="chimucode-diff-sign">+</span>
+                                                  <span className="chimucode-diff-text">{line}</span>
+                                                </div>
+                                              ))}
+                                            </pre>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          )}
 
                           {/* Panel interactivo del Feedbacker */}
                           {feedbackMsgId === m.id && renderFeedbackBox(m.id)}

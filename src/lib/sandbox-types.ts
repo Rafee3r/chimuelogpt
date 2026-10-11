@@ -34,6 +34,8 @@ export interface ChimuCodeFile {
   path: string;
   language: string;
   content: string;
+  isModified?: boolean;
+  rawPatch?: string;
 }
 
 export interface ChimuCodeToolCall {

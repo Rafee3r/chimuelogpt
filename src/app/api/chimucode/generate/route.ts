@@ -2,6 +2,8 @@ import {
   extractProjectFilesFromAiResponse,
   ensureVisualDifficultySelector,
   isConsultationOrQuestion,
+  isSearchReplacePatch,
+  applySearchReplace,
 } from '../../../../lib/chimucode';
 import { isUncensoredModel, DEEPSEEK_FLASH } from '../../../../lib/models';
 import type { ChimuCodeFile, ChimuCodePageContext } from '../../../../lib/sandbox-types';
@@ -279,15 +281,25 @@ ${verifiedBusinessContext}`;
   \`\`\`
 - Si el usuario dice "con todo lo necesario", "hazlo completo", "con todo", "créalo", "continúa" o cualquier instrucción similar: DECIDE TÚ TODOS LOS DETALLES y ESCRIBE LOS ARCHIVOS DE CÓDIGO COMPLETOS EN ESTE TURNO. NUNCA respondas con "¿de qué tema?" o "dime qué secciones quieres". Escribe el código de inmediato.
 - PROHIBIDO preguntar "¿qué proyecto?" si en el historial de mensajes o en los datos del negocio ya se mencionó el proyecto o sitio web (ej. vada.cl, blanqueamiento dental, etc.).
-- REGLA SUPREMA: LA PALABRA "LISTO" SOLO SE ESCRIBE SI EL CAMBIO PEDIDO ES VISIBLE EN EL HTML QUE ACABAS DE DEVOLVER:
+- EDICIÓN DE ARCHIVOS INCREMENTAL (ESTILO CLAUDE CODE / AIDER):
+  * Si vas a modificar un archivo que YA EXISTE en el proyecto (revisa ARCHIVOS EXISTENTES EN ESTE PROYECTO), PREFIERE SIEMPRE usar bloques de edición incremental SEARCH / REPLACE dentro del fence del archivo en vez de reescribir todo el archivo desde cero:
+    \`\`\`html index.html
+    <<<<<<< SEARCH
+    [código original exacto a reemplazar]
+    =======
+    [nuevo código de reemplazo]
+    >>>>>>> REPLACE
+    \`\`\`
+  * Puedes emitir múltiples bloques SEARCH/REPLACE en un mismo fence si requieres editar varias partes del archivo.
+  * Cada bloque SEARCH debe coincidir con el fragmento del archivo existente (incluyendo 2-3 líneas de contexto adyacentes para coincidencia precisa).
+  * Solo entrega el archivo completo si es un archivo NUEVO que no existía antes, si el usuario pide explícitamente reescribir desde cero, o si el cambio es un rediseño total.
+- REGLA SUPREMA: LA PALABRA "LISTO" SOLO SE ESCRIBE SI EL CAMBIO PEDIDO QUEDA PRESENTE Y COMPROBABLE:
   * Antes de responder, busca en el archivo el texto exacto del pedido. Si pediste o se pidió "Fácil", "Medio" o "Difícil" (o selector de dificultad / nivel de poder para jugar en CPU), TIENEN que estar como <button> o <option> en index.html. Si no están, NO digas Listo: sigue y añádelos al marcado y a la lógica.
   * Si el usuario pide nivel de poder para jugar en CPU (o dificultad de IA en ajedrez u otros juegos): el selector va DEBAJO de "vs CPU": tres botones Fácil, Medio, Difícil. El activo con fondo #4a7c59. Al click cambia una variable difficulty y la IA usa profundidad 1, 2 o 3.
-  * Devuelve siempre el fence completo \`\`\`html index.html. El cliente recarga el iframe con el nuevo contenido.
-  * ORDEN OBLIGATORIO: Genera PRIMERO el fence completo con el código (ej. \`\`\`html index.html), y SOLO después del fence escribe la línea breve de confirmación (ej. "Listo, añadido selector de nivel de dificultad (Fácil / Medio / Difícil) debajo de vs CPU."). NUNCA digas "Listo" antes del fence de código ni si los elementos no están físicamente presentes en el marcado.
-- OBLIGATORIO: CADA TURNO QUE CAMBIA DISEÑO, ESTILOS O CÓDIGO DEBE DEVOLVER EL FENCE COMPLETO DEL ARCHIVO. Si no devuelves el fence con el código completo, ESTÁ ESTRICTAMENTE PROHIBIDO decir "Listo" o afirmar que hiciste el cambio, porque el cliente SÓLO actualiza el espacio de trabajo al recibir el fence de archivo.
+  * ORDEN OBLIGATORIO: Genera PRIMERO el fence de código (completo o con bloques SEARCH/REPLACE), y SOLO después del fence escribe la línea breve de confirmación (ej. "Listo, añadido selector de nivel de dificultad (Fácil / Medio / Difícil) debajo de vs CPU."). NUNCA digas "Listo" antes del fence ni si los elementos no están físicamente presentes.
 - Si el usuario dice "no es su color" o pide corregir colores/estilos:
   * Aplica los colores de la paleta real extraída.
-  * Devuelve el fence completo \`\`\`html index.html y al final responde con EXACTAMENTE UNA SOLA LÍNEA DE DIFF (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.").
+  * Devuelve el fence con los bloques SEARCH/REPLACE (o el archivo) y al final responde con EXACTAMENTE UNA SOLA LÍNEA DE CONFIRMACIÓN (ej. "Listo, ajustado el color principal a #8b44e9 y fondo a #ffffff en index.html.").
   * PROHIBIDO escribir ensayos, discursos o explicaciones largas.
 - Si te piden "en una carpeta" o "otra página" (ej. "en una carpeta petra", "catálogo en otra página"), responde entregando los archivos con sus rutas relativas en la cabecera de cada bloque markdown.
 - Cada turno modifica el proyecto: devuelve los archivos que cambian o que se crean nuevos. El cliente hace merge automático por ruta (path).
@@ -553,6 +565,20 @@ ${existingProjectContext}`;
                     currentBody += remaining.slice(0, fencePos);
                     cursor += fencePos + 3; // saltar ```
                     let processedContent = currentBody.trim();
+                    let fileIsModified = false;
+                    let rawPatch: string | undefined = undefined;
+
+                    // Si es un archivo existente en el proyecto y vino un bloque SEARCH/REPLACE
+                    const existingFile = Array.isArray(files) ? files.find((f: any) => f.path === currentFilePath) : null;
+                    if (existingFile && isSearchReplacePatch(processedContent)) {
+                      const patchResult = applySearchReplace(existingFile.content, processedContent);
+                      if (patchResult.isModified) {
+                        rawPatch = processedContent;
+                        processedContent = patchResult.content;
+                        fileIsModified = true;
+                      }
+                    }
+
                     if (currentFileLang === 'html' || currentFilePath.endsWith('.html')) {
                       processedContent = ensureVisualDifficultySelector(processedContent, prompt);
                     }
@@ -560,6 +586,8 @@ ${existingProjectContext}`;
                       path: currentFilePath,
                       language: currentFileLang,
                       content: processedContent,
+                      isModified: fileIsModified,
+                      rawPatch: rawPatch,
                     };
                     completedFiles.push(fileObj);
 
@@ -568,6 +596,8 @@ ${existingProjectContext}`;
                       path: fileObj.path,
                       language: fileObj.language,
                       content: fileObj.content,
+                      isModified: fileObj.isModified,
+                      rawPatch: fileObj.rawPatch,
                     });
                     sendEvent({ type: 'status', text: '' });
                     mode = 'EXPLANATION';
@@ -581,6 +611,19 @@ ${existingProjectContext}`;
           // Si quedó un fence abierto al cortar el stream, cerrarlo
           if (mode === 'FENCE_BODY' && currentBody.trim()) {
             let processedContent = currentBody.trim();
+            let fileIsModified = false;
+            let rawPatch: string | undefined = undefined;
+
+            const existingFile = Array.isArray(files) ? files.find((f: any) => f.path === currentFilePath) : null;
+            if (existingFile && isSearchReplacePatch(processedContent)) {
+              const patchResult = applySearchReplace(existingFile.content, processedContent);
+              if (patchResult.isModified) {
+                rawPatch = processedContent;
+                processedContent = patchResult.content;
+                fileIsModified = true;
+              }
+            }
+
             if (currentFileLang === 'html' || currentFilePath.endsWith('.html')) {
               processedContent = ensureVisualDifficultySelector(processedContent, prompt);
             }
@@ -588,6 +631,8 @@ ${existingProjectContext}`;
               path: currentFilePath,
               language: currentFileLang,
               content: processedContent,
+              isModified: fileIsModified,
+              rawPatch: rawPatch,
             };
             completedFiles.push(fileObj);
             sendEvent({
@@ -595,6 +640,8 @@ ${existingProjectContext}`;
               path: fileObj.path,
               language: fileObj.language,
               content: fileObj.content,
+              isModified: fileObj.isModified,
+              rawPatch: fileObj.rawPatch,
             });
             sendEvent({ type: 'status', text: '' });
           }
@@ -609,6 +656,8 @@ ${existingProjectContext}`;
                 path: extFile.path,
                 language: extFile.language,
                 content: extFile.content,
+                isModified: extFile.isModified,
+                rawPatch: extFile.rawPatch,
               });
             }
           }

@@ -3072,4 +3072,167 @@
   color: #15803d;
 }
 
+/* ── Visor de cambios incrementales (Diffs / Patches estilo Claude Code) ── */
+.chimucode-diff-panel {
+  width: 100%;
+  margin-top: 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  animation: chimucode-fade-in 0.2s ease-out;
+}
+
+.chimucode-diff-file-block {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.chimucode-diff-file-block:last-child {
+  border-bottom: none;
+}
+
+.chimucode-diff-file-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chimucode-diff-file-title {
+  font-weight: 600;
+  color: #38bdf8;
+  font-size: 12px;
+}
+
+.chimucode-diff-file-summary {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.chimucode-diff-hunk {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+.chimucode-diff-hunk:last-child {
+  border-bottom: none;
+}
+
+.chimucode-diff-section {
+  padding: 6px 10px;
+}
+
+.chimucode-diff-del {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ef4444;
+}
+
+.chimucode-diff-add {
+  background: rgba(34, 197, 94, 0.08);
+  border-left: 3px solid #22c55e;
+}
+
+.chimucode-diff-section-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.chimucode-diff-del .chimucode-diff-section-tag {
+  color: #f87171;
+}
+.chimucode-diff-add .chimucode-diff-section-tag {
+  color: #4ade80;
+}
+
+.chimucode-diff-code {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.chimucode-diff-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  white-space: pre;
+}
+
+.chimucode-diff-line.del {
+  color: #fca5a5;
+}
+.chimucode-diff-line.add {
+  color: #86efac;
+}
+
+.chimucode-diff-sign {
+  user-select: none;
+  font-weight: 700;
+  opacity: 0.8;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.chimucode-diff-text {
+  flex: 1;
+}
+
+/* Soporte Tema Claro para el visor de diffs */
+:root[data-theme="light"] .chimucode-diff-panel,
+:root[data-theme-effective="light"] .chimucode-diff-panel,
+:root[data-theme="snow"] .chimucode-diff-panel,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-panel {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme="light"] .chimucode-diff-file-header,
+:root[data-theme-effective="light"] .chimucode-diff-file-header,
+:root[data-theme="snow"] .chimucode-diff-file-header,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-file-header {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+:root[data-theme="light"] .chimucode-diff-file-title,
+:root[data-theme-effective="light"] .chimucode-diff-file-title,
+:root[data-theme="snow"] .chimucode-diff-file-title,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-file-title {
+  color: #0284c7;
+}
+
+:root[data-theme="light"] .chimucode-diff-del,
+:root[data-theme-effective="light"] .chimucode-diff-del,
+:root[data-theme="snow"] .chimucode-diff-del,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-del {
+  background: #fef2f2;
+}
+:root[data-theme="light"] .chimucode-diff-line.del,
+:root[data-theme-effective="light"] .chimucode-diff-line.del,
+:root[data-theme="snow"] .chimucode-diff-line.del,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-line.del {
+  color: #dc2626;
+}
+
+:root[data-theme="light"] .chimucode-diff-add,
+:root[data-theme-effective="light"] .chimucode-diff-add,
+:root[data-theme="snow"] .chimucode-diff-add,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-add {
+  background: #f0fdf4;
+}
+:root[data-theme="light"] .chimucode-diff-line.add,
+:root[data-theme-effective="light"] .chimucode-diff-line.add,
+:root[data-theme="snow"] .chimucode-diff-line.add,
+:root:not([data-theme="dark"]):not([data-theme="oled"]) .chimucode-diff-line.add {
+  color: #16a34a;
+}
+
 

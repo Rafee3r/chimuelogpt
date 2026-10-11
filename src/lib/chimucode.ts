@@ -408,6 +408,169 @@ export function parseChimuCodeCommand(input: string): {
 
 import type { ChimuCodeFile } from './sandbox-types';
 
+export interface SearchReplaceBlock {
+  search: string;
+  replace: string;
+  applied?: boolean;
+}
+
+export interface SearchReplaceResult {
+  content: string;
+  isModified: boolean;
+  appliedCount: number;
+  failedCount: number;
+  patches: SearchReplaceBlock[];
+}
+
+/**
+ * Detecta si el texto recibido contiene bloques de búsqueda y reemplazo estilo Claude Code / Aider:
+ * <<<<<<< SEARCH
+ * ...
+ * =======
+ * ...
+ * >>>>>>> REPLACE
+ */
+export function isSearchReplacePatch(content: string): boolean {
+  if (!content || typeof content !== 'string') return false;
+  return content.includes('<<<<<<< SEARCH') && content.includes('>>>>>>> REPLACE');
+}
+
+/**
+ * Extrae los bloques SEARCH / REPLACE individuales de un parche.
+ */
+export function parseSearchReplaceBlocks(patch: string): SearchReplaceBlock[] {
+  if (!patch || typeof patch !== 'string') return [];
+  const blocks: SearchReplaceBlock[] = [];
+  const regex = /<<<<<<<[ \t]*SEARCH\r?\n([\s\S]*?)\r?\n=======[ \t]*\r?\n([\s\S]*?)\r?\n>>>>>>>[ \t]*REPLACE/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(patch)) !== null) {
+    blocks.push({
+      search: match[1],
+      replace: match[2],
+    });
+  }
+  return blocks;
+}
+
+/**
+ * Aplica ediciones incrementales (SEARCH / REPLACE) a un archivo existente.
+ * Soporta coincidencia exacta, normalización de saltos de línea (\r\n vs \n)
+ * e indulgencia por sangría/espacios al final línea por línea.
+ */
+export function applySearchReplace(originalContent: string, patchOrContent: string): SearchReplaceResult {
+  if (!originalContent || typeof originalContent !== 'string') {
+    return {
+      content: patchOrContent,
+      isModified: false,
+      appliedCount: 0,
+      failedCount: 0,
+      patches: [],
+    };
+  }
+
+  if (!isSearchReplacePatch(patchOrContent)) {
+    return {
+      content: patchOrContent,
+      isModified: false,
+      appliedCount: 0,
+      failedCount: 0,
+      patches: [],
+    };
+  }
+
+  const blocks = parseSearchReplaceBlocks(patchOrContent);
+  if (blocks.length === 0) {
+    return {
+      content: originalContent,
+      isModified: false,
+      appliedCount: 0,
+      failedCount: 0,
+      patches: [],
+    };
+  }
+
+  let currentContent = originalContent;
+  let appliedCount = 0;
+  let failedCount = 0;
+
+  for (const block of blocks) {
+    const { search, replace } = block;
+
+    // 1. Coincidencia exacta directa
+    if (currentContent.includes(search)) {
+      currentContent = currentContent.replace(search, replace);
+      block.applied = true;
+      appliedCount++;
+      continue;
+    }
+
+    // 2. Coincidencia normalizando saltos de línea (\r\n -> \n)
+    const normContent = currentContent.replace(/\r\n/g, '\n');
+    const normSearch = search.replace(/\r\n/g, '\n');
+    const normReplace = replace.replace(/\r\n/g, '\n');
+
+    if (normContent.includes(normSearch)) {
+      currentContent = normContent.replace(normSearch, normReplace);
+      block.applied = true;
+      appliedCount++;
+      continue;
+    }
+
+    // 3. Coincidencia por líneas recortadas (tolerancia a diferencias leves de sangría / espacios al final)
+    const contentLines = normContent.split('\n');
+    const searchLines = normSearch.split('\n');
+
+    let matchLineIndex = -1;
+    for (let i = 0; i <= contentLines.length - searchLines.length; i++) {
+      let allMatch = true;
+      for (let j = 0; j < searchLines.length; j++) {
+        if (contentLines[i + j].trim() !== searchLines[j].trim()) {
+          allMatch = false;
+          break;
+        }
+      }
+      if (allMatch) {
+        matchLineIndex = i;
+        break;
+      }
+    }
+
+    if (matchLineIndex !== -1) {
+      const replaceLines = normReplace.split('\n');
+      contentLines.splice(matchLineIndex, searchLines.length, ...replaceLines);
+      currentContent = contentLines.join('\n');
+      block.applied = true;
+      appliedCount++;
+      continue;
+    }
+
+    // Si falló la coincidencia del bloque
+    block.applied = false;
+    failedCount++;
+  }
+
+  return {
+    content: currentContent,
+    isModified: appliedCount > 0,
+    appliedCount,
+    failedCount,
+    patches: blocks,
+  };
+}
+
+/**
+ * Describe en una línea breve los bloques modificados en un parche.
+ */
+export function describeFileDiff(patchOrBlocks: string | SearchReplaceBlock[]): string {
+  const blocks = typeof patchOrBlocks === 'string'
+    ? parseSearchReplaceBlocks(patchOrBlocks)
+    : patchOrBlocks;
+
+  if (blocks.length === 0) return 'Archivo actualizado';
+  if (blocks.length === 1) return '1 bloque modificado';
+  return `${blocks.length} bloques modificados`;
+}
+
 export function extractProjectFilesFromAiResponse(
   response: string,
   userPrompt: string = '',
@@ -510,6 +673,21 @@ export function extractProjectFilesFromAiResponse(
       resolvedLang = 'sql';
     }
 
+    let isModified = false;
+    let rawPatch: string | undefined = undefined;
+
+    if (existingFiles.length > 0 && isSearchReplacePatch(content)) {
+      const existing = existingFiles.find((f) => f.path === rawPath);
+      if (existing) {
+        const patchResult = applySearchReplace(existing.content, content);
+        if (patchResult.isModified) {
+          rawPatch = content;
+          content = patchResult.content;
+          isModified = true;
+        }
+      }
+    }
+
     if (resolvedLang === 'html' || rawPath.endsWith('.html')) {
       content = ensureVisualDifficultySelector(content, userPrompt);
     }
@@ -518,6 +696,8 @@ export function extractProjectFilesFromAiResponse(
       path: rawPath,
       language: resolvedLang,
       content,
+      isModified,
+      rawPatch,
     });
   }
 

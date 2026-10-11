@@ -301,5 +301,137 @@ describe('isConsultationOrQuestion', () => {
   });
 });
 
+describe('Search/Replace incremental edits (Claude Code / Aider style)', () => {
+  it('detecta correctamente si un texto es un parche SEARCH/REPLACE', async () => {
+    const { isSearchReplacePatch } = await import('../chimucode');
+
+    const validPatch = `<<<<<<< SEARCH
+const a = 1;
+=======
+const a = 2;
+>>>>>>> REPLACE`;
+    expect(isSearchReplacePatch(validPatch)).toBe(true);
+
+    const normalCode = `const a = 2;\nconsole.log(a);`;
+    expect(isSearchReplacePatch(normalCode)).toBe(false);
+    expect(isSearchReplacePatch('')).toBe(false);
+  });
+
+  it('parsea bloques SEARCH / REPLACE individuales', async () => {
+    const { parseSearchReplaceBlocks } = await import('../chimucode');
+
+    const patch = `
+<<<<<<< SEARCH
+const a = 1;
+=======
+const a = 10;
+>>>>>>> REPLACE
+
+<<<<<<< SEARCH
+const b = 2;
+=======
+const b = 20;
+>>>>>>> REPLACE`;
+
+    const blocks = parseSearchReplaceBlocks(patch);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].search.trim()).toBe('const a = 1;');
+    expect(blocks[0].replace.trim()).toBe('const a = 10;');
+    expect(blocks[1].search.trim()).toBe('const b = 2;');
+    expect(blocks[1].replace.trim()).toBe('const b = 20;');
+  });
+
+  it('aplica reemplazo exacto en el archivo original', async () => {
+    const { applySearchReplace } = await import('../chimucode');
+
+    const original = `function test() {\n  const x = 1;\n  return x * 2;\n}`;
+    const patch = `<<<<<<< SEARCH\n  const x = 1;\n=======\n  const x = 42;\n>>>>>>> REPLACE`;
+
+    const res = applySearchReplace(original, patch);
+    expect(res.isModified).toBe(true);
+    expect(res.appliedCount).toBe(1);
+    expect(res.failedCount).toBe(0);
+    expect(res.content).toBe(`function test() {\n  const x = 42;\n  return x * 2;\n}`);
+  });
+
+  it('soporta múltiples bloques aplicados en secuencia', async () => {
+    const { applySearchReplace } = await import('../chimucode');
+
+    const original = `const a = 1;\nconst b = 2;\nconst c = 3;`;
+    const patch = `<<<<<<< SEARCH\nconst a = 1;\n=======\nconst a = 100;\n>>>>>>> REPLACE\n<<<<<<< SEARCH\nconst c = 3;\n=======\nconst c = 300;\n>>>>>>> REPLACE`;
+
+    const res = applySearchReplace(original, patch);
+    expect(res.isModified).toBe(true);
+    expect(res.appliedCount).toBe(2);
+    expect(res.content).toBe(`const a = 100;\nconst b = 2;\nconst c = 300;`);
+  });
+
+  it('normaliza saltos de línea Windows CRLF y Unix LF', async () => {
+    const { applySearchReplace } = await import('../chimucode');
+
+    const originalWithCrlf = 'const a = 1;\r\nconst b = 2;\r\n';
+    const patchWithLf = '<<<<<<< SEARCH\nconst a = 1;\n=======\nconst a = 99;\n>>>>>>> REPLACE';
+
+    const res = applySearchReplace(originalWithCrlf, patchWithLf);
+    expect(res.isModified).toBe(true);
+    expect(res.appliedCount).toBe(1);
+    expect(res.content).toContain('const a = 99;');
+  });
+
+  it('tolera diferencias leves de indentación línea por línea', async () => {
+    const { applySearchReplace } = await import('../chimucode');
+
+    const original = `<div>\n  <button id="btn">Click me</button>\n</div>`;
+    const patch = `<<<<<<< SEARCH\n    <button id="btn">Click me</button>\n=======\n    <button id="btn" class="active">Pulsado</button>\n>>>>>>> REPLACE`;
+
+    const res = applySearchReplace(original, patch);
+    expect(res.isModified).toBe(true);
+    expect(res.appliedCount).toBe(1);
+    expect(res.content).toContain('class="active"');
+  });
+
+  it('devuelve el contenido original sin corromper si el bloque no coincide', async () => {
+    const { applySearchReplace } = await import('../chimucode');
+
+    const original = `const alpha = 1;`;
+    const patch = `<<<<<<< SEARCH\nconst omega = 999;\n=======\nconst omega = 0;\n>>>>>>> REPLACE`;
+
+    const res = applySearchReplace(original, patch);
+    expect(res.isModified).toBe(false);
+    expect(res.appliedCount).toBe(0);
+    expect(res.failedCount).toBe(1);
+    expect(res.content).toBe(original);
+  });
+
+  it('extractProjectFilesFromAiResponse aplica parches a archivos existentes automáticamente', async () => {
+    const { extractProjectFilesFromAiResponse } = await import('../chimucode');
+
+    const existingFiles = [
+      {
+        path: 'index.html',
+        language: 'html',
+        content: `<!DOCTYPE html><html><body><h1 id="title">Antiguo</h1></body></html>`,
+      },
+    ];
+
+    const aiResponse = `Aquí tienes la actualización:
+\`\`\`html index.html
+<<<<<<< SEARCH
+<h1 id="title">Antiguo</h1>
+=======
+<h1 id="title">Nuevo Título Incremental</h1>
+>>>>>>> REPLACE
+\`\`\`
+Listo, modificado.`;
+
+    const res = extractProjectFilesFromAiResponse(aiResponse, 'cambia el título', existingFiles);
+    expect(res.files).toHaveLength(1);
+    expect(res.files[0].path).toBe('index.html');
+    expect(res.files[0].isModified).toBe(true);
+    expect(res.files[0].content).toContain('<h1 id="title">Nuevo Título Incremental</h1>');
+    expect(res.files[0].content).not.toContain('<<<<<<< SEARCH');
+  });
+});
+
 
 
